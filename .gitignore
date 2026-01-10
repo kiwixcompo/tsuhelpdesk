@@ -1,0 +1,60 @@
+# Configuration files with sensitive data
+config.php
+
+# Log files
+logs/
+*.log
+
+# Upload directories
+uploads/*
+!uploads/.htaccess
+
+# Temporary files
+*.tmp
+*.temp
+
+# System files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Cache files
+cache/
+*.cache
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Database dumps (except the main structure file)
+*.sql
+!FINAL_STUDENT_SYSTEM_UPDATE.sql
+
+# Test files (if any remain)
+test_*.php
+*_test.php
+
+# Documentation files (keep only README.md)
+*.md
+!README.md
+
+# Temporary setup files
+setup_*.php
+verify_*.php
+diagnose_*.php
+
+# Old/backup PHP files
+*.php.bak
+*.php.old

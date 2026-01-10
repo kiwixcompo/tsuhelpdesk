@@ -1,0 +1,101 @@
+/* Navbar improvements - Shared CSS for all pages */
+.navbar-nav .nav-link {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 1rem;
+}
+
+.navbar-nav .nav-link i {
+    margin-right: 0.5rem;
+    font-size: 1rem;
+}
+
+/* Icon-only items */
+.navbar-nav .nav-link.icon-only {
+    justify-content: center;
+    padding: 0.5rem 0.75rem;
+    min-width: 40px;
+}
+
+.navbar-nav .nav-link.icon-only i {
+    margin-right: 0;
+    font-size: 1.1rem;
+}
+
+.navbar-nav .badge {
+    font-size: 0.65rem;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.navbar-nav .nav-item.active .nav-link {
+    background-color: rgba(255,255,255,0.1);
+    border-radius: 4px;
+}
+
+/* Tooltip styling */
+.tooltip-inner {
+    background-color: #333;
+    color: #fff;
+    border-radius: 4px;
+    font-size: 0.875rem;
+}
+
+/* Notification dropdown styling */
+.notification-dropdown {
+    width: 350px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.notification-badge {
+    top: -5px;
+    right: -10px;
+    font-size: 0.7rem;
+}
+
+.notification-item {
+    padding: 10px 15px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.notification-item:hover {
+    background-color: #f8f9fa;
+}
+
+.notification-item.unread {
+    background-color: #e3f2fd;
+    border-left: 3px solid #2196f3;
+}
+
+.notification-title {
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 2px;
+}
+
+.notification-message {
+    font-size: 0.8rem;
+    color: #666;
+    margin-bottom: 2px;
+}
+
+.notification-time {
+    font-size: 0.75rem;
+    color: #999;
+}
+
+.notification-icon {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #28a745;
+    display: inline-block;
+    margin-right: 5px;
+}
