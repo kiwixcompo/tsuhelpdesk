@@ -38,9 +38,10 @@ cache/
 .env.local
 .env.production
 
-# Database dumps (except the main structure file)
+# Database dumps (except the main structure files)
 *.sql
 !FINAL_STUDENT_SYSTEM_UPDATE.sql
+!COMPLETE_SYSTEM_SETUP.sql
 
 # Test files (if any remain)
 test_*.php
