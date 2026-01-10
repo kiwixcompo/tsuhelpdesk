@@ -25,7 +25,7 @@ ob_end_flush();
     <link rel="stylesheet" href="css/style.css">
     <style>
         body {
-            background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%);
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             min-height: 100vh;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
@@ -33,7 +33,7 @@ ob_end_flush();
         .portal-card {
             border: none;
             border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 20px 40px rgba(30, 60, 114, 0.2);
             transition: all 0.3s ease;
             cursor: pointer;
             height: 280px;
@@ -48,7 +48,7 @@ ob_end_flush();
         
         .portal-card:hover {
             transform: translateY(-10px);
-            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 30px 60px rgba(30, 60, 114, 0.3);
             text-decoration: none;
             color: inherit;
         }
@@ -59,8 +59,8 @@ ob_end_flush();
         }
         
         .signup-card {
-            background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%);
-            color: #1e3c72;
+            background: linear-gradient(135deg, #4a90e2 0%, #6bb6ff 100%);
+            color: white;
         }
         
         .portal-icon {
@@ -91,6 +91,7 @@ ob_end_flush();
             font-size: 3rem;
             font-weight: bold;
             margin-bottom: 1rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         
         .header-subtitle {

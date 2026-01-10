@@ -109,10 +109,10 @@ ob_end_flush();
             border-radius: 10px;
         }
         .btn-success {
-            background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%);
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
             border: none;
             border-radius: 10px;
-            color: #1e3c72;
+            color: white;
         }
         .btn-danger {
             background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);

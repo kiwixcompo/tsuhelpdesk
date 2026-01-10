@@ -218,15 +218,16 @@ ob_end_flush();
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
         body {
-            background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%);
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             min-height: 100vh;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
         .signup-card {
             border: none;
             border-radius: 15px;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 20px 60px rgba(30, 60, 114, 0.3);
             margin: 2rem 0;
+            background: white;
         }
         .card-header {
             background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
@@ -236,37 +237,119 @@ ob_end_flush();
             padding: 2rem;
         }
         .form-control {
-            border-radius: 10px;
+            border-radius: 8px;
             padding: 12px 15px;
+            border: 2px solid rgba(30, 60, 114, 0.1);
+            transition: all 0.3s ease;
+            background-color: white;
+            color: #495057;
+            font-size: 14px;
+            height: auto;
+            min-height: 45px;
+        }
+        .form-control:focus {
+            border-color: #1e3c72;
+            box-shadow: 0 0 0 0.2rem rgba(30, 60, 114, 0.25);
+            background-color: white;
+        }
+        .form-control option {
+            color: #495057;
+            background-color: white;
+            padding: 8px 12px;
+        }
+        .form-label, label {
+            color: #1e3c72;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
         }
         .btn-primary {
-            border-radius: 10px;
-            padding: 12px;
+            border-radius: 8px;
+            padding: 12px 24px;
             background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             border: none;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.3s ease;
         }
         .btn-primary:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-            background: linear-gradient(135deg, #2a5298 0%, #1e3c72 100%);
+            box-shadow: 0 6px 20px rgba(30, 60, 114, 0.4);
+            background: linear-gradient(135deg, #2a5298 0%, #4a90e2 100%);
         }
         .back-link {
             color: white;
             text-decoration: none;
             margin-bottom: 2rem;
             display: inline-block;
+            font-weight: 500;
         }
         .back-link:hover {
-            color: #f8f9fa;
+            color: #e8f4fd;
             text-decoration: none;
         }
         .reg-number-preview {
-            background: #e9ecef;
-            padding: 10px;
-            border-radius: 5px;
-            font-family: monospace;
+            background: linear-gradient(135deg, #e8f4fd 0%, #f8fbff 100%);
+            border: 2px solid rgba(30, 60, 114, 0.1);
+            padding: 12px 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
             font-weight: bold;
-            color: #495057;
+            color: #1e3c72;
+            font-size: 14px;
+        }
+        .alert {
+            border-radius: 10px;
+            border: none;
+            padding: 16px 20px;
+            font-weight: 500;
+        }
+        .alert-danger {
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+            color: #721c24;
+        }
+        .card-body {
+            padding: 2rem;
+        }
+        h5 {
+            color: #1e3c72;
+            font-weight: 700;
+            border-bottom: 2px solid rgba(30, 60, 114, 0.1);
+            padding-bottom: 8px;
+            margin-bottom: 1.5rem;
+        }
+        .form-text {
+            color: #6c757d;
+            font-size: 12px;
+        }
+        .invalid-feedback {
+            font-size: 13px;
+        }
+        /* Ensure dropdown text is fully visible */
+        select.form-control {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231e3c72' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 16px;
+            padding-right: 40px;
+            line-height: 1.5;
+        }
+        select.form-control option {
+            padding: 10px 15px;
+            line-height: 1.5;
+        }
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            .card-body {
+                padding: 1.5rem;
+            }
         }
     </style>
 </head>
