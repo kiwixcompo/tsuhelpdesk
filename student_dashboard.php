@@ -139,7 +139,7 @@ ob_end_flush();
             padding: 0.4rem 0.8rem;
             border-radius: 20px;
         }
-        .status-pending { background: #ffc107; color: #212529; }
+        .status-pending { background: #2196f3; color: white; }
         .status-under-review { background: #17a2b8; color: white; }
         .status-resolved { background: #28a745; color: white; }
         .status-rejected { background: #dc3545; color: white; }

@@ -58,8 +58,8 @@ ob_end_flush();
         }
         
         .student-card {
-            background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%);
-            color: #1e3c72;
+            background: linear-gradient(135deg, #4a90e2 0%, #6bb6ff 100%);
+            color: white;
         }
         
         .portal-icon {

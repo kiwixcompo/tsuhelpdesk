@@ -222,7 +222,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["bulk_action"]) && ($_S
             border-left: 4px solid #007bff;
         }
         .suggestion-card.pending {
-            border-left-color: #ffc107;
+            border-left-color: #2196f3;
         }
         .suggestion-card.under-implementation {
             border-left-color: #17a2b8;
