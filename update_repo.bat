@@ -60,17 +60,10 @@ git push origin main
 
 if errorlevel 1 (
     echo.
-    echo Trying to push to 'master' branch instead...
-    git push origin master
-    
-    if errorlevel 1 (
-        echo.
-        echo ERROR: Failed to push to remote repository
-        echo This might be the first push. Try running:
-        echo git push -u origin main
-        echo.
-        goto :end
-    )
+    echo ERROR: Failed to push to remote repository
+    echo Please check your internet connection and GitHub credentials
+    echo.
+    goto :end
 )
 
 echo.
