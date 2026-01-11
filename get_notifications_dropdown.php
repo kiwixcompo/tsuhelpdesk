@@ -2,8 +2,17 @@
 session_start();
 require_once "config.php";
 
-// Check if user is logged in
-if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true){
+// Check if user is logged in (staff or student)
+$is_student = false;
+$user_id = null;
+
+if(isset($_SESSION["student_loggedin"]) && $_SESSION["student_loggedin"] === true){
+    $is_student = true;
+    $user_id = $_SESSION["student_id"];
+} elseif(isset($_SESSION["loggedin"]) && $_SESSION["loggedin"] === true){
+    $is_student = false;
+    $user_id = $_SESSION["user_id"];
+} else {
     http_response_code(401);
     echo json_encode(['error' => 'Not logged in']);
     exit;
@@ -28,7 +37,7 @@ $sql = "SELECT n.*, c.student_id, c.complaint_text
 
 $notifications = [];
 if ($stmt = mysqli_prepare($conn, $sql)) {
-    mysqli_stmt_bind_param($stmt, "i", $_SESSION["user_id"]);
+    mysqli_stmt_bind_param($stmt, "i", $user_id);
     if (mysqli_stmt_execute($stmt)) {
         $result = mysqli_stmt_get_result($stmt);
         while ($row = mysqli_fetch_assoc($result)) {
@@ -45,12 +54,12 @@ if ($stmt = mysqli_prepare($conn, $sql)) {
 // Get unread count
 $unread_count = 0;
 if (function_exists('getUnreadNotificationCount')) {
-    $unread_count = getUnreadNotificationCount($conn, $_SESSION["user_id"]);
+    $unread_count = getUnreadNotificationCount($conn, $user_id);
 } else {
     // Fallback count
     $count_sql = "SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = 0";
     if ($count_stmt = mysqli_prepare($conn, $count_sql)) {
-        mysqli_stmt_bind_param($count_stmt, "i", $_SESSION["user_id"]);
+        mysqli_stmt_bind_param($count_stmt, "i", $user_id);
         if (mysqli_stmt_execute($count_stmt)) {
             $count_result = mysqli_stmt_get_result($count_stmt);
             if ($count_row = mysqli_fetch_assoc($count_result)) {
@@ -62,7 +71,7 @@ if (function_exists('getUnreadNotificationCount')) {
 }
 
 // Add error logging for debugging
-error_log("Notifications API called for user: " . $_SESSION["user_id"]);
+error_log("Notifications API called for user: " . $user_id . " (student: " . ($is_student ? 'yes' : 'no') . ")");
 error_log("Found " . count($notifications) . " notifications");
 
 // Return JSON response

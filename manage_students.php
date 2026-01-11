@@ -266,7 +266,41 @@ ob_end_flush();
 <body>
     <?php include 'includes/navbar.php'; ?>
 
-    <div class="container-fluid mt-4">
+    <?php
+    // Set up student management header variables
+    $page_title = 'Student Management';
+    $page_subtitle = 'View, edit, and manage student accounts';
+    $page_icon = 'fas fa-user-graduate';
+    $show_breadcrumb = true;
+    $breadcrumb_items = [
+        ['title' => 'Admin', 'url' => 'admin.php'],
+        ['title' => 'Student Management', 'url' => '']
+    ];
+    
+    // Set up quick stats
+    $active_students = 0;
+    $inactive_students = 0;
+    $total_complaints = 0;
+    
+    foreach($students as $student) {
+        if($student['is_active']) {
+            $active_students++;
+        } else {
+            $inactive_students++;
+        }
+        $total_complaints += $student['complaint_count'];
+    }
+    
+    $quick_stats = [
+        ['number' => $total_students, 'label' => 'Total Students'],
+        ['number' => $active_students, 'label' => 'Active'],
+        ['number' => $total_complaints, 'label' => 'Total Complaints']
+    ];
+    
+    include 'includes/dashboard_header.php';
+    ?>
+
+    <div class="container-fluid">
         <!-- Page Header -->
         <div class="row">
             <div class="col-12">

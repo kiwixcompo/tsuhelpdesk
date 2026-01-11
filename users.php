@@ -8,9 +8,10 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true || $_SESSION[
 }
 
 require_once "config.php";
+require_once "includes/notifications.php";
 
 // Fetch app settings
-$app_name = 'TSU ICT Complaint Desk'; // Default value
+$app_name = 'TSU ICT Help Desk'; // Default value
 $app_logo = '';
 $app_favicon = '';
 
@@ -20,7 +21,7 @@ if($result){
     while($row = mysqli_fetch_assoc($result)){
         switch($row['setting_key']) {
             case 'app_name':
-                $app_name = $row['setting_value'] ?: 'TSU ICT Complaint Desk';
+                $app_name = $row['setting_value'] ?: 'TSU ICT Help Desk';
                 break;
             case 'app_logo':
                 $app_logo = $row['setting_value'];
@@ -245,58 +246,23 @@ while($row = mysqli_fetch_assoc($result)){
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container">
-            <div class="app-branding">
-                <?php if($app_logo && file_exists($app_logo)): ?>
-                    <img src="<?php echo htmlspecialchars($app_logo); ?>" alt="Logo" class="app-logo">
-                <?php endif; ?>
-                <a class="navbar-brand app-name" href="#">
-                    <?php echo htmlspecialchars($app_name); ?>
-                </a>
-            </div>
-            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ml-auto">
-                    <li class="nav-item">
-                        <?php if($_SESSION["role_id"] == 5): ?>
-                            <a class="nav-link" href="i4cus_staff_dashboard.php">Dashboard</a>
-                        <?php elseif($_SESSION["role_id"] == 3): ?>
-                            <a class="nav-link" href="director_dashboard.php">Dashboard</a>
-                        <?php elseif($_SESSION["role_id"] == 4): ?>
-                            <a class="nav-link" href="dvc_dashboard.php">Dashboard</a>
-                        <?php else: ?>
-                            <a class="nav-link" href="dashboard.php">Dashboard</a>
-                        <?php endif; ?>
-                    </li>
-                    <?php if($_SESSION["role_id"] == 1): ?>
-                    <li class="nav-item">
-                        <a class="nav-link" href="admin.php">Admin Panel</a>
-                    </li>
-                    <li class="nav-item active">
-                        <a class="nav-link" href="users.php">Users</a>
-                    </li>
-                    <?php endif; ?>
-                    <li class="nav-item">
-                        <a class="nav-link" href="archives.php">Archives</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="account.php">
-                            <i class="fas fa-user-circle"></i>
-                            <?php echo htmlspecialchars($_SESSION["full_name"]); ?>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="logout.php">Logout</a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
+    <?php include 'includes/navbar.php'; ?>
 
-    <div class="container mt-4">
+    <?php
+    // Set up users header variables
+    $page_title = 'User Management';
+    $page_subtitle = 'Manage staff accounts and permissions';
+    $page_icon = 'fas fa-users';
+    $show_breadcrumb = true;
+    $breadcrumb_items = [
+        ['title' => 'Admin', 'url' => 'admin.php'],
+        ['title' => 'User Management', 'url' => '']
+    ];
+    
+    include 'includes/dashboard_header.php';
+    ?>
+
+    <div class="container-fluid">
         <?php if(isset($success_message)): ?>
             <div class="alert alert-success"><?php echo $success_message; ?></div>
         <?php endif; ?>

@@ -11,6 +11,7 @@ if(!isset($_SESSION["student_loggedin"]) || $_SESSION["student_loggedin"] !== tr
 }
 
 require_once "config.php";
+require_once "includes/notifications.php";
 
 $success_msg = $error_msg = "";
 
@@ -62,6 +63,12 @@ if($stmt = mysqli_prepare($conn, $sql)){
         }
     }
     mysqli_stmt_close($stmt);
+}
+
+// Get notification count for student
+$notification_count = 0;
+if (function_exists('getUnreadNotificationCount')) {
+    $notification_count = getUnreadNotificationCount($conn, $_SESSION["student_id"]);
 }
 
 // End output buffering and flush
@@ -165,6 +172,30 @@ ob_end_flush();
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ml-auto">
+                    <!-- Notifications -->
+                    <li class="nav-item dropdown mr-3">
+                        <a class="nav-link dropdown-toggle" href="#" id="notificationDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="Notifications">
+                            <i class="fas fa-bell"></i>
+                            <?php if($notification_count > 0): ?>
+                                <span class="badge badge-danger badge-pill ml-1" id="notificationBadge"><?php echo $notification_count; ?></span>
+                            <?php endif; ?>
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-right" aria-labelledby="notificationDropdown" style="min-width: 300px;">
+                            <h6 class="dropdown-header">
+                                <i class="fas fa-bell mr-2"></i> Recent Notifications
+                            </h6>
+                            <div id="notificationList">
+                                <div class="dropdown-item text-center">
+                                    <i class="fas fa-spinner fa-spin"></i> Loading...
+                                </div>
+                            </div>
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item text-center" href="notifications.php">
+                                <i class="fas fa-eye mr-2"></i> View All Notifications
+                            </a>
+                        </div>
+                    </li>
+                    
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown">
                             <i class="fas fa-user mr-1"></i>
@@ -482,6 +513,146 @@ ob_end_flush();
             
             // Auto-dismiss alerts
             $('.alert').delay(5000).fadeOut();
+            
+            // Load notifications when dropdown is shown
+            $('#notificationDropdown').on('show.bs.dropdown', function() {
+                loadNotifications();
+            });
+        });
+        
+        // Notification functions
+        function loadNotifications() {
+            $('#notificationList').html('<div class="dropdown-item text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</div>');
+            
+            $.ajax({
+                url: 'get_notifications_dropdown.php',
+                type: 'GET',
+                dataType: 'json',
+                timeout: 10000,
+                success: function(data) {
+                    if (data && data.success) {
+                        displayNotifications(data.notifications);
+                        updateNotificationBadge(data.unread_count);
+                    } else {
+                        $('#notificationList').html('<div class="dropdown-item text-center text-danger">Error: ' + (data.error || 'Unknown error') + '</div>');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    let errorMsg = 'Error loading notifications';
+                    
+                    if (status === 'timeout') {
+                        errorMsg = 'Request timed out';
+                    } else if (xhr.status === 401) {
+                        errorMsg = 'Session expired';
+                        setTimeout(() => window.location.href = 'student_login.php', 2000);
+                    } else if (xhr.status === 500) {
+                        errorMsg = 'Server error';
+                    } else if (xhr.status === 0) {
+                        errorMsg = 'Network error';
+                    }
+                    
+                    $('#notificationList').html('<div class="dropdown-item text-center text-danger">' + errorMsg + '</div>');
+                }
+            });
+        }
+        
+        function displayNotifications(notifications) {
+            const listContainer = $('#notificationList');
+            
+            if (!notifications || notifications.length === 0) {
+                listContainer.html('<div class="dropdown-item text-center text-muted">No notifications</div>');
+                return;
+            }
+            
+            let html = '';
+            try {
+                notifications.forEach(function(notification) {
+                    if (!notification || !notification.notification_id) {
+                        return;
+                    }
+                    
+                    const isUnread = notification.is_read == 0;
+                    const unreadClass = isUnread ? 'unread' : '';
+                    const unreadIcon = isUnread ? '<span class="text-primary">●</span> ' : '';
+                    
+                    const timeAgo = getTimeAgo(notification.created_at);
+                    const title = notification.title || 'Notification';
+                    const message = notification.message || '';
+                    
+                    html += `
+                        <div class="dropdown-item notification-item ${unreadClass}" onclick="handleNotificationClick(${notification.notification_id}, ${notification.complaint_id})" style="cursor: pointer; border-left: 3px solid ${isUnread ? '#007bff' : 'transparent'};">
+                            <div style="font-weight: 600; color: #1e3c72; margin-bottom: 4px;">
+                                ${unreadIcon}${escapeHtml(title)}
+                            </div>
+                            <div style="font-size: 0.85rem; color: #6c757d; margin-bottom: 4px;">
+                                ${escapeHtml(message)}
+                            </div>
+                            <div style="font-size: 0.75rem; color: #adb5bd;">
+                                ${timeAgo}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                listContainer.html(html);
+            } catch (error) {
+                console.error('Error displaying notifications:', error);
+                listContainer.html('<div class="dropdown-item text-center text-danger">Error displaying notifications</div>');
+            }
+        }
+        
+        function handleNotificationClick(notificationId, complaintId) {
+            // Mark as read and redirect
+            $.ajax({
+                url: 'mark_notification_read.php',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({notification_id: notificationId}),
+                success: function(response) {
+                    if (response.success) {
+                        updateNotificationBadge(Math.max(0, parseInt($('#notificationBadge').text() || 0) - 1));
+                    }
+                    // For students, redirect to student dashboard or complaint view
+                    if (complaintId) {
+                        window.location.href = 'student_dashboard.php#complaint-' + complaintId;
+                    } else {
+                        window.location.reload();
+                    }
+                },
+                error: function() {
+                    // Still redirect even if marking as read fails
+                    window.location.reload();
+                }
+            });
+        }
+        
+        function updateNotificationBadge(count) {
+            const badge = $('#notificationBadge');
+            if (count > 0) {
+                badge.text(count).show();
+            } else {
+                badge.hide();
+            }
+        }
+        
+        function getTimeAgo(dateString) {
+            const now = new Date();
+            const date = new Date(dateString);
+            const diffInSeconds = Math.floor((now - date) / 1000);
+            
+            if (diffInSeconds < 60) return 'Just now';
+            if (diffInSeconds < 3600) return Math.floor(diffInSeconds / 60) + 'm ago';
+            if (diffInSeconds < 86400) return Math.floor(diffInSeconds / 3600) + 'h ago';
+            if (diffInSeconds < 604800) return Math.floor(diffInSeconds / 86400) + 'd ago';
+            
+            return date.toLocaleDateString();
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
         });
     </script>
 </body>

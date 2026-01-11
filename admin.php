@@ -13,10 +13,11 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true || $_SESSION[
 }
 
 require_once "config.php";
+require_once "includes/notifications.php";
 require_once "calendar_helper.php";
 
 // Fetch app settings
-$app_name = 'TSU ICT Complaint Desk'; // Default value
+$app_name = 'TSU ICT Help Desk'; // Default value
 $app_logo = '';
 $app_favicon = '';
 
@@ -26,7 +27,7 @@ if($result){
     while($row = mysqli_fetch_assoc($result)){
         switch($row['setting_key']) {
             case 'app_name':
-                $app_name = $row['setting_value'] ?: 'TSU ICT Complaint Desk';
+                $app_name = $row['setting_value'] ?: 'TSU ICT Help Desk';
                 break;
             case 'app_logo':
                 $app_logo = $row['setting_value'];
@@ -472,6 +473,7 @@ foreach ($complaints as $c) {
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/responsive-fix.css">
     
     <!-- Load jQuery first before any other scripts -->
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
@@ -698,7 +700,35 @@ foreach ($complaints as $c) {
 <body>
     <?php include 'includes/navbar.php'; ?>
 
-    <div class="container mt-4">
+    <?php
+    // Set up admin dashboard header variables
+    $page_title = 'Admin Panel';
+    $page_subtitle = 'Manage complaints, users, and system settings';
+    $page_icon = 'fas fa-cogs';
+    $show_breadcrumb = false;
+    
+    // Get quick stats for admin header
+    $total_complaints = count($complaints);
+    $total_users = count($users);
+    $pending_complaints = 0;
+    
+    foreach($complaints as $complaint) {
+        if($complaint['status'] == 'Pending') {
+            $pending_complaints++;
+        }
+    }
+    
+    // Set up quick stats
+    $quick_stats = [
+        ['number' => $total_complaints, 'label' => 'Total Complaints'],
+        ['number' => $pending_complaints, 'label' => 'Pending'],
+        ['number' => $total_users, 'label' => 'Users']
+    ];
+    
+    include 'includes/dashboard_header.php';
+    ?>
+
+    <div class="container">
         <?php if(isset($success_message)): ?>
             <div class="alert alert-success"><?php echo $success_message; ?></div>
         <?php endif; ?>

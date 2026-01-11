@@ -3,6 +3,7 @@
 ob_start();
 session_start();
 require_once "config.php";
+require_once "includes/notifications.php";
 require_once "calendar_helper.php";
 
 // Initialize arrays and variables
@@ -27,7 +28,7 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true){
 }
 
 // Fetch app settings for header use
-$app_name = 'TSU ICT Complaint Desk'; // Default value
+$app_name = 'TSU ICT Help Desk'; // Default value
 $app_logo = '';
 $app_favicon = '';
 
@@ -37,7 +38,7 @@ if($result){
     while($row = mysqli_fetch_assoc($result)){
         switch($row['setting_key']) {
             case 'app_name':
-                $app_name = $row['setting_value'] ?: 'TSU ICT Complaint Desk';
+                $app_name = $row['setting_value'] ?: 'TSU ICT Help Desk';
                 break;
             case 'app_logo':
                 $app_logo = $row['setting_value'];
@@ -482,6 +483,7 @@ if(isset($_GET['show_previous']) && $_GET['show_previous'] == '1') {
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/responsive-fix.css">
     <script src="js/auto-logout.js"></script>
     
     <style>
@@ -630,7 +632,50 @@ if(isset($_GET['show_previous']) && $_GET['show_previous'] == '1') {
 
     <?php include 'includes/navbar.php'; ?>
 
-    <div class="container mt-4">
+    <?php
+    // Set up dashboard header variables
+    $page_title = 'Dashboard';
+    $page_subtitle = 'Manage complaints and track system activity';
+    $page_icon = 'fas fa-tachometer-alt';
+    $show_breadcrumb = false;
+    
+    // Get quick stats for header
+    $total_complaints = 0;
+    $pending_complaints = 0;
+    $treated_complaints = 0;
+    
+    // Count total complaints
+    $sql = "SELECT COUNT(*) as total FROM complaints";
+    $result = mysqli_query($conn, $sql);
+    if($row = mysqli_fetch_assoc($result)){
+        $total_complaints = $row['total'];
+    }
+    
+    // Count pending complaints
+    $sql = "SELECT COUNT(*) as total FROM complaints WHERE status = 'Pending'";
+    $result = mysqli_query($conn, $sql);
+    if($row = mysqli_fetch_assoc($result)){
+        $pending_complaints = $row['total'];
+    }
+    
+    // Count treated complaints
+    $sql = "SELECT COUNT(*) as total FROM complaints WHERE status = 'Treated'";
+    $result = mysqli_query($conn, $sql);
+    if($row = mysqli_fetch_assoc($result)){
+        $treated_complaints = $row['total'];
+    }
+    
+    // Set up quick stats
+    $quick_stats = [
+        ['number' => $total_complaints, 'label' => 'Total Complaints'],
+        ['number' => $pending_complaints, 'label' => 'Pending'],
+        ['number' => $treated_complaints, 'label' => 'Resolved']
+    ];
+    
+    include 'includes/dashboard_header.php';
+    ?>
+
+    <div class="container">
         <?php if(empty($_SESSION["email"]) || empty($_SESSION["phone"])): ?>
             <div class="alert alert-warning alert-dismissible fade show" role="alert">
                 <i class="fas fa-exclamation-triangle mr-2"></i>

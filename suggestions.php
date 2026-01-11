@@ -15,7 +15,7 @@ $notification_count = 0;
 $unread_count = 0;
 
 // Fetch app settings
-$app_name = 'TSU ICT Complaint Desk'; // Default value
+$app_name = 'TSU ICT Help Desk'; // Default value
 $app_logo = '';
 $app_favicon = '';
 
@@ -25,7 +25,7 @@ if($result){
     while($row = mysqli_fetch_assoc($result)){
         switch($row['setting_key']) {
             case 'app_name':
-                $app_name = $row['setting_value'] ?: 'TSU ICT Complaint Desk';
+                $app_name = $row['setting_value'] ?: 'TSU ICT Help Desk';
                 break;
             case 'app_logo':
                 $app_logo = $row['setting_value'];
@@ -241,9 +241,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["bulk_action"]) && ($_S
 </head>
 <body>
     <?php include 'includes/navbar.php'; ?>
-    </nav>
+
+    <?php
+    // Set up suggestions header variables
+    $page_title = 'Suggestions Box';
+    $page_subtitle = 'Share your ideas and feedback to improve our system';
+    $page_icon = 'fas fa-lightbulb';
+    $show_breadcrumb = false;
     
-    <div class="container mt-4">
+    include 'includes/dashboard_header.php';
+    ?>
+
+    <div class="container-fluid">
         <h2 class="mb-4">Suggestions Box</h2>
         
         <?php if(!empty($success_message)): ?>

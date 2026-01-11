@@ -143,66 +143,23 @@ foreach($settings as $setting){
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container">
-            <a class="navbar-brand d-flex align-items-center" href="#">
-                <?php if($app_logo && file_exists($app_logo)): ?>
-                    <img src="<?php echo htmlspecialchars($app_logo); ?>" alt="Logo" style="height: 40px; margin-right: 10px;">
-                <?php endif; ?>
-                <?php echo htmlspecialchars($app_name ?: 'TSU ICT Complaint Desk'); ?>
-            </a>
-            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ml-auto">
-                    <li class="nav-item">
-                        <?php if($_SESSION["role_id"] == 5): ?>
-                            <a class="nav-link" href="i4cus_staff_dashboard.php">Dashboard</a>
-                        <?php elseif($_SESSION["role_id"] == 3): ?>
-                            <a class="nav-link" href="director_dashboard.php">Dashboard</a>
-                        <?php elseif($_SESSION["role_id"] == 4): ?>
-                            <a class="nav-link" href="dvc_dashboard.php">Dashboard</a>
-                        <?php else: ?>
-                            <a class="nav-link" href="dashboard.php">Dashboard</a>
-                        <?php endif; ?>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="admin.php">Admin Panel</a>
-                    </li>
-                    <li class="nav-item active">
-                        <a class="nav-link" href="settings.php">Settings</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="account.php">
-                            <i class="fas fa-user-circle"></i>
-                            <?php 
-                            $sql = "SELECT full_name, profile_photo FROM users WHERE user_id = ?";
-                            if($stmt = mysqli_prepare($conn, $sql)){
-                                mysqli_stmt_bind_param($stmt, "i", $_SESSION["user_id"]);
-                                if(mysqli_stmt_execute($stmt)){
-                                    $result = mysqli_stmt_get_result($stmt);
-                                    if($user = mysqli_fetch_assoc($result)){
-                                        echo htmlspecialchars($user['full_name']);
-                                        if($user['profile_photo']){
-                                            echo ' <img src="'.htmlspecialchars($user['profile_photo']).'" class="rounded-circle" style="width: 25px; height: 25px; object-fit: cover;">';
-                                        }
-                                    }
-                                }
-                                mysqli_stmt_close($stmt);
-                            }
-                            ?>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="logout.php">Logout</a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
+    <?php include 'includes/navbar.php'; ?>
 
-    <div class="container mt-4">
+    <?php
+    // Set up settings header variables
+    $page_title = 'System Settings';
+    $page_subtitle = 'Configure application settings and preferences';
+    $page_icon = 'fas fa-cog';
+    $show_breadcrumb = true;
+    $breadcrumb_items = [
+        ['title' => 'Admin', 'url' => 'admin.php'],
+        ['title' => 'System Settings', 'url' => '']
+    ];
+    
+    include 'includes/dashboard_header.php';
+    ?>
+
+    <div class="container-fluid">
         <div class="row">
             <div class="col-md-12">
                 <div class="card">

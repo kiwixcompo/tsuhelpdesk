@@ -8,7 +8,31 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true || $_SESSION[
 }
 
 require_once "config.php";
+require_once "includes/notifications.php";
 require_once "calendar_helper.php";
+
+// Fetch app settings for header use
+$app_name = 'TSU ICT Help Desk'; // Default value
+$app_logo = '';
+$app_favicon = '';
+
+$sql = "SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('app_name', 'app_logo', 'app_favicon')";
+$result = mysqli_query($conn, $sql);
+if($result){
+    while($row = mysqli_fetch_assoc($result)){
+        switch($row['setting_key']) {
+            case 'app_name':
+                $app_name = $row['setting_value'] ?: 'TSU ICT Help Desk';
+                break;
+            case 'app_logo':
+                $app_logo = $row['setting_value'];
+                break;
+            case 'app_favicon':
+                $app_favicon = $row['setting_value'];
+                break;
+        }
+    }
+}
 
 // Always refresh session email and phone from the database for accuracy
 $sql = "SELECT email, phone FROM users WHERE user_id = ?";
@@ -267,9 +291,21 @@ while($row = mysqli_fetch_assoc($result)){
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DVC Academics Dashboard - TSU ICT Complaint Desk</title>
+    <title>DVC Academics Dashboard - <?php echo htmlspecialchars($app_name); ?></title>
+    
+    <!-- Dynamic Favicon -->
+    <?php if($app_favicon && file_exists($app_favicon)): ?>
+        <link rel="icon" type="image/x-icon" href="<?php echo htmlspecialchars($app_favicon); ?>">
+        <link rel="shortcut icon" type="image/x-icon" href="<?php echo htmlspecialchars($app_favicon); ?>">
+    <?php else: ?>
+        <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <?php endif; ?>
+    
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/navbar.css">
+    <script src="js/session-timeout.js"></script>
     <style>
         .clickable-card {
             transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
@@ -298,29 +334,19 @@ while($row = mysqli_fetch_assoc($result)){
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container">
-            <a class="navbar-brand" href="#">TSU ICT Complaint Desk</a>
-            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ml-auto">
-                    <li class="nav-item active">
-                        <a class="nav-link" href="dvc_dashboard.php">Dashboard</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="account.php">Profile</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="logout.php">Logout</a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
-    <div class="container mt-4">
-        <h2 class="mb-4">Welcome, DVC Academics <?php echo htmlspecialchars($_SESSION["full_name"] ?? ""); ?></h2>
+    <?php 
+    // Set page variables for dashboard header
+    $page_title = 'DVC Academics Dashboard';
+    $page_subtitle = 'Deputy Vice Chancellor Academic Affairs Management';
+    $page_icon = 'fas fa-user-tie';
+    $breadcrumb_items = [
+        ['title' => 'Academic Management', 'url' => '#']
+    ];
+    
+    include 'includes/navbar.php'; 
+    include 'includes/dashboard_header.php';
+    ?>
+    <div class="container main-content">
         <?php if((empty($_SESSION['email']) || empty($_SESSION['phone'])) && isset($_SESSION['user_id'])): ?>
             <div class="alert alert-warning alert-dismissible fade show" role="alert">
                 <strong>Reminder:</strong> Please update your email and phone number in your <a href="account.php" class="alert-link">profile</a> for password recovery and important notifications.

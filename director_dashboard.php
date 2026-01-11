@@ -280,28 +280,27 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["submit_i4cus_complaint"
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container">
-            <a class="navbar-brand" href="#">TSU ICT Complaint Desk</a>
-            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ml-auto">
-                    <li class="nav-item active">
-                        <a class="nav-link" href="director_dashboard.php">Dashboard</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="account.php">Profile</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="logout.php">Logout</a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
-    <div class="container mt-4">
+    <?php include 'includes/navbar.php'; ?>
+
+    <?php
+    // Set up director dashboard header variables
+    $page_title = 'Director Dashboard';
+    $page_subtitle = 'Oversee system operations and manage complaints';
+    $page_icon = 'fas fa-user-tie';
+    $show_breadcrumb = false;
+    
+    // Set up quick stats for director
+    $quick_stats = [
+        ['number' => $total_complaints, 'label' => 'Total Complaints'],
+        ['number' => $treated_complaints, 'label' => 'Treated'],
+        ['number' => $pending_complaints, 'label' => 'Pending'],
+        ['number' => $staff_count, 'label' => 'Staff Members']
+    ];
+    
+    include 'includes/dashboard_header.php';
+    ?>
+
+    <div class="container-fluid">
         <h2 class="mb-4">Welcome, Director <?php echo htmlspecialchars($_SESSION["full_name"] ?? ""); ?></h2>
         <?php if((empty($_SESSION['email']) || empty($_SESSION['phone'])) && isset($_SESSION['user_id'])): ?>
             <div class="alert alert-warning alert-dismissible fade show" role="alert">

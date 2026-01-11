@@ -13,7 +13,7 @@ require_once "config.php";
 require_once "create_message_replies_table.php";
 
 // Fetch app settings for header use
-$app_name = 'TSU ICT Complaint Desk'; // Default value
+$app_name = 'TSU ICT Help Desk'; // Default value
 $app_logo = '';
 $app_favicon = '';
 
@@ -23,7 +23,7 @@ if($result){
     while($row = mysqli_fetch_assoc($result)){
         switch($row['setting_key']) {
             case 'app_name':
-                $app_name = $row['setting_value'] ?: 'TSU ICT Complaint Desk';
+                $app_name = $row['setting_value'] ?: 'TSU ICT Help Desk';
                 break;
             case 'app_logo':
                 $app_logo = $row['setting_value'];
@@ -238,7 +238,17 @@ foreach($messages as $message){
 <body>
     <?php include 'includes/navbar.php'; ?>
 
-    <div class="container mt-4">
+    <?php
+    // Set up messages header variables
+    $page_title = 'Messages';
+    $page_subtitle = 'Communicate with team members and administrators';
+    $page_icon = 'fas fa-envelope';
+    $show_breadcrumb = false;
+    
+    include 'includes/dashboard_header.php';
+    ?>
+
+    <div class="container-fluid">
         <?php if(isset($success_message)): ?>
             <div class="alert alert-success"><?php echo $success_message; ?></div>
         <?php endif; ?>

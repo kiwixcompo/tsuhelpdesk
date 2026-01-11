@@ -8,10 +8,11 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true || $_SESSION[
 }
 
 require_once "config.php";
+require_once "includes/notifications.php";
 require_once "calendar_helper.php";
 
 // Fetch app settings for header use
-$app_name = 'TSU ICT Complaint Desk'; // Default value
+$app_name = 'TSU ICT Help Desk'; // Default value
 $app_logo = '';
 $app_favicon = '';
 
@@ -21,7 +22,7 @@ if($result){
     while($row = mysqli_fetch_assoc($result)){
         switch($row['setting_key']) {
             case 'app_name':
-                $app_name = $row['setting_value'] ?: 'TSU ICT Complaint Desk';
+                $app_name = $row['setting_value'] ?: 'TSU ICT Help Desk';
                 break;
             case 'app_logo':
                 $app_logo = $row['setting_value'];
@@ -129,7 +130,10 @@ function getImagePath($image) {
     <?php endif; ?>
     
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/navbar.css">
+    <script src="js/session-timeout.js"></script>
     <style>
         .app-logo {
             height: 30px;
@@ -139,40 +143,19 @@ function getImagePath($image) {
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container">
-            <a class="navbar-brand" href="#">
-                <?php if($app_logo && file_exists($app_logo)): ?>
-                    <img src="<?php echo htmlspecialchars($app_logo); ?>" alt="Logo" class="app-logo">
-                <?php endif; ?>
-                <?php echo htmlspecialchars($app_name); ?>
-            </a>
-            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ml-auto">
-                    <li class="nav-item active">
-                        <a class="nav-link" href="i4cus_staff_dashboard.php">Dashboard</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="account.php">Profile</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="messages.php">Messages</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="suggestions.php">Suggestions</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="logout.php">Logout</a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
-    <div class="container mt-4">
-        <h2 class="mb-4">Welcome, <?php echo htmlspecialchars($_SESSION["full_name"] ?? "i4Cus Staff"); ?></h2>
+    <?php 
+    // Set page variables for dashboard header
+    $page_title = 'i4Cus Staff Dashboard';
+    $page_subtitle = 'Manage i4Cus complaints and technical issues';
+    $page_icon = 'fas fa-laptop-code';
+    $breadcrumb_items = [
+        ['title' => 'i4Cus Management', 'url' => '#']
+    ];
+    
+    include 'includes/navbar.php'; 
+    include 'includes/dashboard_header.php';
+    ?>
+    <div class="container main-content">
         
         <div class="card mb-4">
             <div class="card-header bg-primary text-white">

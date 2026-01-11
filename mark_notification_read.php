@@ -3,8 +3,17 @@ session_start();
 require_once "config.php";
 require_once "includes/notifications.php";
 
-// Check if user is logged in
-if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true){
+// Check if user is logged in (staff or student)
+$is_student = false;
+$user_id = null;
+
+if(isset($_SESSION["student_loggedin"]) && $_SESSION["student_loggedin"] === true){
+    $is_student = true;
+    $user_id = $_SESSION["student_id"];
+} elseif(isset($_SESSION["loggedin"]) && $_SESSION["loggedin"] === true){
+    $is_student = false;
+    $user_id = $_SESSION["user_id"];
+} else {
     http_response_code(401);
     exit;
 }
@@ -14,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $notification_id = isset($input['notification_id']) ? intval($input['notification_id']) : 0;
     
     if ($notification_id > 0) {
-        $success = markNotificationAsRead($conn, $notification_id, $_SESSION["user_id"]);
+        $success = markNotificationAsRead($conn, $notification_id, $user_id);
         
         header('Content-Type: application/json');
         echo json_encode(['success' => $success]);
