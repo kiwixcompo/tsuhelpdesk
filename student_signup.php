@@ -158,19 +158,27 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                                         $welcome_message .= "Welcome to the TSU ICT Help Desk Student Portal!\n\n";
                                         $welcome_message .= "Your account has been successfully created with the following details:\n";
                                         $welcome_message .= "Registration Number: " . $registration_number . "\n";
-                                        $welcome_message .= "Programme: " . $_POST['programme_name'] . "\n";
                                         $welcome_message .= "Email: " . $email . "\n\n";
                                         $welcome_message .= "You can now login to the student portal to:\n";
                                         $welcome_message .= "• Lodge result verification complaints\n";
                                         $welcome_message .= "• Track your complaint status\n";
-                                        $welcome_message .= "• View admin responses\n\n";
-                                        $welcome_message .= "Login URL: http://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']) . "/student_login.php\n\n";
+                                        $welcome_message .= "• View admin responses\n";
+                                        $welcome_message .= "• Change your password\n\n";
+                                        $welcome_message .= "Login URL: https://helpdesk.tsuniversity.edu.ng/student_login.php\n\n";
+                                        $welcome_message .= "IMPORTANT SECURITY TIPS:\n";
+                                        $welcome_message .= "• Keep your login credentials secure\n";
+                                        $welcome_message .= "• Change your password regularly\n";
+                                        $welcome_message .= "• Never share your account details with others\n\n";
                                         $welcome_message .= "If you have any questions or need assistance, please don't hesitate to contact our support team.\n\n";
                                         $welcome_message .= "Best regards,\nTSU ICT Help Desk Team\n";
-                                        $welcome_message .= "Taraba State University";
+                                        $welcome_message .= "Taraba State University\n";
+                                        $welcome_message .= "Email: support@tsuniversity.edu.ng";
                                         
-                                        $welcome_headers = "From: noreply@tsu.edu.ng\r\n";
-                                        $welcome_headers .= "Reply-To: support@tsu.edu.ng\r\n";
+                                        $welcome_headers = "From: TSU ICT Help Desk <noreply@tsuniversity.edu.ng>\r\n";
+                                        $welcome_headers .= "Reply-To: support@tsuniversity.edu.ng\r\n";
+                                        $welcome_headers .= "X-Mailer: PHP/" . phpversion() . "\r\n";
+                                        $welcome_headers .= "MIME-Version: 1.0\r\n";
+                                        $welcome_headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
                                         
                                         // Send welcome email (suppress errors to avoid blocking registration)
                                         @mail($email, $welcome_subject, $welcome_message, $welcome_headers);

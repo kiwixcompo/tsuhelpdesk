@@ -171,6 +171,10 @@ ob_end_flush();
                             <?php echo htmlspecialchars($_SESSION["student_name"]); ?>
                         </a>
                         <div class="dropdown-menu">
+                            <a class="dropdown-item" href="student_change_password.php">
+                                <i class="fas fa-key mr-2"></i>Change Password
+                            </a>
+                            <div class="dropdown-divider"></div>
                             <a class="dropdown-item" href="student_logout.php">
                                 <i class="fas fa-sign-out-alt mr-2"></i>Logout
                             </a>

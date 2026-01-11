@@ -429,6 +429,27 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["submit_i4cus_complaint"
                 </form>
             </div>
         </div>
+        
+        <!-- Reports Section -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h4><i class="fas fa-chart-bar mr-2"></i>Student Complaints Reports</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <h6 class="mb-2">Result Verification Complaints Analysis</h6>
+                        <p class="text-muted mb-0">Generate comprehensive reports for student complaints related to result verification. View detailed statistics, filter by department, and export data to Excel format.</p>
+                    </div>
+                    <div class="col-md-4 text-right">
+                        <a href="student_complaints_report.php" class="btn btn-info">
+                            <i class="fas fa-chart-bar mr-2"></i>View Reports
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <!-- Complaint Search/Filter Section -->
         <div class="card mb-4">
             <div class="card-header">

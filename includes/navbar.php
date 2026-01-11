@@ -82,6 +82,16 @@ var sessionTimeoutEnabled = true;
                         <i class="fas fa-users"></i> Users
                     </a>
                 </li>
+                <li class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_students.php' ? 'active' : ''; ?>">
+                    <a class="nav-link" href="manage_students.php">
+                        <i class="fas fa-user-graduate"></i> Students
+                    </a>
+                </li>
+                <li class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'student_complaints_report.php' ? 'active' : ''; ?>">
+                    <a class="nav-link" href="student_complaints_report.php">
+                        <i class="fas fa-chart-bar"></i> Reports
+                    </a>
+                </li>
                 <?php if($_SESSION["is_super_admin"]): ?>
                 <li class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'settings.php' ? 'active' : ''; ?>">
                     <a class="nav-link" href="settings.php">
@@ -95,6 +105,11 @@ var sessionTimeoutEnabled = true;
                 <li class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'director_dashboard.php' ? 'active' : ''; ?>">
                     <a class="nav-link" href="director_dashboard.php">
                         <i class="fas fa-user-tie"></i> Director Dashboard
+                    </a>
+                </li>
+                <li class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'student_complaints_report.php' ? 'active' : ''; ?>">
+                    <a class="nav-link" href="student_complaints_report.php">
+                        <i class="fas fa-chart-bar"></i> Reports
                     </a>
                 </li>
                 <?php endif; ?>
