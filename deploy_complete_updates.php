@@ -13,18 +13,21 @@ echo "<!DOCTYPE html>
 <head>
     <meta charset='UTF-8'>
     <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-    <title>Deploy Faculty Updates - TSU ICT Help Desk</title>
+    <title>Deploy Complete System Updates - TSU ICT Help Desk</title>
     <link rel='stylesheet' href='https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css'>
     <style>
         .step-success { color: #28a745; }
         .step-error { color: #dc3545; }
         .step-info { color: #17a2b8; }
+        .step-warning { color: #ffc107; }
         .progress-step { margin: 10px 0; padding: 10px; border-left: 4px solid #007bff; background: #f8f9fa; }
+        .section-header { background: #e9ecef; padding: 15px; margin: 20px 0 10px 0; border-radius: 5px; }
     </style>
 </head>
 <body>
 <div class='container mt-4'>
-    <h2>Deploy Faculty & Programme Updates</h2>
+    <h2>Deploy Complete System Updates</h2>
+    <p class='text-muted'>This script applies all changes made to the TSU ICT Help Desk system including UI fixes, new faculties, programmes, and roles.</p>
     <div class='card'>
         <div class='card-body'>
 ";
@@ -32,6 +35,7 @@ echo "<!DOCTYPE html>
 $errors = [];
 $success_count = 0;
 $total_steps = 0;
+$file_updates = [];
 
 function executeUpdate($conn, $sql, $description) {
     global $errors, $success_count, $total_steps;
@@ -52,8 +56,38 @@ function executeUpdate($conn, $sql, $description) {
     flush();
 }
 
+function updateFile($file_path, $old_content, $new_content, $description) {
+    global $file_updates, $total_steps;
+    $total_steps++;
+    
+    echo "<div class='progress-step'>";
+    echo "<strong>Step $total_steps:</strong> $description<br>";
+    
+    if(file_exists($file_path)) {
+        $current_content = file_get_contents($file_path);
+        if(strpos($current_content, $old_content) !== false) {
+            $updated_content = str_replace($old_content, $new_content, $current_content);
+            if(file_put_contents($file_path, $updated_content)) {
+                echo "<span class='step-success'>✓ File updated successfully</span>";
+                $file_updates[] = $file_path;
+            } else {
+                echo "<span class='step-error'>✗ Failed to write file</span>";
+            }
+        } else {
+            echo "<span class='step-warning'>⚠ Content already updated or not found</span>";
+        }
+    } else {
+        echo "<span class='step-error'>✗ File not found: $file_path</span>";
+    }
+    echo "</div>";
+    flush();
+}
+
+// SECTION 1: DATABASE UPDATES
+echo "<div class='section-header'><h4>Section 1: Database Updates</h4></div>";
+
 // Step 1: Create new faculties
-echo "<h4>Creating New Faculties</h4>";
+echo "<h5>Creating New Faculties</h5>";
 
 executeUpdate($conn, 
     "INSERT IGNORE INTO faculties (faculty_name, faculty_code) VALUES ('Faculty of Computing & Artificial Intelligence', 'FCA')",
@@ -83,7 +117,7 @@ if($frp_result && $row = mysqli_fetch_assoc($frp_result)) {
 
 // Step 3: Create departments for FCA
 if($fca_id) {
-    echo "<h4>Creating FCA Departments</h4>";
+    echo "<h5>Creating FCA Departments</h5>";
     
     executeUpdate($conn,
         "INSERT IGNORE INTO student_departments (department_name, department_code, faculty_id) VALUES ('Computer Science', 'CS', $fca_id)",
@@ -108,7 +142,7 @@ if($fca_id) {
 
 // Step 4: Create departments for FRP
 if($frp_id) {
-    echo "<h4>Creating FRP Departments</h4>";
+    echo "<h5>Creating FRP Departments</h5>";
     
     executeUpdate($conn,
         "INSERT IGNORE INTO student_departments (department_name, department_code, faculty_id) VALUES ('Islamic Studies', 'ISL', $frp_id)",
@@ -122,7 +156,7 @@ if($frp_id) {
 }
 
 // Step 5: Get department IDs and create programmes
-echo "<h4>Creating Programmes</h4>";
+echo "<h5>Creating Programmes</h5>";
 
 // FCA Computer Science Programme
 $fca_cs_result = mysqli_query($conn, "SELECT department_id FROM student_departments WHERE department_name = 'Computer Science' AND faculty_id = $fca_id");
@@ -176,7 +210,7 @@ if($frp_crs_result && $row = mysqli_fetch_assoc($frp_crs_result)) {
 }
 
 // Step 6: Fix existing programme registration formats
-echo "<h4>Fixing Existing Programme Formats</h4>";
+echo "<h5>Fixing Existing Programme Formats</h5>";
 
 executeUpdate($conn,
     "UPDATE programmes SET reg_number_format = 'TSU/FSC/CS/YY/XXXX' WHERE programme_id = 72 AND reg_number_format = 'TSU/FCA/CS/YY/XXXX'",
@@ -189,7 +223,7 @@ executeUpdate($conn,
 );
 
 // Step 7: Add Deputy Director ICT role (if not exists)
-echo "<h4>Adding Deputy Director ICT Role</h4>";
+echo "<h5>Adding Deputy Director ICT Role</h5>";
 
 // Check if roles table has description column
 $roles_check = mysqli_query($conn, "SHOW COLUMNS FROM roles LIKE 'description'");
@@ -205,30 +239,133 @@ executeUpdate($conn,
     "Adding Deputy Director ICT role"
 );
 
-// Step 8: Summary
-echo "<h4>Deployment Summary</h4>";
+// SECTION 2: FILE UPDATES
+echo "<div class='section-header'><h4>Section 2: File Updates</h4></div>";
+
+// Update student_portal.php - Title and heading changes
+updateFile('student_portal.php',
+    '<title>Student Portal - TSU ICT Help Desk</title>',
+    '<title>Student Complaint Portal - TSU ICT Help Desk</title>',
+    'Updating student_portal.php page title'
+);
+
+updateFile('student_portal.php',
+    'Student Portal',
+    'Student Complaint Portal',
+    'Updating student_portal.php main heading'
+);
+
+// Update student_portal.php - Back link logic
+updateFile('student_portal.php',
+    '<a href="index.php" class="back-link">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Portal
+                </a>',
+    '<?php
+                // Only show back link if user came from another page or if explicitly requested
+                $show_back_link = false;
+                
+                // Check if there\'s a referrer and it\'s from the same domain
+                if(isset($_SERVER[\'HTTP_REFERER\']) && !empty($_SERVER[\'HTTP_REFERER\'])) {
+                    $referrer = parse_url($_SERVER[\'HTTP_REFERER\']);
+                    $current_host = $_SERVER[\'HTTP_HOST\'];
+                    
+                    // Show back link if referrer is from same domain and not the student portal itself
+                    if(isset($referrer[\'host\']) && $referrer[\'host\'] === $current_host) {
+                        $referrer_path = isset($referrer[\'path\']) ? basename($referrer[\'path\']) : \'\';
+                        if($referrer_path !== \'student_portal.php\' && $referrer_path !== \'\') {
+                            $show_back_link = true;
+                        }
+                    }
+                }
+                
+                // Also check for explicit back parameter
+                if(isset($_GET[\'back\']) && $_GET[\'back\'] === \'1\') {
+                    $show_back_link = true;
+                }
+                
+                if($show_back_link): ?>
+                <a href="index.php" class="back-link">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Portal
+                </a>
+                <?php endif; ?>',
+    'Adding conditional back link logic to student_portal.php'
+);
+
+// Update index.php - Student portal link
+updateFile('index.php',
+    '<a href="student_portal.php" class="portal-card student-card">
+                            <i class="fas fa-graduation-cap portal-icon"></i>
+                            <h2 class="portal-title">Student Portal</h2>',
+    '<a href="student_portal.php?back=1" class="portal-card student-card">
+                            <i class="fas fa-graduation-cap portal-icon"></i>
+                            <h2 class="portal-title">Student Complaint Portal</h2>',
+    'Updating index.php student portal link and title'
+);
+
+// Update student_login.php - Back link
+updateFile('student_login.php',
+    '<a href="student_portal.php" class="back-link">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Student Portal
+                </a>',
+    '<a href="student_portal.php?back=1" class="back-link">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Student Complaint Portal
+                </a>',
+    'Updating student_login.php back link'
+);
+
+// Update student_signup.php - Back link
+updateFile('student_signup.php',
+    '<a href="student_portal.php" class="back-link">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Student Portal
+                </a>',
+    '<a href="student_portal.php?back=1" class="back-link">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Student Complaint Portal
+                </a>',
+    'Updating student_signup.php back link'
+);
+
+// SECTION 3: SUMMARY
+echo "<div class='section-header'><h4>Section 3: Deployment Summary</h4></div>";
+
 echo "<div class='alert alert-info'>";
 echo "<strong>Total Steps:</strong> $total_steps<br>";
 echo "<strong>Successful:</strong> $success_count<br>";
-echo "<strong>Errors:</strong> " . count($errors) . "<br>";
+echo "<strong>Database Errors:</strong> " . count($errors) . "<br>";
+echo "<strong>Files Updated:</strong> " . count(array_unique($file_updates)) . "<br>";
 echo "</div>";
 
 if(count($errors) > 0) {
     echo "<div class='alert alert-warning'>";
-    echo "<strong>Errors encountered:</strong><br>";
+    echo "<strong>Database Errors encountered:</strong><br>";
     foreach($errors as $error) {
         echo "• $error<br>";
     }
     echo "</div>";
-} else {
+}
+
+if(count($file_updates) > 0) {
     echo "<div class='alert alert-success'>";
-    echo "<strong>✓ All updates completed successfully!</strong><br>";
-    echo "The new faculties, departments, and programmes have been added to the system.";
+    echo "<strong>Files Updated:</strong><br>";
+    foreach(array_unique($file_updates) as $file) {
+        echo "• $file<br>";
+    }
     echo "</div>";
 }
 
-// Step 9: Show final status
-echo "<h4>Final Faculty Structure</h4>";
+if(count($errors) == 0) {
+    echo "<div class='alert alert-success'>";
+    echo "<strong>✓ All updates completed successfully!</strong><br>";
+    echo "The system has been updated with:<br>";
+    echo "• New faculties (FCA, FRP) and their departments<br>";
+    echo "• New programmes with correct registration formats<br>";
+    echo "• Deputy Director ICT role<br>";
+    echo "• Updated UI titles and navigation<br>";
+    echo "• Conditional back link functionality<br>";
+    echo "</div>";
+}
+
+// Show final status
+echo "<h5>Final Faculty Structure</h5>";
 $final_sql = "SELECT f.faculty_name, f.faculty_code, d.department_name, p.programme_name, p.reg_number_format 
               FROM faculties f 
               LEFT JOIN student_departments d ON f.faculty_id = d.faculty_id 
@@ -259,7 +396,7 @@ echo "
     <div class='mt-3'>
         <a href='admin.php' class='btn btn-primary'>Back to Admin</a>
         <a href='student_signup.php' class='btn btn-success'>Test Signup Form</a>
-        <a href='debug_faculties.php' class='btn btn-info'>Debug Database</a>
+        <a href='index.php' class='btn btn-info'>View Main Portal</a>
     </div>
 </div>
 </body>
