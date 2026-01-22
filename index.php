@@ -141,7 +141,7 @@ ob_end_flush();
                     <div class="col-md-5 col-lg-4 mb-4">
                         <a href="student_portal.php?back=1" class="portal-card student-card">
                             <i class="fas fa-graduation-cap portal-icon"></i>
-                            <h2 class="portal-title">Student Portal</h2>
+                            <h2 class="portal-title">Student Complaint Portal</h2>
                             <p class="portal-subtitle">
                                 Lodge complaints for result verification and academic issues
                             </p>

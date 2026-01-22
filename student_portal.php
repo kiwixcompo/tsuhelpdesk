@@ -19,7 +19,7 @@ ob_end_flush();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Portal - TSU ICT Help Desk</title>
+    <title>Student Complaint Portal - TSU ICT Help Desk</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
@@ -165,7 +165,7 @@ ob_end_flush();
                 <div class="header-section">
                     <h1 class="header-title">
                         <i class="fas fa-graduation-cap mr-3"></i>
-                        Student Portal
+                        Student Complaint Portal
                     </h1>
                     <p class="header-subtitle">Choose an option to access the student system</p>
                 </div>

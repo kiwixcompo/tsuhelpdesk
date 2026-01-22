@@ -452,7 +452,7 @@ ob_end_flush();
         <div class="row justify-content-center">
             <div class="col-md-8 col-lg-6">
                 <a href="student_portal.php?back=1" class="back-link">
-                    <i class="fas fa-arrow-left mr-2"></i>Back to Student Portal
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Student Complaint Portal
                 </a>
                 
                 <div class="card signup-card">
