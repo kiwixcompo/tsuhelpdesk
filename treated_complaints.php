@@ -87,7 +87,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["delete_complaints"])){
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Treated Complaints - TSU ICT Complaint Desk</title>
+    <title>Treated Complaints - TSU ICT Help Desk</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
@@ -95,7 +95,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["delete_complaints"])){
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
-            <a class="navbar-brand" href="#">TSU ICT Complaint Desk</a>
+            <a class="navbar-brand" href="#">TSU ICT Help Desk</a>
             <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>

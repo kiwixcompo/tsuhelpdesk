@@ -17,7 +17,7 @@ if (!preg_match("/^\d{4}-\d{2}-\d{2}$/", $date)) {
 }
 
 // Fetch app settings for header use
-$app_name = 'TSU ICT Complaint Desk'; // Default value
+$app_name = 'TSU ICT Help Desk'; // Default value
 $app_logo = '';
 $app_favicon = '';
 
@@ -27,7 +27,7 @@ if($result){
     while($row = mysqli_fetch_assoc($result)){
         switch($row['setting_key']) {
             case 'app_name':
-                $app_name = $row['setting_value'] ?: 'TSU ICT Complaint Desk';
+                $app_name = $row['setting_value'] ?: 'TSU ICT Help Desk';
                 break;
             case 'app_logo':
                 $app_logo = $row['setting_value'];
@@ -85,6 +85,8 @@ if ($_SESSION["role_id"] == 1) { // Admin - all complaints
     $where_conditions[] = "c.is_i4cus = 1";
 } elseif ($_SESSION["role_id"] == 6) { // Payment Admin - payment complaints
     $where_conditions[] = "c.is_payment_related = 1";
+} elseif ($_SESSION["role_id"] == 8) { // Deputy Director ICT - i4cus complaints
+    $where_conditions[] = "c.is_i4cus = 1";
 } else { // Regular user - only their complaints
     $where_conditions[] = "c.lodged_by = ?";
     $params[] = $_SESSION['user_id'];

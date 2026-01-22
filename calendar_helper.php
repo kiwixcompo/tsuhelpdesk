@@ -103,6 +103,8 @@ HTML;
         } else {
             $base_conditions .= $where_clause;
         }
+    } elseif ($role_id == 8) { // Deputy Director ICT - i4cus complaints
+        $base_conditions .= " AND is_i4cus = 1" . $where_clause;
     }
     
     // SQL to get total and untreated complaint counts by date

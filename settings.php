@@ -128,7 +128,7 @@ foreach($settings as $setting){
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>System Settings - <?php echo htmlspecialchars($app_name ?: 'TSU ICT Complaint Desk'); ?></title>
+    <title>System Settings - <?php echo htmlspecialchars($app_name ?: 'TSU ICT Help Desk'); ?></title>
     
     <!-- Dynamic Favicon -->
     <?php if($app_favicon && file_exists($app_favicon)): ?>

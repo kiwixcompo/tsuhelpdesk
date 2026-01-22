@@ -132,9 +132,34 @@ ob_end_flush();
     <div class="container">
         <div class="row justify-content-center align-items-center min-vh-100">
             <div class="col-12">
+                <?php
+                // Only show back link if user came from another page or if explicitly requested
+                $show_back_link = false;
+                
+                // Check if there's a referrer and it's from the same domain
+                if(isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
+                    $referrer = parse_url($_SERVER['HTTP_REFERER']);
+                    $current_host = $_SERVER['HTTP_HOST'];
+                    
+                    // Show back link if referrer is from same domain and not the student portal itself
+                    if(isset($referrer['host']) && $referrer['host'] === $current_host) {
+                        $referrer_path = isset($referrer['path']) ? basename($referrer['path']) : '';
+                        if($referrer_path !== 'student_portal.php' && $referrer_path !== '') {
+                            $show_back_link = true;
+                        }
+                    }
+                }
+                
+                // Also check for explicit back parameter
+                if(isset($_GET['back']) && $_GET['back'] === '1') {
+                    $show_back_link = true;
+                }
+                
+                if($show_back_link): ?>
                 <a href="index.php" class="back-link">
                     <i class="fas fa-arrow-left mr-2"></i>Back to Portal
                 </a>
+                <?php endif; ?>
                 
                 <!-- Header Section -->
                 <div class="header-section">

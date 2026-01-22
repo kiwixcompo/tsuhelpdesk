@@ -155,7 +155,7 @@ ob_end_flush();
     <div class="container">
         <div class="row justify-content-center align-items-center min-vh-100">
             <div class="col-md-6 col-lg-5">
-                <a href="student_portal.php" class="back-link">
+                <a href="student_portal.php?back=1" class="back-link">
                     <i class="fas fa-arrow-left mr-2"></i>Back to Student Portal
                 </a>
                 

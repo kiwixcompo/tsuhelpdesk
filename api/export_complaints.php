@@ -2,11 +2,11 @@
 session_start();
 require_once "../config.php";
 
-// Check if user is logged in and is super admin or director
+// Check if user is logged in and has appropriate permissions
 if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true || 
-   !in_array($_SESSION["role_id"], [1, 3])) { // 1 = Admin, 3 = Director
+   !in_array($_SESSION["role_id"], [1, 3, 8])) { // 1 = Admin, 3 = Director, 8 = Deputy Director ICT
     http_response_code(403);
-    echo json_encode(['error' => 'Access denied - Super Admin or Director role required']);
+    echo json_encode(['error' => 'Access denied - Admin, Director, or Deputy Director ICT role required']);
     exit;
 }
 

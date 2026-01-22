@@ -45,7 +45,7 @@ if ($stmt = mysqli_prepare($conn, $sql)) {
 $unread_count = getUnreadNotificationCount($conn, $_SESSION["user_id"]);
 
 // Fetch app settings
-$app_name = 'TSU ICT Complaint Desk';
+$app_name = 'TSU ICT Help Desk';
 $app_logo = '';
 $app_favicon = '';
 

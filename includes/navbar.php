@@ -31,6 +31,7 @@ switch($_SESSION["role_id"]) {
     case 5: $dashboard_file = 'i4cus_staff_dashboard.php'; break;
     case 6: $dashboard_file = 'payment_admin_dashboard.php'; break;
     case 7: $dashboard_file = 'department_dashboard.php'; break;
+    case 8: $dashboard_file = 'deputy_director_dashboard.php'; break;
     default: $dashboard_file = 'dashboard.php'; break;
 }
 ?>
@@ -243,9 +244,9 @@ html, body {
     font-size: 0.9rem;
     line-height: 1.2;
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 200px;
+    overflow: visible;
+    text-overflow: unset;
+    max-width: none;
 }
 
 .user-role {
@@ -473,7 +474,8 @@ var sessionTimeoutEnabled = true;
                                         4 => 'DVC',
                                         5 => 'i4Cus Staff',
                                         6 => 'Payment Admin',
-                                        7 => 'Department'
+                                        7 => 'Department',
+                                        8 => 'Deputy Director ICT'
                                     ];
                                     echo $role_names[$_SESSION["role_id"]] ?? 'User';
                                     ?>

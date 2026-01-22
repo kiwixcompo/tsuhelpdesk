@@ -10,7 +10,7 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true){
 require_once "config.php";
 
 // Fetch app settings for navbar
-$app_name = 'TSU ICT Complaint Desk'; // Default value
+$app_name = 'TSU ICT Help Desk'; // Default value
 $app_logo = '';
 $app_favicon = '';
 
@@ -222,7 +222,7 @@ if($stmt = mysqli_prepare($conn, $sql)){
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['treat_complaint']) && 
     isset($_GET['i4cus']) && $_GET['i4cus'] == 1 && 
-    $_SESSION['role_id'] == 5 && $complaint['status'] != 'Treated') {
+    ($_SESSION['role_id'] == 5 || $_SESSION['role_id'] == 8) && $complaint['status'] != 'Treated') {
     
     $status = $_POST['status'];
     $feedback = trim($_POST['feedback']);
@@ -369,7 +369,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['treat_payment_complain
                     $message .= "Status: {$status}\n";
                     $message .= "Feedback: {$feedback}\n\n";
                     $message .= "Please login to the system to view the details.\n\n";
-                    $message .= "Regards,\nTSU ICT Complaint Desk";
+                    $message .= "Regards,\nTSU ICT Help Desk";
                     
                     $headers = "From: noreply@tsuictcomplaint.com\r\n";
                     
@@ -734,6 +734,8 @@ function getDirectImagePath($image) {
                             $back_dashboard = 'admin.php';
                         } elseif ($_SESSION['role_id'] == 7) { // Department
                             $back_dashboard = 'department_dashboard.php';
+                        } elseif ($_SESSION['role_id'] == 8) { // Deputy Director ICT
+                            $back_dashboard = 'deputy_director_dashboard.php';
                         }
                         ?>
                         <a href="<?php echo $back_dashboard; ?>" class="btn btn-secondary btn-sm">Back</a>
@@ -1020,7 +1022,7 @@ function getDirectImagePath($image) {
                             <button type="button" class="btn btn-primary" onclick="toggleEdit()">Edit Complaint</button>
                             <?php endif; ?>
                             
-                            <?php if (isset($_GET['i4cus']) && $_GET['i4cus'] == 1 && $_SESSION['role_id'] == 5): ?>
+                            <?php if (isset($_GET['i4cus']) && $_GET['i4cus'] == 1 && ($_SESSION['role_id'] == 5 || $_SESSION['role_id'] == 8)): ?>
                                 <form method="post" class="mb-3" enctype="multipart/form-data">
                                     <div class="form-group">
                                         <label for="status">Update Status</label>
@@ -1092,6 +1094,8 @@ function getDirectImagePath($image) {
                                 $back_dashboard = 'admin.php';
                             } elseif ($_SESSION['role_id'] == 7) { // Department
                                 $back_dashboard = 'department_dashboard.php';
+                            } elseif ($_SESSION['role_id'] == 8) { // Deputy Director ICT
+                                $back_dashboard = 'deputy_director_dashboard.php';
                             }
                             ?>
                             <a href="<?php echo $back_dashboard; ?>" class="btn btn-secondary">Back to Dashboard</a>

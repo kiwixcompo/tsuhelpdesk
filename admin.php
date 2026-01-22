@@ -16,6 +16,12 @@ require_once "config.php";
 require_once "includes/notifications.php";
 require_once "calendar_helper.php";
 
+// Initialize notification count
+$notification_count = 0;
+if (function_exists('getUnreadNotificationCount')) {
+    $notification_count = getUnreadNotificationCount($conn, $_SESSION["user_id"]);
+}
+
 // Fetch app settings
 $app_name = 'TSU ICT Help Desk'; // Default value
 $app_logo = '';

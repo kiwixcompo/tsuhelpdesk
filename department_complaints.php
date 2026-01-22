@@ -159,7 +159,7 @@ if($stmt = mysqli_prepare($conn, $sql)){
 }
 
 // Fetch app settings
-$app_name = 'TSU ICT Complaint Desk';
+$app_name = 'TSU ICT Help Desk';
 $app_logo = '';
 $app_favicon = '';
 
@@ -169,7 +169,7 @@ if($result){
     while($row = mysqli_fetch_assoc($result)){
         switch($row['setting_key']) {
             case 'app_name':
-                $app_name = $row['setting_value'] ?: 'TSU ICT Complaint Desk';
+                $app_name = $row['setting_value'] ?: 'TSU ICT Help Desk';
                 break;
             case 'app_logo':
                 $app_logo = $row['setting_value'];

@@ -66,6 +66,8 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                             $redirect_url = "payment_admin_dashboard.php";
                         } else if ($row["role_id"] == 7) {
                             $redirect_url = "department_dashboard.php";
+                        } else if ($row["role_id"] == 8) {
+                            $redirect_url = "deputy_director_dashboard.php";
                         } else {
                             $redirect_url = "dashboard.php";
                         }

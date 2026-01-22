@@ -30,7 +30,8 @@ $role_names = [
     4 => 'Deputy Vice Chancellor',
     5 => 'i4Cus Staff',
     6 => 'Payment Administrator',
-    7 => 'Department Staff'
+    7 => 'Department Staff',
+    8 => 'Deputy Director ICT'
 ];
 $user_role = $role_names[$_SESSION["role_id"]] ?? 'User';
 ?>
@@ -152,9 +153,9 @@ html, body {
     font-size: 1.1rem;
     margin-bottom: 0.25rem;
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 250px;
+    overflow: visible;
+    text-overflow: unset;
+    max-width: none;
 }
 
 .user-role-header {

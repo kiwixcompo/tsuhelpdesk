@@ -72,7 +72,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - TSU ICT Complaint Desk</title>
+    <title>Login - TSU ICT Help Desk</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="css/style.css">
 </head>
@@ -82,7 +82,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
             <div class="col-md-6">
                 <div class="card shadow-sm">
                     <div class="card-body">
-                        <h2 class="text-center mb-4">TSU ICT Complaint Desk</h2>
+                        <h2 class="text-center mb-4">TSU ICT Help Desk</h2>
                         <h4 class="text-center mb-4">Login</h4>
 
                         <?php 

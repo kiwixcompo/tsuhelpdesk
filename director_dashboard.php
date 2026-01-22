@@ -8,7 +8,14 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true || $_SESSION[
 }
 
 require_once "config.php";
+require_once "includes/notifications.php";
 require_once "calendar_helper.php";
+
+// Initialize notification count
+$notification_count = 0;
+if (function_exists('getUnreadNotificationCount')) {
+    $notification_count = getUnreadNotificationCount($conn, $_SESSION["user_id"]);
+}
 
 // Always refresh session email and phone from the database for accuracy
 $sql = "SELECT email, phone FROM users WHERE user_id = ?";
@@ -249,7 +256,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["submit_i4cus_complaint"
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Director Dashboard - TSU ICT Complaint Desk</title>
+    <title>Director Dashboard - TSU ICT Help Desk</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="css/style.css">
     <style>

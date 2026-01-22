@@ -20,7 +20,7 @@ require_once "config.php";
 // === CONFIGURE THESE ===
 $site_url = "http://yourdomain.com/TSUICTComplaint/dashboard.php"; // Change to your actual dashboard URL
 $from_email = "noreply@yourdomain.com"; // Change to your sender email
-$from_name = "TSU ICT Complaint Desk";
+$from_name = "TSU ICT Help Desk";
 
 // === Helper: Get users by role ===
 function getUsersByRole($conn, $role_id) {

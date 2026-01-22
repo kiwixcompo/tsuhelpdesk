@@ -2,7 +2,7 @@
 require_once "config.php";
 
 // Fetch footer text from settings
-$footer_text = "Copyright © " . date('Y') . " TSU ICT Complaint Desk. All rights reserved.";
+$footer_text = "Copyright © " . date('Y') . " TSU ICT Help Desk. All rights reserved.";
 $sql = "SELECT setting_value FROM settings WHERE setting_key = 'footer_text'";
 $result = mysqli_query($conn, $sql);
 if($result && $row = mysqli_fetch_assoc($result)){

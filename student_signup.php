@@ -79,20 +79,50 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
     
     // Validate year
     if(empty(trim($_POST["year"]))){
-        $year_err = "Please enter your year of entry.";
-    } elseif(!preg_match("/^\d{2}$/", trim($_POST["year"]))){
-        $year_err = "Year must be exactly 2 digits.";
+        $year_err = "Please enter your year of admission.";
+    } elseif(!preg_match("/^\d{4}$/", trim($_POST["year"]))){
+        $year_err = "Year must be exactly 4 digits.";
     } else{
         $year = trim($_POST["year"]);
     }
     
-    // Validate last digits
-    if(empty(trim($_POST["last_digits"]))){
-        $last_digits_err = "Please enter the last 4 digits of your registration number.";
-    } elseif(!preg_match("/^\d{4}$/", trim($_POST["last_digits"]))){
-        $last_digits_err = "Last digits must be exactly 4 numbers.";
-    } else{
-        $last_digits = trim($_POST["last_digits"]);
+    // Validate last digits (only required for programmes that generate registration numbers)
+    if(!empty($_POST["programme_id"])) {
+        // Check if this programme needs registration numbers
+        $check_sql = "SELECT reg_number_format FROM programmes WHERE programme_id = ?";
+        if($check_stmt = mysqli_prepare($conn, $check_sql)) {
+            mysqli_stmt_bind_param($check_stmt, "i", $_POST["programme_id"]);
+            if(mysqli_stmt_execute($check_stmt)) {
+                $check_result = mysqli_stmt_get_result($check_stmt);
+                if($check_row = mysqli_fetch_assoc($check_result)) {
+                    $reg_format_check = $check_row['reg_number_format'];
+                    
+                    if($reg_format_check !== 'N/A' && !empty($reg_format_check)) {
+                        // Registration numbers are required for this programme
+                        if(empty(trim($_POST["last_digits"]))){
+                            $last_digits_err = "Please enter the last 4 digits of your student registration number.";
+                        } elseif(!preg_match("/^\d{4}$/", trim($_POST["last_digits"]))){
+                            $last_digits_err = "Last digits must be exactly 4 numbers.";
+                        } else{
+                            $last_digits = trim($_POST["last_digits"]);
+                        }
+                    } else {
+                        // Registration numbers not needed for this programme
+                        $last_digits = "0000"; // Default value for programmes without reg numbers
+                    }
+                }
+            }
+            mysqli_stmt_close($check_stmt);
+        }
+    } else {
+        // No programme selected, validate normally
+        if(empty(trim($_POST["last_digits"]))){
+            $last_digits_err = "Please enter the last 4 digits of your student registration number.";
+        } elseif(!preg_match("/^\d{4}$/", trim($_POST["last_digits"]))){
+            $last_digits_err = "Last digits must be exactly 4 numbers.";
+        } else{
+            $last_digits = trim($_POST["last_digits"]);
+        }
     }
     
     // Validate password
@@ -127,73 +157,129 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                 $result = mysqli_stmt_get_result($stmt);
                 if($row = mysqli_fetch_assoc($result)){
                     $reg_format = $row['reg_number_format'];
-                    $registration_number = str_replace('YY', $year, $reg_format);
-                    $registration_number = str_replace('XXXX', $last_digits, $registration_number);
                     
-                    // Check if registration number already exists
-                    $check_sql = "SELECT student_id FROM students WHERE registration_number = ?";
-                    if($check_stmt = mysqli_prepare($conn, $check_sql)){
-                        mysqli_stmt_bind_param($check_stmt, "s", $registration_number);
-                        if(mysqli_stmt_execute($check_stmt)){
-                            $check_result = mysqli_stmt_get_result($check_stmt);
-                            if(mysqli_num_rows($check_result) > 0){
-                                $signup_err = "This registration number already exists. Please check your details.";
-                            } else{
-                                // Insert new student
-                                $insert_sql = "INSERT INTO students (first_name, middle_name, last_name, email, registration_number, password, faculty_id, department_id, programme_id, year_of_entry) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    // Check if this programme generates registration numbers
+                    if($reg_format === 'N/A' || empty($reg_format)) {
+                        // For programmes that don't generate registration numbers
+                        $registration_number = 'N/A';
+                        
+                        // Insert new student without registration number validation
+                        $insert_sql = "INSERT INTO students (first_name, middle_name, last_name, email, registration_number, password, faculty_id, department_id, programme_id, year_of_entry) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                        
+                        if($insert_stmt = mysqli_prepare($conn, $insert_sql)){
+                            $hashed_password = md5($password);
+                            $full_year = $year; // Store full 4-digit year
+                            
+                            mysqli_stmt_bind_param($insert_stmt, "ssssssiiis", 
+                                $first_name, $middle_name, $last_name, $email, 
+                                $registration_number, $hashed_password, 
+                                $faculty_id, $department_id, $programme_id, $full_year);
+                            
+                            if(mysqli_stmt_execute($insert_stmt)){
+                                // Registration successful, send welcome email
+                                $welcome_subject = "Welcome to TSU ICT Help Desk - Student Portal";
+                                $welcome_message = "Dear " . $first_name . " " . $last_name . ",\n\n";
+                                $welcome_message .= "Welcome to the TSU ICT Help Desk Student Portal!\n\n";
+                                $welcome_message .= "Your account has been successfully created.\n";
+                                $welcome_message .= "Programme: Registration numbers not applicable for this programme\n";
+                                $welcome_message .= "Email: " . $email . "\n\n";
+                                $welcome_message .= "You can now login to the student portal to:\n";
+                                $welcome_message .= "• Lodge result verification complaints\n";
+                                $welcome_message .= "• Track your complaint status\n";
+                                $welcome_message .= "• View admin responses\n";
+                                $welcome_message .= "• Change your password\n\n";
+                                $welcome_message .= "Login URL: https://helpdesk.tsuniversity.edu.ng/student_login.php\n\n";
+                                $welcome_message .= "Best regards,\nTSU ICT Help Desk Team";
                                 
-                                if($insert_stmt = mysqli_prepare($conn, $insert_sql)){
-                                    $hashed_password = md5($password);
-                                    $full_year = "20" . $year;
+                                $welcome_headers = "From: TSU ICT Help Desk <noreply@tsuniversity.edu.ng>\r\n";
+                                $welcome_headers .= "Reply-To: support@tsuniversity.edu.ng\r\n";
+                                $welcome_headers .= "X-Mailer: PHP/" . phpversion() . "\r\n";
+                                $welcome_headers .= "MIME-Version: 1.0\r\n";
+                                $welcome_headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
+                                
+                                // Send welcome email (suppress errors to avoid blocking registration)
+                                @mail($email, $welcome_subject, $welcome_message, $welcome_headers);
+                                
+                                // Registration successful, redirect to login
+                                header("location: student_login.php?registered=1");
+                                exit();
+                            } else{
+                                $signup_err = "Something went wrong. Please try again.";
+                            }
+                            mysqli_stmt_close($insert_stmt);
+                        }
+                    } else {
+                        // For programmes that generate registration numbers (CS, ISL, CRS)
+                        // Use last 2 digits of the 4-digit year
+                        $year_2_digits = substr($year, -2);
+                        $registration_number = str_replace('YY', $year_2_digits, $reg_format);
+                        $registration_number = str_replace('XXXX', $last_digits, $registration_number);
+                        
+                        // Check if registration number already exists
+                        $check_sql = "SELECT student_id FROM students WHERE registration_number = ?";
+                        if($check_stmt = mysqli_prepare($conn, $check_sql)){
+                            mysqli_stmt_bind_param($check_stmt, "s", $registration_number);
+                            if(mysqli_stmt_execute($check_stmt)){
+                                $check_result = mysqli_stmt_get_result($check_stmt);
+                                if(mysqli_num_rows($check_result) > 0){
+                                    $signup_err = "This registration number already exists. Please check your details.";
+                                } else{
+                                    // Insert new student
+                                    $insert_sql = "INSERT INTO students (first_name, middle_name, last_name, email, registration_number, password, faculty_id, department_id, programme_id, year_of_entry) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
                                     
-                                    mysqli_stmt_bind_param($insert_stmt, "ssssssiiis", 
-                                        $first_name, $middle_name, $last_name, $email, 
-                                        $registration_number, $hashed_password, 
-                                        $faculty_id, $department_id, $programme_id, $full_year);
-                                    
-                                    if(mysqli_stmt_execute($insert_stmt)){
-                                        // Registration successful, send welcome email
-                                        $welcome_subject = "Welcome to TSU ICT Help Desk - Student Portal";
-                                        $welcome_message = "Dear " . $first_name . " " . $last_name . ",\n\n";
-                                        $welcome_message .= "Welcome to the TSU ICT Help Desk Student Portal!\n\n";
-                                        $welcome_message .= "Your account has been successfully created with the following details:\n";
-                                        $welcome_message .= "Registration Number: " . $registration_number . "\n";
-                                        $welcome_message .= "Email: " . $email . "\n\n";
-                                        $welcome_message .= "You can now login to the student portal to:\n";
-                                        $welcome_message .= "• Lodge result verification complaints\n";
-                                        $welcome_message .= "• Track your complaint status\n";
-                                        $welcome_message .= "• View admin responses\n";
-                                        $welcome_message .= "• Change your password\n\n";
-                                        $welcome_message .= "Login URL: https://helpdesk.tsuniversity.edu.ng/student_login.php\n\n";
-                                        $welcome_message .= "IMPORTANT SECURITY TIPS:\n";
-                                        $welcome_message .= "• Keep your login credentials secure\n";
-                                        $welcome_message .= "• Change your password regularly\n";
-                                        $welcome_message .= "• Never share your account details with others\n\n";
-                                        $welcome_message .= "If you have any questions or need assistance, please don't hesitate to contact our support team.\n\n";
-                                        $welcome_message .= "Best regards,\nTSU ICT Help Desk Team\n";
-                                        $welcome_message .= "Taraba State University\n";
-                                        $welcome_message .= "Email: support@tsuniversity.edu.ng";
+                                    if($insert_stmt = mysqli_prepare($conn, $insert_sql)){
+                                        $hashed_password = md5($password);
+                                        $full_year = $year; // Store full 4-digit year
                                         
-                                        $welcome_headers = "From: TSU ICT Help Desk <noreply@tsuniversity.edu.ng>\r\n";
-                                        $welcome_headers .= "Reply-To: support@tsuniversity.edu.ng\r\n";
-                                        $welcome_headers .= "X-Mailer: PHP/" . phpversion() . "\r\n";
-                                        $welcome_headers .= "MIME-Version: 1.0\r\n";
-                                        $welcome_headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
+                                        mysqli_stmt_bind_param($insert_stmt, "ssssssiiis", 
+                                            $first_name, $middle_name, $last_name, $email, 
+                                            $registration_number, $hashed_password, 
+                                            $faculty_id, $department_id, $programme_id, $full_year);
                                         
-                                        // Send welcome email (suppress errors to avoid blocking registration)
-                                        @mail($email, $welcome_subject, $welcome_message, $welcome_headers);
-                                        
-                                        // Registration successful, redirect to login
-                                        header("location: student_login.php?registered=1");
-                                        exit();
-                                    } else{
-                                        $signup_err = "Something went wrong. Please try again.";
+                                        if(mysqli_stmt_execute($insert_stmt)){
+                                            // Registration successful, send welcome email
+                                            $welcome_subject = "Welcome to TSU ICT Help Desk - Student Portal";
+                                            $welcome_message = "Dear " . $first_name . " " . $last_name . ",\n\n";
+                                            $welcome_message .= "Welcome to the TSU ICT Help Desk Student Portal!\n\n";
+                                            $welcome_message .= "Your account has been successfully created with the following details:\n";
+                                            $welcome_message .= "Registration Number: " . $registration_number . "\n";
+                                            $welcome_message .= "Email: " . $email . "\n\n";
+                                            $welcome_message .= "You can now login to the student portal to:\n";
+                                            $welcome_message .= "• Lodge result verification complaints\n";
+                                            $welcome_message .= "• Track your complaint status\n";
+                                            $welcome_message .= "• View admin responses\n";
+                                            $welcome_message .= "• Change your password\n\n";
+                                            $welcome_message .= "Login URL: https://helpdesk.tsuniversity.edu.ng/student_login.php\n\n";
+                                            $welcome_message .= "IMPORTANT SECURITY TIPS:\n";
+                                            $welcome_message .= "• Keep your login credentials secure\n";
+                                            $welcome_message .= "• Change your password regularly\n";
+                                            $welcome_message .= "• Never share your account details with others\n\n";
+                                            $welcome_message .= "If you have any questions or need assistance, please don't hesitate to contact our support team.\n\n";
+                                            $welcome_message .= "Best regards,\nTSU ICT Help Desk Team\n";
+                                            $welcome_message .= "Taraba State University\n";
+                                            $welcome_message .= "Email: support@tsuniversity.edu.ng";
+                                            
+                                            $welcome_headers = "From: TSU ICT Help Desk <noreply@tsuniversity.edu.ng>\r\n";
+                                            $welcome_headers .= "Reply-To: support@tsuniversity.edu.ng\r\n";
+                                            $welcome_headers .= "X-Mailer: PHP/" . phpversion() . "\r\n";
+                                            $welcome_headers .= "MIME-Version: 1.0\r\n";
+                                            $welcome_headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
+                                            
+                                            // Send welcome email (suppress errors to avoid blocking registration)
+                                            @mail($email, $welcome_subject, $welcome_message, $welcome_headers);
+                                            
+                                            // Registration successful, redirect to login
+                                            header("location: student_login.php?registered=1");
+                                            exit();
+                                        } else{
+                                            $signup_err = "Something went wrong. Please try again.";
+                                        }
+                                        mysqli_stmt_close($insert_stmt);
                                     }
-                                    mysqli_stmt_close($insert_stmt);
                                 }
                             }
+                            mysqli_stmt_close($check_stmt);
                         }
-                        mysqli_stmt_close($check_stmt);
                     }
                 }
             }
@@ -365,7 +451,7 @@ ob_end_flush();
     <div class="container">
         <div class="row justify-content-center">
             <div class="col-md-8 col-lg-6">
-                <a href="student_portal.php" class="back-link">
+                <a href="student_portal.php?back=1" class="back-link">
                     <i class="fas fa-arrow-left mr-2"></i>Back to Student Portal
                 </a>
                 
@@ -473,17 +559,17 @@ ob_end_flush();
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="form-group">
-                                        <label for="year">Year of Entry (2 digits) *</label>
+                                        <label for="year">What Year Were You Admitted? *</label>
                                         <input type="text" id="year" name="year" 
                                                class="form-control <?php echo (!empty($year_err)) ? 'is-invalid' : ''; ?>" 
                                                value="<?php echo htmlspecialchars($year); ?>" 
-                                               placeholder="e.g., 24" maxlength="2" required>
+                                               placeholder="e.g., 2025" maxlength="4" required>
                                         <div class="invalid-feedback"><?php echo $year_err; ?></div>
                                     </div>
                                 </div>
-                                <div class="col-md-6">
+                                <div class="col-md-6" id="lastDigitsGroup">
                                     <div class="form-group">
-                                        <label for="last_digits">Last 4 Digits *</label>
+                                        <label for="last_digits">Last 4 Digits of Your Registration Number *</label>
                                         <input type="text" id="last_digits" name="last_digits" 
                                                class="form-control <?php echo (!empty($last_digits_err)) ? 'is-invalid' : ''; ?>" 
                                                value="<?php echo htmlspecialchars($last_digits); ?>" 
@@ -617,6 +703,16 @@ ob_end_flush();
             $('#programme_id').change(function() {
                 const selectedOption = $(this).find('option:selected');
                 currentRegFormat = selectedOption.data('format') || '';
+                
+                // Show/hide last digits field based on programme
+                if(currentRegFormat === 'N/A') {
+                    $('#lastDigitsGroup').hide();
+                    $('#last_digits').prop('required', false);
+                } else {
+                    $('#lastDigitsGroup').show();
+                    $('#last_digits').prop('required', true);
+                }
+                
                 updateRegNumberPreview();
             });
             
@@ -628,18 +724,25 @@ ob_end_flush();
             // Update registration number preview
             function updateRegNumberPreview() {
                 if(currentRegFormat && $('#year').val() && $('#last_digits').val()) {
-                    let preview = currentRegFormat;
-                    preview = preview.replace('YY', $('#year').val());
-                    preview = preview.replace('XXXX', $('#last_digits').val());
-                    $('#regNumberPreview').text(preview);
+                    if(currentRegFormat === 'N/A') {
+                        $('#regNumberPreview').text('Registration numbers not applicable for this programme');
+                        $('#regNumberPreview').addClass('text-info');
+                    } else {
+                        let preview = currentRegFormat;
+                        preview = preview.replace('YY', $('#year').val().slice(-2)); // Use last 2 digits of 4-digit year
+                        preview = preview.replace('XXXX', $('#last_digits').val());
+                        $('#regNumberPreview').text(preview);
+                        $('#regNumberPreview').removeClass('text-info');
+                    }
                 } else {
                     $('#regNumberPreview').text('Select programme and enter details to see preview');
+                    $('#regNumberPreview').removeClass('text-info');
                 }
             }
             
             // Form validation
             $('#year').on('input', function() {
-                this.value = this.value.replace(/[^0-9]/g, '').substring(0, 2);
+                this.value = this.value.replace(/[^0-9]/g, '').substring(0, 4);
             });
             
             $('#last_digits').on('input', function() {
