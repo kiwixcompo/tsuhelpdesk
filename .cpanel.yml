@@ -1,10 +1,12 @@
 ---
 deployment:
   tasks:
-    - export DEPLOYPATH=/home/$USER/public_html/
+    - export DEPLOYPATH=/home4/tsuniity/public_html/
     - /bin/cp -R * $DEPLOYPATH
     - find $DEPLOYPATH -name "*.php" -exec chmod 644 {} \;
     - find $DEPLOYPATH -type d -exec chmod 755 {} \;
     - chmod -R 755 $DEPLOYPATH/uploads/ 2>/dev/null || true
+    - chmod -R 755 $DEPLOYPATH/logs/ 2>/dev/null || true
     - rm -f $DEPLOYPATH/.git* 2>/dev/null || true
     - rm -f $DEPLOYPATH/*.bat 2>/dev/null || true
+    - rm -f $DEPLOYPATH/.cpanel.yml 2>/dev/null || true
