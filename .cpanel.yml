@@ -1,0 +1,91 @@
+---
+deployment:
+  tasks:
+    # Copy all files to public_html (main domain) or subdirectory
+    - export DEPLOYPATH=/home/$USER/public_html/
+    
+    # Create necessary directories if they don't exist
+    - mkdir -p $DEPLOYPATH
+    - mkdir -p $DEPLOYPATH/api
+    - mkdir -p $DEPLOYPATH/css
+    - mkdir -p $DEPLOYPATH/js
+    - mkdir -p $DEPLOYPATH/includes
+    - mkdir -p $DEPLOYPATH/uploads
+    - mkdir -p $DEPLOYPATH/uploads/profiles
+    - mkdir -p $DEPLOYPATH/uploads/settings
+    - mkdir -p $DEPLOYPATH/logs
+    
+    # Copy all PHP files
+    - /bin/cp -R *.php $DEPLOYPATH
+    
+    # Copy API directory
+    - /bin/cp -R api/ $DEPLOYPATH/
+    
+    # Copy CSS directory
+    - /bin/cp -R css/ $DEPLOYPATH/
+    
+    # Copy JS directory  
+    - /bin/cp -R js/ $DEPLOYPATH/
+    
+    # Copy includes directory
+    - /bin/cp -R includes/ $DEPLOYPATH/
+    
+    # Copy assets directory if it exists
+    - if [ -d "assets" ]; then /bin/cp -R assets/ $DEPLOYPATH/; fi
+    
+    # Copy SQL files
+    - /bin/cp *.sql $DEPLOYPATH/ 2>/dev/null || true
+    
+    # Copy favicon and other static files
+    - /bin/cp favicon.ico $DEPLOYPATH/ 2>/dev/null || true
+    
+    # Set proper permissions for PHP files
+    - find $DEPLOYPATH -name "*.php" -exec chmod 644 {} \;
+    
+    # Set proper permissions for directories
+    - find $DEPLOYPATH -type d -exec chmod 755 {} \;
+    
+    # Set special permissions for uploads directory (writable)
+    - chmod -R 755 $DEPLOYPATH/uploads/ 2>/dev/null || true
+    - chmod -R 755 $DEPLOYPATH/logs/ 2>/dev/null || true
+    
+    # Create .htaccess for uploads security if it doesn't exist
+    - |
+      if [ ! -f "$DEPLOYPATH/uploads/.htaccess" ]; then
+        cat > $DEPLOYPATH/uploads/.htaccess << 'EOF'
+      # Deny access to PHP files in uploads directory
+      <Files "*.php">
+          Order Deny,Allow
+          Deny from all
+      </Files>
+      
+      # Allow only specific file types
+      <FilesMatch "\.(jpg|jpeg|png|gif|pdf|doc|docx)$">
+          Order Allow,Deny
+          Allow from all
+      </FilesMatch>
+      EOF
+      fi
+    
+    # Create logs directory .htaccess for security
+    - |
+      if [ ! -f "$DEPLOYPATH/logs/.htaccess" ]; then
+        cat > $DEPLOYPATH/logs/.htaccess << 'EOF'
+      # Deny all access to logs directory
+      Order Deny,Allow
+      Deny from all
+      EOF
+      fi
+    
+    # Remove sensitive files that shouldn't be on production
+    - rm -f $DEPLOYPATH/.git* 2>/dev/null || true
+    - rm -f $DEPLOYPATH/*.bat 2>/dev/null || true
+    - rm -f $DEPLOYPATH/.cpanel.yml 2>/dev/null || true
+    - rm -f $DEPLOYPATH/pull_updates.bat 2>/dev/null || true
+    - rm -f $DEPLOYPATH/update_repo.bat 2>/dev/null || true
+    
+    # Create a deployment timestamp
+    - echo "Last deployed: $(date)" > $DEPLOYPATH/deployment_info.txt
+    
+    # Log successful deployment
+    - echo "TSU ICT Help Desk deployed successfully at $(date)" >> $DEPLOYPATH/logs/deployment.log 2>/dev/null || true
