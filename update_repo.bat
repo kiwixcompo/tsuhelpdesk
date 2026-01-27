@@ -1,7 +1,10 @@
 @echo off
 echo ========================================
-echo TSU Help Desk System - Git Auto Update
+echo TSU Help Desk System - Push Changes
 echo ========================================
+echo.
+echo This script PUSHES your local changes to GitHub
+echo To PULL updates from GitHub, use pull_updates.bat
 echo.
 
 :: Check if Git is available
@@ -62,13 +65,14 @@ if errorlevel 1 (
     echo.
     echo ERROR: Failed to push to remote repository
     echo Please check your internet connection and GitHub credentials
+    echo You may need to set up authentication or resolve conflicts
     echo.
     goto :end
 )
 
 echo.
 echo ========================================
-echo SUCCESS: Repository updated successfully!
+echo SUCCESS: Changes pushed to repository!
 echo ========================================
 
 :end
