@@ -20,18 +20,27 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_complaint'])){
     $course_codes = $_POST['course_code'];
     $course_titles = $_POST['course_title'];
     $complaint_types = $_POST['complaint_type'];
+    $academic_sessions = $_POST['academic_session'];
+    $custom_sessions = $_POST['custom_session'];
     $descriptions = $_POST['description'];
     
     $complaints_added = 0;
     $errors = [];
     
     for($i = 0; $i < count($course_codes); $i++){
-        if(!empty($course_codes[$i]) && !empty($course_titles[$i]) && !empty($complaint_types[$i])){
-            $sql = "INSERT INTO student_complaints (student_id, course_code, course_title, complaint_type, description) VALUES (?, ?, ?, ?, ?)";
+        if(!empty($course_codes[$i]) && !empty($course_titles[$i]) && !empty($complaint_types[$i]) && !empty($academic_sessions[$i])){
+            
+            // Determine the actual session to use
+            $session_to_use = $academic_sessions[$i];
+            if($academic_sessions[$i] === 'other' && !empty($custom_sessions[$i])) {
+                $session_to_use = $custom_sessions[$i];
+            }
+            
+            $sql = "INSERT INTO student_complaints (student_id, course_code, course_title, complaint_type, academic_session, description) VALUES (?, ?, ?, ?, ?, ?)";
             
             if($stmt = mysqli_prepare($conn, $sql)){
                 $description = !empty($descriptions[$i]) ? $descriptions[$i] : null;
-                mysqli_stmt_bind_param($stmt, "issss", $_SESSION["student_id"], $course_codes[$i], $course_titles[$i], $complaint_types[$i], $description);
+                mysqli_stmt_bind_param($stmt, "isssss", $_SESSION["student_id"], $course_codes[$i], $course_titles[$i], $complaint_types[$i], $session_to_use, $description);
                 
                 if(mysqli_stmt_execute($stmt)){
                     $complaints_added++;
@@ -63,6 +72,21 @@ if($stmt = mysqli_prepare($conn, $sql)){
         }
     }
     mysqli_stmt_close($stmt);
+}
+
+// Generate academic sessions (current year back to 2021/2022)
+function generateAcademicSessions() {
+    $sessions = [];
+    $currentYear = date('Y');
+    $startYear = 2021;
+    
+    // Generate sessions from current year down to 2021
+    for($year = $currentYear; $year >= $startYear; $year--) {
+        $nextYear = $year + 1;
+        $sessions[] = "$year/$nextYear";
+    }
+    
+    return $sessions;
 }
 
 // Get notification count for student
@@ -267,13 +291,13 @@ ob_end_flush();
                                         <input type="text" name="course_code[]" class="form-control" placeholder="e.g., CSC301" required>
                                     </div>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <div class="form-group">
                                         <label>Course Title *</label>
                                         <input type="text" name="course_title[]" class="form-control" placeholder="e.g., Data Structures" required>
                                     </div>
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-md-2">
                                     <div class="form-group">
                                         <label>Complaint Type *</label>
                                         <select name="complaint_type[]" class="form-control" required>
@@ -281,6 +305,20 @@ ob_end_flush();
                                             <option value="FA">Fail Absent (FA)</option>
                                             <option value="F">Fail (F)</option>
                                             <option value="Incorrect Grade">Incorrect Grade</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="form-group">
+                                        <label>Academic Session *</label>
+                                        <select name="academic_session[]" class="form-control session-select" required>
+                                            <option value="">Select Session</option>
+                                            <?php 
+                                            $sessions = generateAcademicSessions();
+                                            foreach($sessions as $session): ?>
+                                                <option value="<?php echo $session; ?>"><?php echo $session; ?></option>
+                                            <?php endforeach; ?>
+                                            <option value="other">Other (Type manually)</option>
                                         </select>
                                     </div>
                                 </div>
@@ -294,6 +332,13 @@ ob_end_flush();
                                 </div>
                             </div>
                             <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group custom-session-group" style="display: none;">
+                                        <label>Custom Academic Session *</label>
+                                        <input type="text" name="custom_session[]" class="form-control" placeholder="e.g., 2020/2021">
+                                        <small class="form-text text-muted">Format: YYYY/YYYY (e.g., 2020/2021)</small>
+                                    </div>
+                                </div>
                                 <div class="col-12">
                                     <div class="form-group">
                                         <label>Additional Description (Optional)</label>
@@ -339,6 +384,7 @@ ob_end_flush();
                                     <th>Course Code</th>
                                     <th>Course Title</th>
                                     <th>Type</th>
+                                    <th>Session</th>
                                     <th>Status</th>
                                     <th>Submitted</th>
                                     <th>Action</th>
@@ -352,6 +398,11 @@ ob_end_flush();
                                         <td>
                                             <span class="badge badge-info">
                                                 <?php echo htmlspecialchars($complaint['complaint_type']); ?>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-secondary">
+                                                <?php echo htmlspecialchars($complaint['academic_session'] ?? 'N/A'); ?>
                                             </span>
                                         </td>
                                         <td>
@@ -381,6 +432,7 @@ ob_end_flush();
                                                 <div class="modal-body">
                                                     <p><strong>Course:</strong> <?php echo htmlspecialchars($complaint['course_code'] . ' - ' . $complaint['course_title']); ?></p>
                                                     <p><strong>Type:</strong> <?php echo htmlspecialchars($complaint['complaint_type']); ?></p>
+                                                    <p><strong>Academic Session:</strong> <?php echo htmlspecialchars($complaint['academic_session'] ?? 'N/A'); ?></p>
                                                     <p><strong>Status:</strong> 
                                                         <span class="status-badge status-<?php echo strtolower(str_replace(' ', '-', $complaint['status'])); ?>">
                                                             <?php echo htmlspecialchars($complaint['status']); ?>
@@ -433,13 +485,13 @@ ob_end_flush();
                                     <input type="text" name="course_code[]" class="form-control" placeholder="e.g., CSC301" required>
                                 </div>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <div class="form-group">
                                     <label>Course Title *</label>
                                     <input type="text" name="course_title[]" class="form-control" placeholder="e.g., Data Structures" required>
                                 </div>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <div class="form-group">
                                     <label>Complaint Type *</label>
                                     <select name="complaint_type[]" class="form-control" required>
@@ -447,6 +499,19 @@ ob_end_flush();
                                         <option value="FA">Fail Absent (FA)</option>
                                         <option value="F">Fail (F)</option>
                                         <option value="Incorrect Grade">Incorrect Grade</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-group">
+                                    <label>Academic Session *</label>
+                                    <select name="academic_session[]" class="form-control session-select" required>
+                                        <option value="">Select Session</option>
+                                        <?php 
+                                        foreach($sessions as $session): ?>
+                                            <option value="<?php echo $session; ?>"><?php echo $session; ?></option>
+                                        <?php endforeach; ?>
+                                        <option value="other">Other (Type manually)</option>
                                     </select>
                                 </div>
                             </div>
@@ -460,6 +525,13 @@ ob_end_flush();
                             </div>
                         </div>
                         <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group custom-session-group" style="display: none;">
+                                    <label>Custom Academic Session *</label>
+                                    <input type="text" name="custom_session[]" class="form-control" placeholder="e.g., 2020/2021">
+                                    <small class="form-text text-muted">Format: YYYY/YYYY (e.g., 2020/2021)</small>
+                                </div>
+                            </div>
                             <div class="col-12">
                                 <div class="form-group">
                                     <label>Additional Description (Optional)</label>
@@ -491,23 +563,57 @@ ob_end_flush();
                 }
             }
             
+            // Handle session selection change
+            $(document).on('change', '.session-select', function() {
+                const row = $(this).closest('.complaint-row');
+                const customGroup = row.find('.custom-session-group');
+                const customInput = row.find('input[name="custom_session[]"]');
+                
+                if($(this).val() === 'other') {
+                    customGroup.show();
+                    customInput.prop('required', true);
+                } else {
+                    customGroup.hide();
+                    customInput.prop('required', false);
+                    customInput.val('');
+                }
+            });
+            
             // Form validation
             $('#complaintForm').submit(function(e) {
                 let hasValidComplaint = false;
+                let validationErrors = [];
                 
                 $('.complaint-row').each(function() {
                     const courseCode = $(this).find('input[name="course_code[]"]').val().trim();
                     const courseTitle = $(this).find('input[name="course_title[]"]').val().trim();
                     const complaintType = $(this).find('select[name="complaint_type[]"]').val();
+                    const academicSession = $(this).find('select[name="academic_session[]"]').val();
+                    const customSession = $(this).find('input[name="custom_session[]"]').val().trim();
                     
-                    if(courseCode && courseTitle && complaintType) {
-                        hasValidComplaint = true;
+                    if(courseCode && courseTitle && complaintType && academicSession) {
+                        if(academicSession === 'other' && !customSession) {
+                            validationErrors.push('Please enter a custom academic session or select from the dropdown.');
+                        } else if(academicSession === 'other' && customSession) {
+                            // Validate custom session format (YYYY/YYYY)
+                            const sessionPattern = /^\d{4}\/\d{4}$/;
+                            if(!sessionPattern.test(customSession)) {
+                                validationErrors.push('Custom session must be in format YYYY/YYYY (e.g., 2020/2021).');
+                            }
+                        }
+                        
+                        if(validationErrors.length === 0) {
+                            hasValidComplaint = true;
+                        }
                     }
                 });
                 
                 if(!hasValidComplaint) {
                     e.preventDefault();
-                    alert('Please fill in at least one complete complaint (Course Code, Title, and Type).');
+                    alert('Please fill in at least one complete complaint (Course Code, Title, Type, and Academic Session).');
+                } else if(validationErrors.length > 0) {
+                    e.preventDefault();
+                    alert('Validation errors:\n' + validationErrors.join('\n'));
                 }
             });
             

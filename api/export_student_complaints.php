@@ -18,7 +18,10 @@ if(!in_array($_SESSION["role_id"], [1, 3])){
 $date_from = $_GET['date_from'] ?? '';
 $date_to = $_GET['date_to'] ?? '';
 $faculty_filter = $_GET['faculty_id'] ?? '';
+$department_filter = $_GET['department_id'] ?? '';
+$session_filter = $_GET['academic_session'] ?? '';
 $status_filter = $_GET['status'] ?? '';
+$complaint_type_filter = $_GET['complaint_type'] ?? '';
 
 // Build query conditions
 $where_conditions = ["1=1"];
@@ -43,9 +46,27 @@ if (!empty($faculty_filter)) {
     $param_types .= "i";
 }
 
+if (!empty($department_filter)) {
+    $where_conditions[] = "sd.department_id = ?";
+    $params[] = $department_filter;
+    $param_types .= "i";
+}
+
+if (!empty($session_filter)) {
+    $where_conditions[] = "sc.academic_session = ?";
+    $params[] = $session_filter;
+    $param_types .= "s";
+}
+
 if (!empty($status_filter)) {
     $where_conditions[] = "sc.status = ?";
     $params[] = $status_filter;
+    $param_types .= "s";
+}
+
+if (!empty($complaint_type_filter)) {
+    $where_conditions[] = "sc.complaint_type = ?";
+    $params[] = $complaint_type_filter;
     $param_types .= "s";
 }
 
@@ -57,6 +78,7 @@ $complaints_sql = "SELECT
     sc.course_code,
     sc.course_title,
     sc.complaint_type,
+    sc.academic_session,
     sc.description,
     sc.status,
     sc.created_at,
@@ -243,6 +265,7 @@ foreach ($complaints_by_dept as $dept_key => $dept_data) {
      <Cell ss:StyleID="HeaderStyle"><Data ss:Type="String">Course Code</Data></Cell>
      <Cell ss:StyleID="HeaderStyle"><Data ss:Type="String">Course Title</Data></Cell>
      <Cell ss:StyleID="HeaderStyle"><Data ss:Type="String">Complaint Type</Data></Cell>
+     <Cell ss:StyleID="HeaderStyle"><Data ss:Type="String">Academic Session</Data></Cell>
      <Cell ss:StyleID="HeaderStyle"><Data ss:Type="String">Status</Data></Cell>
      <Cell ss:StyleID="HeaderStyle"><Data ss:Type="String">Description</Data></Cell>
      <Cell ss:StyleID="HeaderStyle"><Data ss:Type="String">Date Submitted</Data></Cell>
@@ -260,6 +283,7 @@ foreach ($complaints_by_dept as $dept_key => $dept_data) {
          <Cell ss:StyleID="DataStyle"><Data ss:Type="String">' . htmlspecialchars($complaint['course_code']) . '</Data></Cell>
          <Cell ss:StyleID="DataStyle"><Data ss:Type="String">' . htmlspecialchars($complaint['course_title']) . '</Data></Cell>
          <Cell ss:StyleID="DataStyle"><Data ss:Type="String">' . htmlspecialchars($complaint['complaint_type']) . '</Data></Cell>
+         <Cell ss:StyleID="DataStyle"><Data ss:Type="String">' . htmlspecialchars($complaint['academic_session'] ?? 'N/A') . '</Data></Cell>
          <Cell ss:StyleID="DataStyle"><Data ss:Type="String">' . htmlspecialchars($complaint['status']) . '</Data></Cell>
          <Cell ss:StyleID="DataStyle"><Data ss:Type="String">' . htmlspecialchars($complaint['description'] ?? '') . '</Data></Cell>
          <Cell ss:StyleID="DataStyle"><Data ss:Type="String">' . date('Y-m-d H:i:s', strtotime($complaint['created_at'])) . '</Data></Cell>
@@ -285,6 +309,7 @@ echo '<Row>
  <Cell ss:StyleID="HeaderStyle"><Data ss:Type="String">Course Code</Data></Cell>
  <Cell ss:StyleID="HeaderStyle"><Data ss:Type="String">Course Title</Data></Cell>
  <Cell ss:StyleID="HeaderStyle"><Data ss:Type="String">Complaint Type</Data></Cell>
+ <Cell ss:StyleID="HeaderStyle"><Data ss:Type="String">Academic Session</Data></Cell>
  <Cell ss:StyleID="HeaderStyle"><Data ss:Type="String">Status</Data></Cell>
  <Cell ss:StyleID="HeaderStyle"><Data ss:Type="String">Description</Data></Cell>
  <Cell ss:StyleID="HeaderStyle"><Data ss:Type="String">Date Submitted</Data></Cell>
@@ -303,6 +328,7 @@ foreach ($complaints as $complaint) {
      <Cell ss:StyleID="DataStyle"><Data ss:Type="String">' . htmlspecialchars($complaint['course_code']) . '</Data></Cell>
      <Cell ss:StyleID="DataStyle"><Data ss:Type="String">' . htmlspecialchars($complaint['course_title']) . '</Data></Cell>
      <Cell ss:StyleID="DataStyle"><Data ss:Type="String">' . htmlspecialchars($complaint['complaint_type']) . '</Data></Cell>
+     <Cell ss:StyleID="DataStyle"><Data ss:Type="String">' . htmlspecialchars($complaint['academic_session'] ?? 'N/A') . '</Data></Cell>
      <Cell ss:StyleID="DataStyle"><Data ss:Type="String">' . htmlspecialchars($complaint['status']) . '</Data></Cell>
      <Cell ss:StyleID="DataStyle"><Data ss:Type="String">' . htmlspecialchars($complaint['description'] ?? '') . '</Data></Cell>
      <Cell ss:StyleID="DataStyle"><Data ss:Type="String">' . date('Y-m-d H:i:s', strtotime($complaint['created_at'])) . '</Data></Cell>

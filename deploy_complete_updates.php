@@ -239,6 +239,28 @@ executeUpdate($conn,
     "Adding Deputy Director ICT role"
 );
 
+// Step 8: Add academic session field to student complaints
+echo "<h5>Adding Academic Session Field to Student Complaints</h5>";
+
+// Check if academic_session column exists
+$session_check = mysqli_query($conn, "SHOW COLUMNS FROM student_complaints LIKE 'academic_session'");
+if(mysqli_num_rows($session_check) == 0) {
+    executeUpdate($conn,
+        "ALTER TABLE student_complaints ADD COLUMN academic_session VARCHAR(20) NOT NULL DEFAULT '2025/2026' AFTER complaint_type",
+        "Adding academic_session column to student_complaints table"
+    );
+    
+    executeUpdate($conn,
+        "ALTER TABLE student_complaints ADD INDEX idx_academic_session (academic_session)",
+        "Adding index for academic_session column"
+    );
+    
+    executeUpdate($conn,
+        "UPDATE student_complaints SET academic_session = '2025/2026' WHERE academic_session = ''",
+        "Setting default academic session for existing complaints"
+    );
+}
+
 // SECTION 2: FILE UPDATES
 echo "<div class='section-header'><h4>Section 2: File Updates</h4></div>";
 
