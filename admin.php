@@ -1718,3 +1718,8 @@ foreach ($complaints as $c) {
     </script>
 </body>
 </html>
+
+<?php
+// End output buffering and flush
+ob_end_flush();
+?>

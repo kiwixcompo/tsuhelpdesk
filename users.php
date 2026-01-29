@@ -1,4 +1,7 @@
 <?php
+// Start output buffering to prevent header issues
+ob_start();
+
 session_start();
 
 // Check if user is logged in and is admin
@@ -249,6 +252,50 @@ while($row = mysqli_fetch_assoc($result)){
             color: #666;
             font-style: italic;
         }
+        
+        /* Performance optimizations for Chrome */
+        .table {
+            table-layout: fixed;
+            width: 100%;
+        }
+        
+        .table td, .table th {
+            word-wrap: break-word;
+            vertical-align: middle;
+        }
+        
+        /* Prevent layout shifts */
+        .search-results {
+            will-change: transform;
+            transform: translateZ(0);
+        }
+        
+        .modal {
+            will-change: transform;
+            transform: translateZ(0);
+        }
+        
+        /* Smooth transitions */
+        .user-checkbox {
+            transition: none;
+        }
+        
+        .btn {
+            transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+        }
+        
+        /* Bulk actions styling */
+        .bulk-actions {
+            background: #f8f9fa;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 15px;
+        }
+        
+        #selectedCount {
+            font-weight: bold;
+            color: #007bff;
+        }
     </style>
 </head>
 <body>
@@ -331,10 +378,48 @@ while($row = mysqli_fetch_assoc($result)){
                         </div>
                     </div>
                     <div class="card-body">
+                        <!-- Bulk Actions -->
+                        <?php if($_SESSION["is_super_admin"]): ?>
+                        <div class="mb-3">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="btn-group" role="group">
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAllUsers()">
+                                            <i class="fas fa-check-square"></i> Select All
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="deselectAllUsers()">
+                                            <i class="fas fa-square"></i> Deselect All
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 text-right">
+                                    <div class="btn-group" role="group">
+                                        <button type="button" class="btn btn-sm btn-warning" onclick="bulkResetPasswords()" disabled id="bulkResetBtn">
+                                            <i class="fas fa-key"></i> Reset Selected Passwords
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-danger" onclick="bulkDeleteUsers()" disabled id="bulkDeleteBtn">
+                                            <i class="fas fa-trash"></i> Delete Selected
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted">
+                                    <span id="selectedCount">0</span> user(s) selected
+                                </small>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+                        
                         <div class="table-responsive">
                             <table class="table table-hover">
                                 <thead>
                                     <tr>
+                                        <?php if($_SESSION["is_super_admin"]): ?>
+                                        <th width="40">
+                                            <input type="checkbox" id="selectAllCheckbox" onchange="toggleAllUsers(this)">
+                                        </th>
+                                        <?php endif; ?>
                                         <th>Full Name</th>
                                         <th>Username</th>
                                         <th>Role</th>
@@ -347,6 +432,13 @@ while($row = mysqli_fetch_assoc($result)){
                                 <tbody>
                                     <?php foreach($users as $user): ?>
                                         <tr>
+                                            <?php if($_SESSION["is_super_admin"]): ?>
+                                            <td>
+                                                <?php if($user['user_id'] != $_SESSION["user_id"]): ?>
+                                                <input type="checkbox" class="user-checkbox" value="<?php echo $user['user_id']; ?>" onchange="updateBulkActions()">
+                                                <?php endif; ?>
+                                            </td>
+                                            <?php endif; ?>
                                             <td><?php echo htmlspecialchars($user['full_name']); ?></td>
                                             <td><?php echo htmlspecialchars($user['username']); ?></td>
                                             <td><?php echo htmlspecialchars($user['role_name']); ?></td>
@@ -482,6 +574,63 @@ while($row = mysqli_fetch_assoc($result)){
         </div>
     </div>
 
+    <!-- Bulk Reset Password Modal -->
+    <div class="modal fade" id="bulkResetPasswordModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Bulk Reset Passwords</h5>
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <form id="bulkResetForm">
+                    <div class="modal-body">
+                        <p>Are you sure you want to reset passwords for <span id="resetUserCount">0</span> selected user(s)?</p>
+                        <div class="form-group">
+                            <label>New Password (will be applied to all selected users)</label>
+                            <input type="password" id="bulkNewPassword" class="form-control" required>
+                        </div>
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>Warning:</strong> This will reset passwords for all selected users. Make sure to inform them of their new password.
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-warning">Reset Passwords</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Delete Modal -->
+    <div class="modal fade" id="bulkDeleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Bulk Delete Users</h5>
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete <span id="deleteUserCount">0</span> selected user(s)?</p>
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Warning:</strong> This action cannot be undone. All selected users and their data will be permanently deleted.
+                    </div>
+                    <div id="selectedUsersList"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" onclick="confirmBulkDelete()">Delete Users</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
@@ -518,7 +667,212 @@ while($row = mysqli_fetch_assoc($result)){
             e.preventDefault();
             sendDirectMessage();
         });
+        
+        // Bulk reset password form submission
+        $('#bulkResetForm').on('submit', function(e) {
+            e.preventDefault();
+            processBulkPasswordReset();
+        });
     });
+    
+    // Bulk selection functions
+    function toggleAllUsers(checkbox) {
+        const checkboxes = document.querySelectorAll('.user-checkbox');
+        checkboxes.forEach(cb => {
+            cb.checked = checkbox.checked;
+        });
+        updateBulkActions();
+    }
+    
+    function selectAllUsers() {
+        const checkboxes = document.querySelectorAll('.user-checkbox');
+        checkboxes.forEach(cb => {
+            cb.checked = true;
+        });
+        document.getElementById('selectAllCheckbox').checked = true;
+        updateBulkActions();
+    }
+    
+    function deselectAllUsers() {
+        const checkboxes = document.querySelectorAll('.user-checkbox');
+        checkboxes.forEach(cb => {
+            cb.checked = false;
+        });
+        document.getElementById('selectAllCheckbox').checked = false;
+        updateBulkActions();
+    }
+    
+    function updateBulkActions() {
+        const selectedCheckboxes = document.querySelectorAll('.user-checkbox:checked');
+        const count = selectedCheckboxes.length;
+        
+        document.getElementById('selectedCount').textContent = count;
+        document.getElementById('bulkResetBtn').disabled = count === 0;
+        document.getElementById('bulkDeleteBtn').disabled = count === 0;
+        
+        // Update select all checkbox state
+        const allCheckboxes = document.querySelectorAll('.user-checkbox');
+        const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+        
+        if (count === 0) {
+            selectAllCheckbox.indeterminate = false;
+            selectAllCheckbox.checked = false;
+        } else if (count === allCheckboxes.length) {
+            selectAllCheckbox.indeterminate = false;
+            selectAllCheckbox.checked = true;
+        } else {
+            selectAllCheckbox.indeterminate = true;
+        }
+    }
+    
+    function bulkResetPasswords() {
+        const selectedCheckboxes = document.querySelectorAll('.user-checkbox:checked');
+        if (selectedCheckboxes.length === 0) {
+            alert('Please select at least one user.');
+            return;
+        }
+        
+        document.getElementById('resetUserCount').textContent = selectedCheckboxes.length;
+        document.getElementById('bulkNewPassword').value = '';
+        $('#bulkResetPasswordModal').modal('show');
+    }
+    
+    function bulkDeleteUsers() {
+        const selectedCheckboxes = document.querySelectorAll('.user-checkbox:checked');
+        if (selectedCheckboxes.length === 0) {
+            alert('Please select at least one user.');
+            return;
+        }
+        
+        document.getElementById('deleteUserCount').textContent = selectedCheckboxes.length;
+        
+        // Show list of selected users
+        let usersList = '<ul class="list-group">';
+        selectedCheckboxes.forEach(checkbox => {
+            const row = checkbox.closest('tr');
+            const fullName = row.cells[1].textContent; // Adjust index based on checkbox column
+            const username = row.cells[2].textContent;
+            usersList += `<li class="list-group-item">${fullName} (@${username})</li>`;
+        });
+        usersList += '</ul>';
+        
+        document.getElementById('selectedUsersList').innerHTML = usersList;
+        $('#bulkDeleteModal').modal('show');
+    }
+    
+    function processBulkPasswordReset() {
+        const selectedCheckboxes = document.querySelectorAll('.user-checkbox:checked');
+        const newPassword = document.getElementById('bulkNewPassword').value;
+        
+        if (!newPassword) {
+            alert('Please enter a new password.');
+            return;
+        }
+        
+        const userIds = Array.from(selectedCheckboxes).map(cb => cb.value);
+        
+        // Show loading state
+        const submitBtn = document.querySelector('#bulkResetForm button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetting...';
+        submitBtn.disabled = true;
+        
+        // Process each user
+        let completed = 0;
+        let errors = [];
+        
+        userIds.forEach(userId => {
+            const formData = new FormData();
+            formData.append('reset_password', '1');
+            formData.append('user_id', userId);
+            formData.append('new_password', newPassword);
+            
+            fetch('users.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.text())
+            .then(data => {
+                completed++;
+                if (completed === userIds.length) {
+                    finalizeBulkReset(errors, originalText, submitBtn);
+                }
+            })
+            .catch(error => {
+                errors.push(`User ID ${userId}: ${error.message}`);
+                completed++;
+                if (completed === userIds.length) {
+                    finalizeBulkReset(errors, originalText, submitBtn);
+                }
+            });
+        });
+    }
+    
+    function finalizeBulkReset(errors, originalText, submitBtn) {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+        
+        if (errors.length === 0) {
+            alert('Passwords reset successfully for all selected users!');
+            $('#bulkResetPasswordModal').modal('hide');
+            location.reload();
+        } else {
+            alert('Some errors occurred:\n' + errors.join('\n'));
+        }
+    }
+    
+    function confirmBulkDelete() {
+        const selectedCheckboxes = document.querySelectorAll('.user-checkbox:checked');
+        const userIds = Array.from(selectedCheckboxes).map(cb => cb.value);
+        
+        // Show loading state
+        const deleteBtn = document.querySelector('#bulkDeleteModal .btn-danger');
+        const originalText = deleteBtn.innerHTML;
+        deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
+        deleteBtn.disabled = true;
+        
+        // Process each user
+        let completed = 0;
+        let errors = [];
+        
+        userIds.forEach(userId => {
+            const formData = new FormData();
+            formData.append('delete_user', '1');
+            formData.append('user_id', userId);
+            
+            fetch('users.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.text())
+            .then(data => {
+                completed++;
+                if (completed === userIds.length) {
+                    finalizeBulkDelete(errors, originalText, deleteBtn);
+                }
+            })
+            .catch(error => {
+                errors.push(`User ID ${userId}: ${error.message}`);
+                completed++;
+                if (completed === userIds.length) {
+                    finalizeBulkDelete(errors, originalText, deleteBtn);
+                }
+            });
+        });
+    }
+    
+    function finalizeBulkDelete(errors, originalText, deleteBtn) {
+        deleteBtn.innerHTML = originalText;
+        deleteBtn.disabled = false;
+        
+        if (errors.length === 0) {
+            alert('Users deleted successfully!');
+            $('#bulkDeleteModal').modal('hide');
+            location.reload();
+        } else {
+            alert('Some errors occurred:\n' + errors.join('\n'));
+        }
+    }
     
     function searchUsers(query) {
         $.ajax({
@@ -1105,3 +1459,8 @@ while($row = mysqli_fetch_assoc($result)){
     </script>
 </body>
 </html>
+
+<?php
+// End output buffering and flush
+ob_end_flush();
+?>

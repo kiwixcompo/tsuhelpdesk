@@ -1,4 +1,7 @@
 <?php
+// Start output buffering to prevent header issues
+ob_start();
+
 session_start();
 
 // Only allow Payment Admin (role_id = 6)
@@ -594,3 +597,8 @@ function getImagePath($path) {
     <!-- End of page scripts -->
 </body>
 </html>
+
+<?php
+// End output buffering and flush
+ob_end_flush();
+?>

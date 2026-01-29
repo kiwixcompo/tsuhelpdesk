@@ -635,7 +635,7 @@ $departments = [
     ['username' => 'crs', 'full_name' => 'CRS']
 ];
 
-$password = 'user2025';
+$password = 'user2026';
 $hashed_password = md5($password);
 $role_id = 7;
 
@@ -657,7 +657,7 @@ foreach($departments as $dept) {
 }
 
 if($dept_created > 0) {
-    echo "<div class='success'>✓ Created $dept_created department account(s) (Password: user2025)</div>";
+    echo "<div class='success'>✓ Created $dept_created department account(s) (Password: user2026)</div>";
     $updates_applied += $dept_created;
 }
 if($dept_skipped > 0) {

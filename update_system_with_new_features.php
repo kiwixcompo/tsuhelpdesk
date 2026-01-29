@@ -290,9 +290,9 @@ if($updates_successful >= ($total_updates * 0.8)) {
     echo "<li>Faculty of Religion & Philosophy with 2 departments</li>";
     echo "<li><strong>Registration Numbers:</strong></li>";
     echo "<ul>";
-    echo "<li>Computer Science: TSU/FCA/CS/YY/XXXX (for 2025+ students)</li>";
-    echo "<li>Islamic Studies: TSU/FRP/ISL/YY/XXXX (for 2025+ students)</li>";
-    echo "<li>Christian Religious Studies: TSU/FRP/CRS/YY/XXXX (for 2025+ students)</li>";
+    echo "<li>Computer Science: TSU/FCA/CS/YY/XXXX (for 2026+ students)</li>";
+    echo "<li>Islamic Studies: TSU/FRP/ISL/YY/XXXX (for 2026+ students)</li>";
+    echo "<li>Christian Religious Studies: TSU/FRP/CRS/YY/XXXX (for 2026+ students)</li>";
     echo "<li>Other programmes: N/A (no registration numbers generated)</li>";
     echo "</ul>";
     echo "<li>Notifications table for system notifications</li>";
@@ -304,7 +304,7 @@ if($updates_successful >= ($total_updates * 0.8)) {
     echo "<li>Create a Deputy Director ICT user account via the Users page</li>";
     echo "<li>Test the new student signup process with 4-digit years</li>";
     echo "<li>Verify the new faculties and programmes appear in student registration</li>";
-    echo "<li><strong>Important:</strong> Only students admitted from 2025 onwards will use the new registration formats</li>";
+    echo "<li><strong>Important:</strong> Only students admitted from 2026 onwards will use the new registration formats</li>";
     echo "</ul>";
 } else {
     echo "Some updates failed. Please check the errors above. You can run the script again to retry failed updates.";

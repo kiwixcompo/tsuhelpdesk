@@ -335,8 +335,8 @@ ob_end_flush();
                                 <div class="col-md-6">
                                     <div class="form-group custom-session-group" style="display: none;">
                                         <label>Custom Academic Session *</label>
-                                        <input type="text" name="custom_session[]" class="form-control" placeholder="e.g., 2020/2021">
-                                        <small class="form-text text-muted">Format: YYYY/YYYY (e.g., 2020/2021)</small>
+                                        <input type="text" name="custom_session[]" class="form-control" placeholder="e.g., 2025/2026">
+                                        <small class="form-text text-muted">Format: YYYY/YYYY (e.g., 2025/2026)</small>
                                     </div>
                                 </div>
                                 <div class="col-12">
@@ -598,7 +598,7 @@ ob_end_flush();
                             // Validate custom session format (YYYY/YYYY)
                             const sessionPattern = /^\d{4}\/\d{4}$/;
                             if(!sessionPattern.test(customSession)) {
-                                validationErrors.push('Custom session must be in format YYYY/YYYY (e.g., 2020/2021).');
+                                validationErrors.push('Custom session must be in format YYYY/YYYY (e.g., 2025/2026).');
                             }
                         }
                         

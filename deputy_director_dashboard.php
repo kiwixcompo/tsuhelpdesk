@@ -1,4 +1,7 @@
 <?php
+// Start output buffering to prevent header issues
+ob_start();
+
 session_start();
 
 // Only allow Deputy Director ICT (role_id = 8)
@@ -373,3 +376,8 @@ if($row = mysqli_fetch_assoc($result)){
     </script>
 </body>
 </html>
+
+<?php
+// End output buffering and flush
+ob_end_flush();
+?>

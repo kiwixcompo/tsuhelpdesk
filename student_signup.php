@@ -563,7 +563,7 @@ ob_end_flush();
                                         <input type="text" id="year" name="year" 
                                                class="form-control <?php echo (!empty($year_err)) ? 'is-invalid' : ''; ?>" 
                                                value="<?php echo htmlspecialchars($year); ?>" 
-                                               placeholder="e.g., 2025" maxlength="4" required>
+                                               placeholder="e.g., 2026" maxlength="4" required>
                                         <div class="invalid-feedback"><?php echo $year_err; ?></div>
                                     </div>
                                 </div>

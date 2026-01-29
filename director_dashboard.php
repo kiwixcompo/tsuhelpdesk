@@ -1,4 +1,7 @@
 <?php
+// Start output buffering to prevent header issues
+ob_start();
+
 session_start();
 
 // Only allow director (role_id = 3)
@@ -887,3 +890,8 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["submit_i4cus_complaint"
     </div>
 </body>
 </html>
+
+<?php
+// End output buffering and flush
+ob_end_flush();
+?>

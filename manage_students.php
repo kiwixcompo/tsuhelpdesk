@@ -126,6 +126,34 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                     $error_msg = "Only Super Admin can delete students.";
                 }
                 break;
+                
+            case "activate_student":
+                $student_id = $_POST["student_id"];
+                $activate_sql = "UPDATE students SET is_active = 1 WHERE student_id = ?";
+                if($activate_stmt = mysqli_prepare($conn, $activate_sql)){
+                    mysqli_stmt_bind_param($activate_stmt, "i", $student_id);
+                    if(mysqli_stmt_execute($activate_stmt)){
+                        $success_msg = "Student activated successfully.";
+                    } else {
+                        $error_msg = "Failed to activate student.";
+                    }
+                    mysqli_stmt_close($activate_stmt);
+                }
+                break;
+                
+            case "deactivate_student":
+                $student_id = $_POST["student_id"];
+                $deactivate_sql = "UPDATE students SET is_active = 0 WHERE student_id = ?";
+                if($deactivate_stmt = mysqli_prepare($conn, $deactivate_sql)){
+                    mysqli_stmt_bind_param($deactivate_stmt, "i", $student_id);
+                    if(mysqli_stmt_execute($deactivate_stmt)){
+                        $success_msg = "Student deactivated successfully.";
+                    } else {
+                        $error_msg = "Failed to deactivate student.";
+                    }
+                    mysqli_stmt_close($deactivate_stmt);
+                }
+                break;
         }
     }
 }
@@ -404,10 +432,52 @@ ob_end_flush();
                         <p class="text-muted">Try adjusting your search criteria</p>
                     </div>
                 <?php else: ?>
+                    <!-- Bulk Actions -->
+                    <div class="mb-3">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="btn-group" role="group">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAllStudents()">
+                                        <i class="fas fa-check-square"></i> Select All
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="deselectAllStudents()">
+                                        <i class="fas fa-square"></i> Deselect All
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-6 text-right">
+                                <div class="btn-group" role="group">
+                                    <button type="button" class="btn btn-sm btn-warning" onclick="bulkResetStudentPasswords()" disabled id="bulkResetStudentsBtn">
+                                        <i class="fas fa-key"></i> Reset Selected Passwords
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-success" onclick="bulkActivateStudents()" disabled id="bulkActivateBtn">
+                                        <i class="fas fa-check"></i> Activate Selected
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-secondary" onclick="bulkDeactivateStudents()" disabled id="bulkDeactivateBtn">
+                                        <i class="fas fa-ban"></i> Deactivate Selected
+                                    </button>
+                                    <?php if($_SESSION["is_super_admin"]): ?>
+                                    <button type="button" class="btn btn-sm btn-danger" onclick="bulkDeleteStudents()" disabled id="bulkDeleteStudentsBtn">
+                                        <i class="fas fa-trash"></i> Delete Selected
+                                    </button>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <small class="text-muted">
+                                <span id="selectedStudentCount">0</span> student(s) selected
+                            </small>
+                        </div>
+                    </div>
+                    
                     <div class="table-responsive">
                         <table class="table table-hover">
                             <thead class="thead-light">
                                 <tr>
+                                    <th width="40">
+                                        <input type="checkbox" id="selectAllStudentsCheckbox" onchange="toggleAllStudents(this)">
+                                    </th>
                                     <th>Student Info</th>
                                     <th>Registration</th>
                                     <th>Programme</th>
@@ -420,6 +490,9 @@ ob_end_flush();
                             <tbody>
                                 <?php foreach($students as $student): ?>
                                     <tr>
+                                        <td>
+                                            <input type="checkbox" class="student-checkbox" value="<?php echo $student['student_id']; ?>" onchange="updateStudentBulkActions()">
+                                        </td>
                                         <td>
                                             <div>
                                                 <strong><?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?></strong>
@@ -639,6 +712,178 @@ ob_end_flush();
             }
         }
         
+        // Student bulk selection functions
+        function toggleAllStudents(checkbox) {
+            const checkboxes = document.querySelectorAll('.student-checkbox');
+            checkboxes.forEach(cb => {
+                cb.checked = checkbox.checked;
+            });
+            updateStudentBulkActions();
+        }
+        
+        function selectAllStudents() {
+            const checkboxes = document.querySelectorAll('.student-checkbox');
+            checkboxes.forEach(cb => {
+                cb.checked = true;
+            });
+            document.getElementById('selectAllStudentsCheckbox').checked = true;
+            updateStudentBulkActions();
+        }
+        
+        function deselectAllStudents() {
+            const checkboxes = document.querySelectorAll('.student-checkbox');
+            checkboxes.forEach(cb => {
+                cb.checked = false;
+            });
+            document.getElementById('selectAllStudentsCheckbox').checked = false;
+            updateStudentBulkActions();
+        }
+        
+        function updateStudentBulkActions() {
+            const selectedCheckboxes = document.querySelectorAll('.student-checkbox:checked');
+            const count = selectedCheckboxes.length;
+            
+            document.getElementById('selectedStudentCount').textContent = count;
+            document.getElementById('bulkResetStudentsBtn').disabled = count === 0;
+            document.getElementById('bulkActivateBtn').disabled = count === 0;
+            document.getElementById('bulkDeactivateBtn').disabled = count === 0;
+            
+            const deleteBtn = document.getElementById('bulkDeleteStudentsBtn');
+            if(deleteBtn) {
+                deleteBtn.disabled = count === 0;
+            }
+            
+            // Update select all checkbox state
+            const allCheckboxes = document.querySelectorAll('.student-checkbox');
+            const selectAllCheckbox = document.getElementById('selectAllStudentsCheckbox');
+            
+            if (count === 0) {
+                selectAllCheckbox.indeterminate = false;
+                selectAllCheckbox.checked = false;
+            } else if (count === allCheckboxes.length) {
+                selectAllCheckbox.indeterminate = false;
+                selectAllCheckbox.checked = true;
+            } else {
+                selectAllCheckbox.indeterminate = true;
+            }
+        }
+        
+        function bulkResetStudentPasswords() {
+            const selectedCheckboxes = document.querySelectorAll('.student-checkbox:checked');
+            if (selectedCheckboxes.length === 0) {
+                alert('Please select at least one student.');
+                return;
+            }
+            
+            const newPassword = prompt('Enter new password for all selected students (minimum 6 characters):');
+            if (!newPassword || newPassword.length < 6) {
+                alert('Password must be at least 6 characters long.');
+                return;
+            }
+            
+            if (!confirm(`Are you sure you want to reset passwords for ${selectedCheckboxes.length} selected student(s)?`)) {
+                return;
+            }
+            
+            processBulkStudentAction('reset_password', selectedCheckboxes, { new_password: newPassword });
+        }
+        
+        function bulkActivateStudents() {
+            const selectedCheckboxes = document.querySelectorAll('.student-checkbox:checked');
+            if (selectedCheckboxes.length === 0) {
+                alert('Please select at least one student.');
+                return;
+            }
+            
+            if (!confirm(`Are you sure you want to activate ${selectedCheckboxes.length} selected student(s)?`)) {
+                return;
+            }
+            
+            processBulkStudentAction('activate_student', selectedCheckboxes);
+        }
+        
+        function bulkDeactivateStudents() {
+            const selectedCheckboxes = document.querySelectorAll('.student-checkbox:checked');
+            if (selectedCheckboxes.length === 0) {
+                alert('Please select at least one student.');
+                return;
+            }
+            
+            if (!confirm(`Are you sure you want to deactivate ${selectedCheckboxes.length} selected student(s)?`)) {
+                return;
+            }
+            
+            processBulkStudentAction('deactivate_student', selectedCheckboxes);
+        }
+        
+        function bulkDeleteStudents() {
+            const selectedCheckboxes = document.querySelectorAll('.student-checkbox:checked');
+            if (selectedCheckboxes.length === 0) {
+                alert('Please select at least one student.');
+                return;
+            }
+            
+            if (!confirm(`Are you sure you want to DELETE ${selectedCheckboxes.length} selected student(s)?\n\nThis will also delete all their complaints and CANNOT be undone!`)) {
+                return;
+            }
+            
+            processBulkStudentAction('delete_student', selectedCheckboxes);
+        }
+        
+        function processBulkStudentAction(action, checkboxes, extraData = {}) {
+            const studentIds = Array.from(checkboxes).map(cb => cb.value);
+            let completed = 0;
+            let errors = [];
+            
+            // Show progress
+            const progressMsg = document.createElement('div');
+            progressMsg.className = 'alert alert-info';
+            progressMsg.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Processing ${studentIds.length} student(s)...`;
+            document.querySelector('.container-fluid').insertBefore(progressMsg, document.querySelector('.container-fluid').firstChild);
+            
+            studentIds.forEach(studentId => {
+                const formData = new FormData();
+                formData.append('action', action);
+                formData.append('student_id', studentId);
+                
+                // Add extra data if provided
+                Object.keys(extraData).forEach(key => {
+                    formData.append(key, extraData[key]);
+                });
+                
+                fetch('manage_students.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.text())
+                .then(data => {
+                    completed++;
+                    if (completed === studentIds.length) {
+                        finalizeBulkStudentAction(errors, progressMsg);
+                    }
+                })
+                .catch(error => {
+                    errors.push(`Student ID ${studentId}: ${error.message}`);
+                    completed++;
+                    if (completed === studentIds.length) {
+                        finalizeBulkStudentAction(errors, progressMsg);
+                    }
+                });
+            });
+        }
+        
+        function finalizeBulkStudentAction(errors, progressMsg) {
+            progressMsg.remove();
+            
+            if (errors.length === 0) {
+                alert('Bulk action completed successfully!');
+                location.reload();
+            } else {
+                alert('Some errors occurred:\n' + errors.join('\n'));
+                location.reload();
+            }
+        }
+        
         // Auto-dismiss alerts
         $('.alert').delay(5000).fadeOut();
         
@@ -658,3 +903,8 @@ ob_end_flush();
     </script>
 </body>
 </html>
+
+<?php
+// End output buffering and flush
+ob_end_flush();
+?>

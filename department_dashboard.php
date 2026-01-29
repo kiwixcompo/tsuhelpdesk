@@ -1,4 +1,7 @@
 <?php
+// Start output buffering to prevent header issues
+ob_start();
+
 session_start();
 
 // Only allow departments (role_id = 7)
@@ -424,3 +427,8 @@ $treated_complaints = count(array_filter($complaints, function($c) { return $c['
     </script>
 </body>
 </html>
+
+<?php
+// End output buffering and flush
+ob_end_flush();
+?>
