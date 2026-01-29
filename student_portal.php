@@ -156,9 +156,59 @@ ob_end_flush();
                 }
                 
                 if($show_back_link): ?>
+                <?php
+                // Only show back link if user came from another page or if explicitly requested
+                $show_back_link = false;
+                
+                // Check if there's a referrer and it's from the same domain
+                if(isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
+                    $referrer = parse_url($_SERVER['HTTP_REFERER']);
+                    $current_host = $_SERVER['HTTP_HOST'];
+                    
+                    // Show back link if referrer is from same domain and not the student portal itself
+                    if(isset($referrer['host']) && $referrer['host'] === $current_host) {
+                        $referrer_path = isset($referrer['path']) ? basename($referrer['path']) : '';
+                        if($referrer_path !== 'student_portal.php' && $referrer_path !== '') {
+                            $show_back_link = true;
+                        }
+                    }
+                }
+                
+                // Also check for explicit back parameter
+                if(isset($_GET['back']) && $_GET['back'] === '1') {
+                    $show_back_link = true;
+                }
+                
+                if($show_back_link): ?>
+                <?php
+                // Only show back link if user came from another page or if explicitly requested
+                $show_back_link = false;
+                
+                // Check if there's a referrer and it's from the same domain
+                if(isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
+                    $referrer = parse_url($_SERVER['HTTP_REFERER']);
+                    $current_host = $_SERVER['HTTP_HOST'];
+                    
+                    // Show back link if referrer is from same domain and not the student portal itself
+                    if(isset($referrer['host']) && $referrer['host'] === $current_host) {
+                        $referrer_path = isset($referrer['path']) ? basename($referrer['path']) : '';
+                        if($referrer_path !== 'student_portal.php' && $referrer_path !== '') {
+                            $show_back_link = true;
+                        }
+                    }
+                }
+                
+                // Also check for explicit back parameter
+                if(isset($_GET['back']) && $_GET['back'] === '1') {
+                    $show_back_link = true;
+                }
+                
+                if($show_back_link): ?>
                 <a href="index.php" class="back-link">
                     <i class="fas fa-arrow-left mr-2"></i>Back to Portal
                 </a>
+                <?php endif; ?>
+                <?php endif; ?>
                 <?php endif; ?>
                 
                 <!-- Header Section -->
@@ -197,7 +247,7 @@ ob_end_flush();
                 <div class="text-center mt-4">
                     <div class="card" style="background: rgba(255,255,255,0.1); border: none; border-radius: 15px;">
                         <div class="card-body text-white">
-                            <h5><i class="fas fa-info-circle mr-2"></i>About Student Portal</h5>
+                            <h5><i class="fas fa-info-circle mr-2"></i>About Student Complaint Portal</h5>
                             <p class="mb-0">
                                 This portal allows students to lodge complaints for result verification including 
                                 issues like Fail Absent (FA), Fail (F), or Incorrect grades.

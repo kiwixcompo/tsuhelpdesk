@@ -481,6 +481,10 @@ ob_end_flush();
                                                 data-toggle="modal" data-target="#viewModal<?php echo $complaint['complaint_id']; ?>">
                                             <i class="fas fa-eye"></i>
                                         </button>
+                                        <button type="button" class="btn btn-sm btn-outline-success btn-action" 
+                                                data-toggle="modal" data-target="#updateModal<?php echo $complaint['complaint_id']; ?>">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
                                         <button type="button" class="btn btn-sm btn-outline-danger btn-action" 
                                                 onclick="confirmDelete(<?php echo $complaint['complaint_id']; ?>)">
                                             <i class="fas fa-trash"></i>
@@ -531,10 +535,59 @@ ob_end_flush();
                                                     <h6>Description</h6>
                                                     <p><?php echo nl2br(htmlspecialchars($complaint['description'])); ?></p>
                                                 <?php endif; ?>
+                                                
+                                                <?php if(!empty($complaint['admin_response'])): ?>
+                                                    <hr>
+                                                    <h6>Admin Response</h6>
+                                                    <div class="alert alert-info">
+                                                        <?php echo nl2br(htmlspecialchars($complaint['admin_response'])); ?>
+                                                    </div>
+                                                <?php endif; ?>
                                             </div>
                                             <div class="modal-footer">
                                                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                                             </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Update Modal -->
+                                <div class="modal fade" id="updateModal<?php echo $complaint['complaint_id']; ?>" tabindex="-1">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">Update Complaint Status</h5>
+                                                <button type="button" class="close" data-dismiss="modal">
+                                                    <span>&times;</span>
+                                                </button>
+                                            </div>
+                                            <form method="POST" onsubmit="return updateComplaint(<?php echo $complaint['complaint_id']; ?>, this)">
+                                                <div class="modal-body">
+                                                    <div class="form-group">
+                                                        <label><strong>Student:</strong> <?php echo htmlspecialchars($complaint['full_name']); ?></label>
+                                                        <p class="text-muted"><?php echo htmlspecialchars($complaint['course_code'] . ' - ' . $complaint['course_title']); ?></p>
+                                                    </div>
+                                                    
+                                                    <div class="form-group">
+                                                        <label for="status<?php echo $complaint['complaint_id']; ?>">Status</label>
+                                                        <select name="status" id="status<?php echo $complaint['complaint_id']; ?>" class="form-control" required>
+                                                            <option value="Pending" <?php echo ($complaint['status'] == 'Pending') ? 'selected' : ''; ?>>Pending</option>
+                                                            <option value="Under Review" <?php echo ($complaint['status'] == 'Under Review') ? 'selected' : ''; ?>>Under Review</option>
+                                                            <option value="Resolved" <?php echo ($complaint['status'] == 'Resolved') ? 'selected' : ''; ?>>Resolved</option>
+                                                            <option value="Rejected" <?php echo ($complaint['status'] == 'Rejected') ? 'selected' : ''; ?>>Rejected</option>
+                                                        </select>
+                                                    </div>
+                                                    
+                                                    <div class="form-group">
+                                                        <label for="response<?php echo $complaint['complaint_id']; ?>">Admin Response</label>
+                                                        <textarea name="response" id="response<?php echo $complaint['complaint_id']; ?>" class="form-control" rows="4" placeholder="Enter your response to the student..."><?php echo htmlspecialchars($complaint['admin_response'] ?? ''); ?></textarea>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                                                    <button type="submit" class="btn btn-primary">Update Complaint</button>
+                                                </div>
+                                            </form>
                                         </div>
                                     </div>
                                 </div>
@@ -578,6 +631,46 @@ ob_end_flush();
         function confirmDelete(complaintId) {
             $('#deleteComplaintId').val(complaintId);
             $('#deleteModal').modal('show');
+        }
+        
+        function updateComplaint(complaintId, form) {
+            const formData = new FormData(form);
+            formData.append('action', 'update_status');
+            formData.append('complaint_id', complaintId);
+            
+            // Show loading state
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+            submitBtn.disabled = true;
+            
+            fetch('api/manage_student_complaints.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show success message
+                    alert('Complaint updated successfully!');
+                    // Reload page to show updated data
+                    window.location.reload();
+                } else {
+                    alert('Error: ' + (data.message || 'Failed to update complaint'));
+                    // Reset button
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while updating the complaint');
+                // Reset button
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            });
+            
+            return false; // Prevent form submission
         }
         
         // Auto-dismiss alerts

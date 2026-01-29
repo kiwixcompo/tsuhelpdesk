@@ -261,6 +261,48 @@ if(mysqli_num_rows($session_check) == 0) {
     );
 }
 
+// Step 9: Add admin management fields to student complaints
+echo "<h5>Adding Admin Management Fields</h5>";
+
+$handled_by_check = mysqli_query($conn, "SHOW COLUMNS FROM student_complaints LIKE 'handled_by'");
+if(mysqli_num_rows($handled_by_check) == 0) {
+    executeUpdate($conn,
+        "ALTER TABLE student_complaints ADD COLUMN handled_by INT NULL AFTER status",
+        "Adding handled_by column for admin management"
+    );
+    
+    executeUpdate($conn,
+        "ALTER TABLE student_complaints ADD COLUMN admin_response TEXT NULL AFTER description",
+        "Adding admin_response column for admin feedback"
+    );
+    
+    executeUpdate($conn,
+        "ALTER TABLE student_complaints ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER created_at",
+        "Adding updated_at column for tracking changes"
+    );
+}
+
+// Step 10: Create student notifications table
+echo "<h5>Creating Student Notifications Table</h5>";
+
+$notifications_check = mysqli_query($conn, "SHOW TABLES LIKE 'student_notifications'");
+if(mysqli_num_rows($notifications_check) == 0) {
+    executeUpdate($conn,
+        "CREATE TABLE student_notifications (
+            notification_id INT AUTO_INCREMENT PRIMARY KEY,
+            student_id INT NOT NULL,
+            complaint_id INT NULL,
+            title VARCHAR(255) NOT NULL,
+            message TEXT NOT NULL,
+            is_read TINYINT(1) DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_student_id (student_id),
+            INDEX idx_complaint_id (complaint_id)
+        )",
+        "Creating student_notifications table"
+    );
+}
+
 // SECTION 2: FILE UPDATES
 echo "<div class='section-header'><h4>Section 2: File Updates</h4></div>";
 
@@ -381,6 +423,9 @@ if(count($errors) == 0) {
     echo "• New faculties (FCA, FRP) and their departments<br>";
     echo "• New programmes with correct registration formats<br>";
     echo "• Deputy Director ICT role<br>";
+    echo "• Academic session field for student complaints<br>";
+    echo "• Enhanced admin complaint management system<br>";
+    echo "• Student notifications system<br>";
     echo "• Updated UI titles and navigation<br>";
     echo "• Conditional back link functionality<br>";
     echo "</div>";

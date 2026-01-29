@@ -805,6 +805,25 @@ foreach ($complaints as $c) {
             </div>
         </div>
 
+        <!-- Enhanced Student Complaints Management -->
+        <div class="mb-4">
+            <div class="card bg-light">
+                <div class="card-body py-2">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h6 class="mb-0"><i class="fas fa-clipboard-list mr-2"></i>Student Complaints Management</h6>
+                            <small class="text-muted">Comprehensive management of student result verification complaints with filtering, status updates, and export capabilities</small>
+                        </div>
+                        <div class="col-md-4 text-right">
+                            <a href="enhanced_student_complaints_report.php" class="btn btn-primary btn-sm">
+                                <i class="fas fa-cogs mr-1"></i> Manage Complaints
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Search and Filter Section -->
         <div class="row mb-3">
             <div class="col-md-6">
