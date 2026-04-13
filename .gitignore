@@ -2,7 +2,8 @@
 config.php
 
 # Log files
-logs/
+logs/*
+!logs/.gitkeep
 *.log
 
 # Upload directories

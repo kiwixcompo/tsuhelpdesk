@@ -1,0 +1,54 @@
+<?php
+// ── Application Error Logger ─────────────────────────────
+// Included by config.php on every request.
+// Creates logs/error.log automatically if missing or deleted.
+
+define('APP_LOG', __DIR__ . '/../logs/error.log');
+
+// Ensure logs/ directory exists
+$logsDir = __DIR__ . '/../logs';
+if (!is_dir($logsDir)) {
+    mkdir($logsDir, 0755, true);
+}
+
+// Recreate log file if deleted
+if (!file_exists(APP_LOG)) {
+    file_put_contents(APP_LOG,
+        "=== TSU ICT Help Desk Error Log ===\n" .
+        "Created: " . date('Y-m-d H:i:s') . "\n\n"
+    );
+    @chmod(APP_LOG, 0644);
+}
+
+// Route all PHP errors into our log
+ini_set('log_errors', 1);
+ini_set('error_log', APP_LOG);
+ini_set('display_errors', 0);
+error_reporting(E_ALL);
+
+/**
+ * Write a custom entry to the application log.
+ * Usage: app_log('error', 'Something failed', ['key' => 'value']);
+ */
+function app_log(string $level, string $message, array $context = []): void
+{
+    $uri  = $_SERVER['REQUEST_URI'] ?? 'CLI';
+    $line = '[' . date('Y-m-d H:i:s') . '] [' . strtoupper($level) . '] '
+          . $message;
+    if ($context) {
+        $line .= ' | ' . json_encode($context, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    }
+    $line .= ' | URI: ' . $uri . "\n";
+    error_log($line, 3, APP_LOG);
+}
+
+// Catch fatal errors that the normal error handler misses
+register_shutdown_function(function () {
+    $e = error_get_last();
+    if ($e && in_array($e['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) {
+        app_log('FATAL', $e['message'], [
+            'file' => $e['file'],
+            'line' => $e['line'],
+        ]);
+    }
+});
