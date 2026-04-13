@@ -2,11 +2,5 @@
 deployment:
   tasks:
     - export DEPLOYPATH=/home/tsuniver/helpdesk.tsuniversity.ng
-    - export REPOPATH=/home/tsuniver/repositories/tsuhelpdesk
     - /bin/mkdir -p $DEPLOYPATH
-    - /bin/cp -R $REPOPATH/. $DEPLOYPATH/
-    - /bin/cp $REPOPATH/.htaccess $DEPLOYPATH/ 2>/dev/null || true
-    - chmod -R 755 $DEPLOYPATH/uploads/ 2>/dev/null || true
-    - chmod -R 755 $DEPLOYPATH/logs/ 2>/dev/null || true
-    - /bin/rm -rf $DEPLOYPATH/.git 2>/dev/null || true
-    - /bin/rm -f $DEPLOYPATH/*.bat 2>/dev/null || true
+    - /bin/cp -rf /home/tsuniver/repositories/tsuhelpdesk/. $DEPLOYPATH/
