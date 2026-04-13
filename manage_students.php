@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // Start output buffering to prevent header issues
 ob_start();
 
@@ -78,11 +78,11 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                                         $message .= "Your password has been reset by an administrator.\n\n";
                                         $message .= "Your new password is: " . $new_password . "\n\n";
                                         $message .= "For security reasons, please login and change your password immediately.\n\n";
-                                        $message .= "Login URL: https://helpdesk.tsuniversity.edu.ng/student_login.php\n\n";
+                                        $message .= "Login URL: https://helpdesk.tsuniversity.ng/student_login.php\n\n";
                                         $message .= "Best regards,\nTSU ICT Help Desk Team";
                                         
-                                        $headers = "From: TSU ICT Help Desk <noreply@tsuniversity.edu.ng>\r\n";
-                                        $headers .= "Reply-To: support@tsuniversity.edu.ng\r\n";
+                                        $headers = "From: TSU ICT Help Desk <noreply@tsuniversity.ng>\r\n";
+                                        $headers .= "Reply-To: support@tsuniversity.ng\r\n";
                                         
                                         @mail($to, $subject, $message, $headers);
                                     }

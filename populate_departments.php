@@ -1,10 +1,10 @@
-<?php
+﻿<?php
 /**
  * TSU ICT Help Desk - Populate All Departments
  * This script ensures all departments are properly populated
  * 
  * Usage: Upload to server and run via browser
- * URL: https://helpdesk.tsuniversity.edu.ng/populate_departments.php
+ * URL: https://helpdesk.tsuniversity.ng/populate_departments.php
  */
 
 require_once 'config.php';

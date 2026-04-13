@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 
 // If user is already logged in, redirect to appropriate dashboard
@@ -111,7 +111,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                             
                             if(mysqli_stmt_execute($insert_stmt)){
                                 // Send email with reset link
-                                $reset_link = "https://helpdesk.tsuniversity.edu.ng/reset_password.php?token=$token";
+                                $reset_link = "https://helpdesk.tsuniversity.ng/reset_password.php?token=$token";
                                 $to = $db_email;
                                 $subject = "Password Reset Request - TSU Helpdesk";
                                 $message_body = "Hello $db_username,\n\n";
@@ -122,8 +122,8 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                                 $message_body .= "Regards,\nTSU Helpdesk Team";
                                 
                                 // Better email headers
-                                $headers = "From: TSU Helpdesk <noreply@tsuniversity.edu.ng>\r\n";
-                                $headers .= "Reply-To: noreply@tsuniversity.edu.ng\r\n";
+                                $headers = "From: TSU Helpdesk <noreply@tsuniversity.ng>\r\n";
+                                $headers .= "Reply-To: noreply@tsuniversity.ng\r\n";
                                 $headers .= "X-Mailer: PHP/" . phpversion() . "\r\n";
                                 $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
                                 

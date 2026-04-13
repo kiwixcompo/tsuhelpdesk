@@ -1,7 +1,7 @@
 ﻿---
 deployment:
   tasks:
-    - export DEPLOYPATH=/home/tsuniver/helpdesk.tsuniversity.ng/
+    - export DEPLOYPATH=/home4/tsuniity/helpdesk.tsuniversity.ng/
     - /bin/cp -R * $DEPLOYPATH
     - find $DEPLOYPATH -name "*.php" -exec chmod 644 {} \;
     - find $DEPLOYPATH -type d -exec chmod 755 {} \;

@@ -1,870 +1,593 @@
 <?php
-// Navbar component - include this on all pages
-// Make sure to include notifications.php before this file
+// Navbar component
 
-// Get notification count if not already set
 if (!isset($notification_count)) {
     require_once "includes/notifications.php";
     $notification_count = getUnreadNotificationCount($conn, $_SESSION["user_id"]);
 }
 
-// Get unread messages count if not already set
 if (!isset($unread_count)) {
-    $messages_sql = "SELECT COUNT(*) as count FROM messages WHERE (recipient_id = ? OR is_broadcast = 1) AND is_read = 0";
-    if($stmt = mysqli_prepare($conn, $messages_sql)){
-        mysqli_stmt_bind_param($stmt, "i", $_SESSION["user_id"]);
-        if(mysqli_stmt_execute($stmt)){
-            $result = mysqli_stmt_get_result($stmt);
-            if($row = mysqli_fetch_assoc($result)){
-                $unread_count = $row['count'];
-            }
-        }
-        mysqli_stmt_close($stmt);
+    $unread_count = 0;
+    $msg_sql = "SELECT COUNT(*) as c FROM messages WHERE (recipient_id = ? OR is_broadcast = 1) AND is_read = 0";
+    if ($s = mysqli_prepare($conn, $msg_sql)) {
+        mysqli_stmt_bind_param($s, "i", $_SESSION["user_id"]);
+        mysqli_stmt_execute($s);
+        $r = mysqli_stmt_get_result($s);
+        if ($row = mysqli_fetch_assoc($r)) $unread_count = $row['c'];
+        mysqli_stmt_close($s);
     }
 }
 
-// Determine current dashboard file
-$dashboard_file = '';
-switch($_SESSION["role_id"]) {
-    case 3: $dashboard_file = 'director_dashboard.php'; break;
-    case 4: $dashboard_file = 'dvc_dashboard.php'; break;
-    case 5: $dashboard_file = 'i4cus_staff_dashboard.php'; break;
-    case 6: $dashboard_file = 'payment_admin_dashboard.php'; break;
-    case 7: $dashboard_file = 'department_dashboard.php'; break;
-    case 8: $dashboard_file = 'deputy_director_dashboard.php'; break;
-    default: $dashboard_file = 'dashboard.php'; break;
+$role_id = $_SESSION["role_id"];
+$dashboard_file = match($role_id) {
+    3 => 'director_dashboard.php',
+    4 => 'dvc_dashboard.php',
+    5 => 'i4cus_staff_dashboard.php',
+    6 => 'payment_admin_dashboard.php',
+    7 => 'department_dashboard.php',
+    8 => 'deputy_director_dashboard.php',
+    default => 'dashboard.php',
+};
+
+$app_logo = $app_logo ?? '';
+$app_name = $app_name ?? 'TSU ICT Help Desk';
+$current_page = basename($_SERVER['PHP_SELF']);
+
+function nb_active(string $page, string $current): string {
+    return $page === $current ? ' nb-active' : '';
 }
 ?>
 
 <style>
-/* Prevent horizontal overflow */
-html, body {
-    overflow-x: hidden;
-    max-width: 100%;
-}
-
-.container {
-    max-width: 100%;
-    padding-left: 15px;
-    padding-right: 15px;
-}
-
-.modern-navbar {
-    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-    box-shadow: 0 2px 20px rgba(30, 60, 114, 0.15);
-    padding: 0.75rem 0;
+/* ── Navbar ─────────────────────────────────────────── */
+.nb {
+    background: #1e3c72;
     position: sticky;
     top: 0;
-    z-index: 1030;
-    width: 100%;
+    z-index: 1040;
+    box-shadow: 0 1px 6px rgba(0,0,0,.18);
 }
-
-.navbar-brand-modern {
+.nb-inner {
     display: flex;
     align-items: center;
-    color: white !important;
-    font-weight: 600;
-    font-size: 1.1rem;
-    text-decoration: none;
+    height: 56px;
+    padding: 0 1rem;
+    gap: .5rem;
 }
 
-.navbar-brand-modern:hover {
-    color: #e8f4fd !important;
+/* Brand */
+.nb-brand {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    color: #fff !important;
+    font-weight: 700;
+    font-size: .95rem;
     text-decoration: none;
+    flex-shrink: 0;
+    margin-right: auto;
 }
-
-.brand-logo {
-    height: 32px;
-    width: 32px;
-    margin-right: 10px;
+.nb-brand:hover { color: #c9d9f5 !important; text-decoration: none; }
+.nb-brand-logo {
+    width: 30px; height: 30px;
     border-radius: 6px;
+    object-fit: contain;
+    background: rgba(255,255,255,.15);
+    display: flex; align-items: center; justify-content: center;
+    font-size: .9rem; color: #fff;
+    flex-shrink: 0;
 }
+.nb-brand-logo img { width: 100%; height: 100%; border-radius: 6px; object-fit: contain; }
 
-.navbar-toggler-modern {
-    border: none;
-    padding: 4px 8px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    transition: all 0.3s ease;
-}
-
-.navbar-toggler-modern:hover {
-    background: rgba(255, 255, 255, 0.2);
-}
-
-.navbar-toggler-modern .navbar-toggler-icon {
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.8%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='m4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
-}
-
-.navbar-nav-modern {
-    align-items: center;
-}
-
-.nav-section {
+/* Desktop links */
+.nb-links {
     display: flex;
     align-items: center;
-    margin-right: 1rem;
+    gap: .1rem;
+    list-style: none;
+    margin: 0; padding: 0;
 }
-
-.nav-section:last-child {
-    margin-right: 0;
-}
-
-.nav-section-divider {
-    width: 1px;
-    height: 24px;
-    background: rgba(255, 255, 255, 0.2);
-    margin: 0 1rem;
-}
-
-.nav-link-modern {
-    color: rgba(255, 255, 255, 0.9) !important;
-    padding: 0.5rem 0.75rem !important;
-    border-radius: 8px;
-    transition: all 0.3s ease;
+.nb-links a {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    color: rgba(255,255,255,.85);
+    font-size: .82rem;
     font-weight: 500;
-    display: flex;
-    align-items: center;
+    padding: .35rem .65rem;
+    border-radius: 6px;
     text-decoration: none;
-    margin: 0 2px;
+    transition: background .15s, color .15s;
+    white-space: nowrap;
 }
-
-.nav-link-modern:hover {
-    color: white !important;
-    background: rgba(255, 255, 255, 0.15);
-    transform: translateY(-1px);
+.nb-links a:hover, .nb-links a.nb-active {
+    background: rgba(255,255,255,.15);
+    color: #fff;
     text-decoration: none;
 }
+.nb-links a i { font-size: .8rem; }
 
-.nav-link-modern.active {
-    background: rgba(255, 255, 255, 0.2);
-    color: white !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+/* Divider */
+.nb-div {
+    width: 1px; height: 20px;
+    background: rgba(255,255,255,.2);
+    margin: 0 .4rem;
+    flex-shrink: 0;
 }
 
-.nav-link-modern i {
-    margin-right: 6px;
-    font-size: 0.9rem;
-}
-
-.nav-link-icon-only {
-    padding: 0.5rem !important;
+/* Icon buttons (bell, envelope) */
+.nb-icon-btn {
     position: relative;
-}
-
-.nav-link-icon-only i {
-    margin-right: 0;
-    font-size: 1.1rem;
-}
-
-.notification-badge {
-    position: absolute;
-    top: -2px;
-    right: -2px;
-    background: #ff4757;
-    color: white;
-    border-radius: 10px;
-    padding: 2px 6px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    min-width: 18px;
-    text-align: center;
-    border: 2px solid #1e3c72;
-}
-
-.message-badge {
-    background: #2ed573;
-}
-
-.dropdown-menu-modern {
-    border: none;
-    border-radius: 12px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
-    padding: 0.5rem 0;
-    margin-top: 0.5rem;
-    min-width: 280px;
-}
-
-.dropdown-header-modern {
-    padding: 0.75rem 1rem;
-    font-weight: 600;
-    color: #1e3c72;
-    border-bottom: 1px solid #e9ecef;
-    margin-bottom: 0.5rem;
-}
-
-.dropdown-item-modern {
-    padding: 0.75rem 1rem;
-    transition: all 0.2s ease;
-    border-radius: 0;
-}
-
-.dropdown-item-modern:hover {
-    background: #f8f9fa;
-    color: #1e3c72;
-}
-
-.user-dropdown {
-    display: flex;
-    align-items: center;
-    color: white !important;
-    text-decoration: none;
-    padding: 0.5rem 0.75rem;
-    border-radius: 25px;
-    background: rgba(255, 255, 255, 0.1);
-    transition: all 0.3s ease;
-}
-
-.user-dropdown:hover {
-    background: rgba(255, 255, 255, 0.2);
-    color: white !important;
-    text-decoration: none;
-}
-
-.user-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.2);
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-right: 8px;
-    font-size: 1rem;
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    color: rgba(255,255,255,.85);
+    text-decoration: none;
+    transition: background .15s, color .15s;
+    flex-shrink: 0;
 }
-
-.user-info {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-}
-
-.user-name {
-    font-weight: 600;
-    font-size: 0.9rem;
-    line-height: 1.2;
-    white-space: nowrap;
-    overflow: visible;
-    text-overflow: unset;
-    max-width: none;
-}
-
-.user-role {
-    font-size: 0.75rem;
-    opacity: 0.8;
+.nb-icon-btn:hover { background: rgba(255,255,255,.15); color: #fff; text-decoration: none; }
+.nb-icon-btn i { font-size: 1rem; }
+.nb-badge {
+    position: absolute;
+    top: 2px; right: 2px;
+    background: #e74c3c;
+    color: #fff;
+    font-size: .6rem;
+    font-weight: 700;
+    min-width: 16px; height: 16px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 3px;
+    border: 2px solid #1e3c72;
     line-height: 1;
 }
 
-/* Mobile Responsive */
-@media (max-width: 991.98px) {
-    .navbar-collapse {
-        background: rgba(30, 60, 114, 0.95);
-        backdrop-filter: blur(10px);
-        border-radius: 12px;
-        margin-top: 1rem;
-        padding: 1rem;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-        max-width: calc(100vw - 30px);
-    }
-    
-    .nav-section {
-        flex-direction: column;
-        align-items: flex-start;
-        margin-right: 0;
-        margin-bottom: 1rem;
-        width: 100%;
-    }
-    
-    .nav-section-divider {
-        display: none;
-    }
-    
-    .nav-link-modern {
-        width: 100%;
-        justify-content: flex-start;
-        margin: 2px 0;
-        padding: 0.75rem 1rem !important;
-    }
-    
-    .user-dropdown {
-        width: 100%;
-        justify-content: flex-start;
-        border-radius: 8px;
-        margin-top: 1rem;
-        padding: 1rem;
-    }
-    
-    .dropdown-menu-modern {
-        position: static !important;
-        transform: none !important;
-        box-shadow: none;
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 8px;
-        margin-top: 0.5rem;
-        width: 100%;
-        max-width: 100%;
-    }
-    
-    .dropdown-item-modern {
-        color: white;
-    }
-    
-    .dropdown-item-modern:hover {
-        background: rgba(255, 255, 255, 0.1);
-        color: white;
-    }
+/* User pill */
+.nb-user {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    background: rgba(255,255,255,.1);
+    border-radius: 20px;
+    padding: .3rem .7rem .3rem .4rem;
+    color: #fff;
+    text-decoration: none;
+    transition: background .15s;
+    flex-shrink: 0;
+    cursor: pointer;
+    border: none;
 }
+.nb-user:hover { background: rgba(255,255,255,.2); color: #fff; text-decoration: none; }
+.nb-avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: .8rem;
+    flex-shrink: 0;
+}
+.nb-uname { font-size: .82rem; font-weight: 600; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nb-urole { font-size: .7rem; opacity: .75; }
 
-@media (max-width: 576px) {
-    .modern-navbar {
-        padding: 0.5rem 0;
-    }
-    
-    .navbar-brand-modern {
-        font-size: 1rem;
-    }
-    
-    .brand-logo {
-        height: 28px;
-        width: 28px;
-    }
-    
-    .container {
-        padding-left: 10px;
-        padding-right: 10px;
-    }
-    
-    .navbar-collapse {
-        max-width: calc(100vw - 20px);
-    }
+/* Dropdown */
+.nb-dropdown {
+    position: relative;
+}
+.nb-dropdown-menu {
+    display: none;
+    position: absolute;
+    right: 0; top: calc(100% + 6px);
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.15);
+    min-width: 220px;
+    padding: .4rem 0;
+    z-index: 1050;
+    animation: nbFadeIn .15s ease;
+}
+.nb-dropdown-menu.nb-notif-menu { min-width: 300px; max-height: 420px; overflow-y: auto; }
+@keyframes nbFadeIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+.nb-dropdown.open .nb-dropdown-menu { display: block; }
+.nb-dm-header {
+    padding: .5rem 1rem;
+    font-size: .75rem;
+    font-weight: 700;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    border-bottom: 1px solid #f0f0f0;
+    margin-bottom: .25rem;
+}
+.nb-dm-item {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .55rem 1rem;
+    font-size: .85rem;
+    color: #333;
+    text-decoration: none;
+    transition: background .12s;
+    cursor: pointer;
+}
+.nb-dm-item:hover { background: #f4f7fb; color: #1e3c72; text-decoration: none; }
+.nb-dm-item.danger { color: #dc3545; }
+.nb-dm-item.danger:hover { background: #fff5f5; }
+.nb-dm-item i { width: 16px; text-align: center; font-size: .85rem; color: #6c757d; }
+.nb-dm-item.danger i { color: #dc3545; }
+.nb-dm-divider { border: none; border-top: 1px solid #f0f0f0; margin: .25rem 0; }
+
+/* Notification items */
+.nb-notif-item {
+    padding: .65rem 1rem;
+    border-bottom: 1px solid #f5f5f5;
+    cursor: pointer;
+    transition: background .12s;
+}
+.nb-notif-item:hover { background: #f4f7fb; }
+.nb-notif-item.unread { border-left: 3px solid #1e3c72; }
+.nb-notif-title { font-size: .82rem; font-weight: 600; color: #1e3c72; margin-bottom: 2px; }
+.nb-notif-msg   { font-size: .78rem; color: #6c757d; margin-bottom: 2px; }
+.nb-notif-time  { font-size: .72rem; color: #adb5bd; }
+.nb-notif-empty { padding: 1.5rem 1rem; text-align: center; color: #adb5bd; font-size: .85rem; }
+
+/* Hamburger */
+.nb-toggle {
+    display: none;
+    background: rgba(255,255,255,.1);
+    border: none;
+    border-radius: 6px;
+    width: 36px; height: 36px;
+    align-items: center; justify-content: center;
+    color: #fff;
+    font-size: 1.1rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background .15s;
+}
+.nb-toggle:hover { background: rgba(255,255,255,.2); }
+
+/* Mobile drawer */
+.nb-drawer {
+    display: none;
+    background: #162d5a;
+    padding: .75rem 1rem 1rem;
+    border-top: 1px solid rgba(255,255,255,.1);
+}
+.nb-drawer.open { display: block; }
+.nb-drawer a {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    color: rgba(255,255,255,.85);
+    font-size: .88rem;
+    font-weight: 500;
+    padding: .6rem .75rem;
+    border-radius: 7px;
+    text-decoration: none;
+    transition: background .12s;
+}
+.nb-drawer a:hover, .nb-drawer a.nb-active {
+    background: rgba(255,255,255,.12);
+    color: #fff;
+    text-decoration: none;
+}
+.nb-drawer a i { width: 18px; text-align: center; font-size: .85rem; }
+.nb-drawer-section { margin-bottom: .5rem; }
+.nb-drawer-label {
+    font-size: .68rem;
+    font-weight: 700;
+    color: rgba(255,255,255,.4);
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    padding: .5rem .75rem .2rem;
+}
+.nb-drawer-divider { border: none; border-top: 1px solid rgba(255,255,255,.1); margin: .5rem 0; }
+
+/* Responsive */
+@media (max-width: 991px) {
+    .nb-links, .nb-div { display: none !important; }
+    .nb-toggle { display: flex; }
+    .nb-uname, .nb-urole { display: none; }
+    .nb-user { padding: .3rem; border-radius: 50%; }
+}
+@media (min-width: 992px) {
+    .nb-drawer { display: none !important; }
 }
 </style>
 
-<!-- Session timeout script -->
-<script>
-// Enable session timeout for logged-in users
-var sessionTimeoutEnabled = true;
-</script>
+<script>var sessionTimeoutEnabled = true;</script>
 <script src="js/session-timeout.js"></script>
 
-<nav class="navbar navbar-expand-lg modern-navbar">
-    <div class="container">
+<!-- ── Navbar ── -->
+<nav class="nb">
+    <div class="nb-inner container-fluid">
+
         <!-- Brand -->
-        <a class="navbar-brand-modern" href="<?php echo $dashboard_file; ?>">
-            <?php 
-            // Set default values if not defined
-            $app_logo = $app_logo ?? '';
-            $app_name = $app_name ?? 'TSU ICT Help Desk';
-            
-            if($app_logo && file_exists($app_logo)): ?>
-                <img src="<?php echo htmlspecialchars($app_logo); ?>" alt="Logo" class="brand-logo">
-            <?php else: ?>
-                <div class="brand-logo" style="background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center;">
+        <a class="nb-brand" href="<?php echo $dashboard_file; ?>">
+            <div class="nb-brand-logo">
+                <?php if ($app_logo && file_exists($app_logo)): ?>
+                    <img src="<?php echo htmlspecialchars($app_logo); ?>" alt="Logo">
+                <?php else: ?>
                     <i class="fas fa-graduation-cap"></i>
-                </div>
-            <?php endif; ?>
+                <?php endif; ?>
+            </div>
             <span><?php echo htmlspecialchars($app_name); ?></span>
         </a>
-        
-        <!-- Mobile toggle -->
-        <button class="navbar-toggler navbar-toggler-modern" type="button" data-toggle="collapse" data-target="#navbarContent" aria-controls="navbarContent" aria-expanded="false">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        
-        <!-- Navigation Content -->
-        <div class="collapse navbar-collapse" id="navbarContent">
-            <div class="navbar-nav-modern ml-auto d-flex align-items-center">
-                
-                <!-- Main Navigation Section -->
-                <div class="nav-section">
-                    <a class="nav-link-modern <?php echo basename($_SERVER['PHP_SELF']) == $dashboard_file ? 'active' : ''; ?>" href="<?php echo $dashboard_file; ?>">
-                        <i class="fas fa-home"></i> Dashboard
-                    </a>
-                    
-                    <?php if($_SESSION["role_id"] == 1): // Admin ?>
-                        <a class="nav-link-modern <?php echo basename($_SERVER['PHP_SELF']) == 'admin.php' ? 'active' : ''; ?>" href="admin.php">
-                            <i class="fas fa-cogs"></i> Admin
-                        </a>
-                    <?php endif; ?>
-                </div>
-                
-                <!-- Management Section -->
-                <?php if(in_array($_SESSION["role_id"], [1, 3])): // Admin or Director ?>
-                <div class="nav-section-divider d-none d-lg-block"></div>
-                <div class="nav-section">
-                    <?php if($_SESSION["role_id"] == 1): ?>
-                        <a class="nav-link-modern <?php echo basename($_SERVER['PHP_SELF']) == 'users.php' ? 'active' : ''; ?>" href="users.php">
-                            <i class="fas fa-users"></i> Staff
-                        </a>
-                        <a class="nav-link-modern <?php echo basename($_SERVER['PHP_SELF']) == 'manage_students.php' ? 'active' : ''; ?>" href="manage_students.php">
-                            <i class="fas fa-user-graduate"></i> Students
-                        </a>
-                    <?php endif; ?>
-                    
-                    <a class="nav-link-modern <?php echo basename($_SERVER['PHP_SELF']) == 'student_complaints_report.php' ? 'active' : ''; ?>" href="student_complaints_report.php">
-                        <i class="fas fa-chart-bar"></i> Reports
-                    </a>
-                </div>
+
+        <!-- Desktop links -->
+        <ul class="nb-links">
+            <li><a href="<?php echo $dashboard_file; ?>" class="<?php echo nb_active($dashboard_file, $current_page); ?>">
+                <i class="fas fa-home"></i> Dashboard
+            </a></li>
+
+            <?php if ($role_id == 1): ?>
+            <li><a href="admin.php" class="<?php echo nb_active('admin.php', $current_page); ?>">
+                <i class="fas fa-cogs"></i> Admin
+            </a></li>
+            <?php endif; ?>
+
+            <?php if (in_array($role_id, [1, 3])): ?>
+            <div class="nb-div"></div>
+            <?php if ($role_id == 1): ?>
+            <li><a href="users.php" class="<?php echo nb_active('users.php', $current_page); ?>">
+                <i class="fas fa-users"></i> Staff
+            </a></li>
+            <li><a href="manage_students.php" class="<?php echo nb_active('manage_students.php', $current_page); ?>">
+                <i class="fas fa-user-graduate"></i> Students
+            </a></li>
+            <?php endif; ?>
+            <li><a href="student_complaints_report.php" class="<?php echo nb_active('student_complaints_report.php', $current_page); ?>">
+                <i class="fas fa-chart-bar"></i> Reports
+            </a></li>
+            <?php endif; ?>
+
+            <div class="nb-div"></div>
+            <li><a href="suggestions.php" class="<?php echo nb_active('suggestions.php', $current_page); ?>">
+                <i class="fas fa-lightbulb"></i> Suggestions
+            </a></li>
+
+            <?php if ($role_id == 1 && !empty($_SESSION["is_super_admin"])): ?>
+            <li><a href="settings.php" class="<?php echo nb_active('settings.php', $current_page); ?>">
+                <i class="fas fa-cog"></i> Settings
+            </a></li>
+            <?php endif; ?>
+        </ul>
+
+        <!-- Right icons -->
+        <div class="nb-div" style="display:flex!important"></div>
+
+        <!-- Messages -->
+        <a class="nb-icon-btn" href="messages.php" title="Messages">
+            <i class="fas fa-envelope"></i>
+            <?php if ($unread_count > 0): ?>
+                <span class="nb-badge"><?php echo $unread_count; ?></span>
+            <?php endif; ?>
+        </a>
+
+        <!-- Notifications -->
+        <div class="nb-dropdown">
+            <button class="nb-icon-btn" id="nbBellBtn" title="Notifications" aria-label="Notifications">
+                <i class="fas fa-bell"></i>
+                <?php if ($notification_count > 0): ?>
+                    <span class="nb-badge" id="notificationBadge"><?php echo $notification_count; ?></span>
                 <?php endif; ?>
-                
-                <!-- Tools Section -->
-                <div class="nav-section-divider d-none d-lg-block"></div>
-                <div class="nav-section">
-                    <a class="nav-link-modern <?php echo basename($_SERVER['PHP_SELF']) == 'suggestions.php' ? 'active' : ''; ?>" href="suggestions.php">
-                        <i class="fas fa-lightbulb"></i> Suggestions
-                    </a>
-                    
-                    <?php if($_SESSION["role_id"] == 1 && $_SESSION["is_super_admin"]): ?>
-                        <a class="nav-link-modern <?php echo basename($_SERVER['PHP_SELF']) == 'settings.php' ? 'active' : ''; ?>" href="settings.php">
-                            <i class="fas fa-cog"></i> Settings
-                        </a>
-                    <?php endif; ?>
+            </button>
+            <div class="nb-dropdown-menu nb-notif-menu" id="nbNotifMenu">
+                <div class="nb-dm-header"><i class="fas fa-bell mr-1"></i> Notifications</div>
+                <div id="notificationList">
+                    <div class="nb-notif-empty"><i class="fas fa-spinner fa-spin"></i> Loading…</div>
                 </div>
-                
-                <!-- Communication Section -->
-                <div class="nav-section-divider d-none d-lg-block"></div>
-                <div class="nav-section">
-                    <a class="nav-link-modern nav-link-icon-only <?php echo basename($_SERVER['PHP_SELF']) == 'messages.php' ? 'active' : ''; ?>" href="messages.php" title="Messages" data-toggle="tooltip" data-placement="bottom">
-                        <i class="fas fa-envelope"></i>
-                        <?php if($unread_count > 0): ?>
-                            <span class="notification-badge message-badge"><?php echo $unread_count; ?></span>
-                        <?php endif; ?>
-                    </a>
-                    
-                    <div class="nav-item dropdown">
-                        <a class="nav-link-modern nav-link-icon-only dropdown-toggle" href="#" id="notificationDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="Notifications">
-                            <i class="fas fa-bell"></i>
-                            <?php if($notification_count > 0): ?>
-                                <span class="notification-badge" id="notificationBadge"><?php echo $notification_count; ?></span>
-                            <?php endif; ?>
-                        </a>
-                        <div class="dropdown-menu dropdown-menu-right dropdown-menu-modern" aria-labelledby="notificationDropdown">
-                            <h6 class="dropdown-header-modern">
-                                <i class="fas fa-bell mr-2"></i> Recent Notifications
-                            </h6>
-                            <div id="notificationList">
-                                <div class="dropdown-item-modern text-center">
-                                    <i class="fas fa-spinner fa-spin"></i> Loading...
-                                </div>
-                            </div>
-                            <div class="dropdown-divider"></div>
-                            <a class="dropdown-item-modern text-center" href="notifications.php">
-                                <i class="fas fa-eye mr-2"></i> View All Notifications
-                            </a>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- User Section -->
-                <div class="nav-section-divider d-none d-lg-block"></div>
-                <div class="nav-section">
-                    <div class="nav-item dropdown">
-                        <a class="user-dropdown dropdown-toggle" href="#" id="userDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            <div class="user-avatar">
-                                <i class="fas fa-user"></i>
-                            </div>
-                            <div class="user-info d-none d-lg-block">
-                                <div class="user-name"><?php echo htmlspecialchars($_SESSION["full_name"] ?? "User"); ?></div>
-                                <div class="user-role">
-                                    <?php 
-                                    $role_names = [
-                                        1 => 'Administrator',
-                                        2 => 'Staff',
-                                        3 => 'Director',
-                                        4 => 'DVC',
-                                        5 => 'i4Cus Staff',
-                                        6 => 'Payment Admin',
-                                        7 => 'Department',
-                                        8 => 'Deputy Director ICT'
-                                    ];
-                                    echo $role_names[$_SESSION["role_id"]] ?? 'User';
-                                    ?>
-                                </div>
-                            </div>
-                        </a>
-                        <div class="dropdown-menu dropdown-menu-right dropdown-menu-modern" aria-labelledby="userDropdown">
-                            <h6 class="dropdown-header-modern">
-                                <i class="fas fa-user-circle mr-2"></i> <?php echo htmlspecialchars($_SESSION["full_name"] ?? "User"); ?>
-                            </h6>
-                            <a class="dropdown-item-modern" href="account.php">
-                                <i class="fas fa-user-edit mr-2"></i> My Profile
-                            </a>
-                            <a class="dropdown-item-modern" href="change_password.php">
-                                <i class="fas fa-key mr-2"></i> Change Password
-                            </a>
-                            <div class="dropdown-divider"></div>
-                            <a class="dropdown-item-modern text-danger" href="logout.php">
-                                <i class="fas fa-sign-out-alt mr-2"></i> Logout
-                            </a>
-                        </div>
-                    </div>
-                </div>
+                <hr class="nb-dm-divider">
+                <a class="nb-dm-item" href="notifications.php"><i class="fas fa-eye"></i> View all notifications</a>
             </div>
         </div>
-    </div>
+
+        <!-- User -->
+        <div class="nb-dropdown">
+            <button class="nb-user" id="nbUserBtn" aria-label="User menu">
+                <div class="nb-avatar"><i class="fas fa-user"></i></div>
+                <div>
+                    <div class="nb-uname"><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'User'); ?></div>
+                    <div class="nb-urole"><?php
+                        $rl = [1=>'Administrator',2=>'Staff',3=>'Director',4=>'DVC',5=>'i4Cus Staff',6=>'Payment Admin',7=>'Department',8=>'Deputy Director ICT'];
+                        echo $rl[$role_id] ?? 'User';
+                    ?></div>
+                </div>
+                <i class="fas fa-chevron-down" style="font-size:.65rem;opacity:.7;margin-left:.2rem"></i>
+            </button>
+            <div class="nb-dropdown-menu" id="nbUserMenu">
+                <div class="nb-dm-header"><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'User'); ?></div>
+                <a class="nb-dm-item" href="account.php"><i class="fas fa-user-edit"></i> My Profile</a>
+                <a class="nb-dm-item" href="change_password.php"><i class="fas fa-key"></i> Change Password</a>
+                <hr class="nb-dm-divider">
+                <a class="nb-dm-item danger" href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            </div>
+        </div>
+
+        <!-- Hamburger -->
+        <button class="nb-toggle" id="nbToggle" aria-label="Menu">
+            <i class="fas fa-bars"></i>
+        </button>
+
+    </div><!-- /nb-inner -->
+
+    <!-- Mobile drawer -->
+    <div class="nb-drawer" id="nbDrawer">
+
+        <div class="nb-drawer-section">
+            <div class="nb-drawer-label">Navigation</div>
+            <a href="<?php echo $dashboard_file; ?>" class="<?php echo nb_active($dashboard_file, $current_page); ?>">
+                <i class="fas fa-home"></i> Dashboard
+            </a>
+            <?php if ($role_id == 1): ?>
+            <a href="admin.php" class="<?php echo nb_active('admin.php', $current_page); ?>">
+                <i class="fas fa-cogs"></i> Admin Panel
+            </a>
+            <?php endif; ?>
+        </div>
+
+        <?php if (in_array($role_id, [1, 3])): ?>
+        <hr class="nb-drawer-divider">
+        <div class="nb-drawer-section">
+            <div class="nb-drawer-label">Management</div>
+            <?php if ($role_id == 1): ?>
+            <a href="users.php" class="<?php echo nb_active('users.php', $current_page); ?>">
+                <i class="fas fa-users"></i> Staff Users
+            </a>
+            <a href="manage_students.php" class="<?php echo nb_active('manage_students.php', $current_page); ?>">
+                <i class="fas fa-user-graduate"></i> Students
+            </a>
+            <?php endif; ?>
+            <a href="student_complaints_report.php" class="<?php echo nb_active('student_complaints_report.php', $current_page); ?>">
+                <i class="fas fa-chart-bar"></i> Reports
+            </a>
+        </div>
+        <?php endif; ?>
+
+        <hr class="nb-drawer-divider">
+        <div class="nb-drawer-section">
+            <div class="nb-drawer-label">Tools</div>
+            <a href="messages.php" class="<?php echo nb_active('messages.php', $current_page); ?>">
+                <i class="fas fa-envelope"></i> Messages
+                <?php if ($unread_count > 0): ?><span style="margin-left:auto;background:#e74c3c;color:#fff;border-radius:10px;padding:1px 7px;font-size:.7rem"><?php echo $unread_count; ?></span><?php endif; ?>
+            </a>
+            <a href="notifications.php" class="<?php echo nb_active('notifications.php', $current_page); ?>">
+                <i class="fas fa-bell"></i> Notifications
+                <?php if ($notification_count > 0): ?><span style="margin-left:auto;background:#e74c3c;color:#fff;border-radius:10px;padding:1px 7px;font-size:.7rem"><?php echo $notification_count; ?></span><?php endif; ?>
+            </a>
+            <a href="suggestions.php" class="<?php echo nb_active('suggestions.php', $current_page); ?>">
+                <i class="fas fa-lightbulb"></i> Suggestions
+            </a>
+            <?php if ($role_id == 1 && !empty($_SESSION["is_super_admin"])): ?>
+            <a href="settings.php" class="<?php echo nb_active('settings.php', $current_page); ?>">
+                <i class="fas fa-cog"></i> Settings
+            </a>
+            <?php endif; ?>
+        </div>
+
+        <hr class="nb-drawer-divider">
+        <div class="nb-drawer-section">
+            <div class="nb-drawer-label">Account</div>
+            <a href="account.php"><i class="fas fa-user-edit"></i> My Profile</a>
+            <a href="change_password.php"><i class="fas fa-key"></i> Change Password</a>
+            <a href="logout.php" style="color:#ff6b6b"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        </div>
+
+    </div><!-- /nb-drawer -->
 </nav>
 
 <script>
-// Initialize tooltips for navbar
-$(document).ready(function(){
-    $('[data-toggle="tooltip"]').tooltip();
-    
-    // Load notifications when dropdown is shown (Bootstrap event)
-    $('#notificationDropdown').on('show.bs.dropdown', function() {
-        loadNotifications();
-    });
-    
-    // Also load on click as fallback
-    $('#notificationDropdown').on('click', function(e) {
-        if (!$(this).next('.dropdown-menu').hasClass('show')) {
+(function () {
+    // Toggle helpers
+    function closeAll() {
+        document.querySelectorAll('.nb-dropdown').forEach(d => d.classList.remove('open'));
+    }
+
+    // Bell
+    document.getElementById('nbBellBtn').addEventListener('click', function (e) {
+        e.stopPropagation();
+        const dd = this.closest('.nb-dropdown');
+        const wasOpen = dd.classList.contains('open');
+        closeAll();
+        if (!wasOpen) {
+            dd.classList.add('open');
             loadNotifications();
         }
     });
-});
 
-function loadNotifications() {
-    $('#notificationList').html('<div class="dropdown-item text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</div>');
-    
-    $.ajax({
-        url: 'get_notifications_dropdown.php',
-        type: 'GET',
-        dataType: 'json',
-        timeout: 10000, // 10 second timeout
-        success: function(data) {
-            console.log('Notification response:', data); // Debug log
-            if (data && data.success) {
-                displayNotifications(data.notifications);
-                updateNotificationBadge(data.unread_count);
-            } else {
-                console.error('Notification error:', data);
-                $('#notificationList').html('<div class="dropdown-item text-center text-danger">Error: ' + (data.error || 'Unknown error') + '</div>');
-            }
-        },
-        error: function(xhr, status, error) {
-            console.error('Notification loading error:', status, error, xhr.responseText);
-            let errorMsg = 'Error loading notifications';
-            
-            if (status === 'timeout') {
-                errorMsg = 'Request timed out';
-            } else if (xhr.status === 401) {
-                errorMsg = 'Session expired';
-                // Redirect to login
-                setTimeout(() => window.location.href = 'index.php', 2000);
-            } else if (xhr.status === 500) {
-                errorMsg = 'Server error';
-            } else if (xhr.status === 0) {
-                errorMsg = 'Network error';
-            }
-            
-            $('#notificationList').html('<div class="dropdown-item text-center text-danger">' + errorMsg + '</div>');
-        }
+    // User
+    document.getElementById('nbUserBtn').addEventListener('click', function (e) {
+        e.stopPropagation();
+        const dd = this.closest('.nb-dropdown');
+        const wasOpen = dd.classList.contains('open');
+        closeAll();
+        if (!wasOpen) dd.classList.add('open');
     });
-}
 
-function displayNotifications(notifications) {
-    const listContainer = $('#notificationList');
-    
-    if (!notifications || notifications.length === 0) {
-        listContainer.html('<div class="dropdown-item text-center text-muted">No notifications</div>');
-        return;
-    }
-    
-    let html = '';
-    try {
-        notifications.forEach(function(notification) {
-            if (!notification || !notification.notification_id) {
-                console.warn('Invalid notification object:', notification);
-                return;
-            }
-            
-            const isUnread = notification.is_read == 0;
-            const unreadClass = isUnread ? 'unread' : '';
-            const unreadIcon = isUnread ? '<span class="notification-icon"></span>' : '';
-            
-            const timeAgo = getTimeAgo(notification.created_at);
-            const title = notification.title || 'Notification';
-            const message = notification.message || '';
-            
-            html += `
-                <div class="notification-item ${unreadClass}" onclick="handleNotificationClick(${notification.notification_id}, ${notification.complaint_id})" onmouseenter="markAsReadOnView(${notification.notification_id}, ${isUnread})">
-                    <div class="notification-title">
-                        ${unreadIcon}${escapeHtml(title)}
-                    </div>
-                    <div class="notification-message">
-                        ${escapeHtml(message)}
-                    </div>
-                    <div class="notification-time">
-                        ${timeAgo}
-                    </div>
-                </div>
-            `;
-        });
-        
-        listContainer.html(html);
-    } catch (error) {
-        console.error('Error displaying notifications:', error);
-        listContainer.html('<div class="dropdown-item text-center text-danger">Error displaying notifications</div>');
-    }
-}
+    // Hamburger
+    document.getElementById('nbToggle').addEventListener('click', function () {
+        document.getElementById('nbDrawer').classList.toggle('open');
+    });
 
-function handleNotificationClick(notificationId, complaintId) {
-    // Mark as read and update UI immediately
-    $.ajax({
-        url: 'mark_notification_read.php',
-        type: 'POST',
-        contentType: 'application/json',
-        data: JSON.stringify({notification_id: notificationId}),
-        success: function(response) {
-            if (response.success) {
-                // Update the notification appearance
-                const notificationElement = $(`[onclick*="${notificationId}"]`);
-                notificationElement.removeClass('unread');
-                notificationElement.find('.notification-icon').remove();
-                
-                // Update badge count
-                const currentBadge = $('#notificationBadge');
-                const currentCount = parseInt(currentBadge.text()) || 0;
-                const newCount = Math.max(0, currentCount - 1);
-                
-                if (newCount > 0) {
-                    currentBadge.text(newCount).show();
+    // Close on outside click
+    document.addEventListener('click', function () { closeAll(); });
+
+    // ── Notifications ──────────────────────────────────
+    function loadNotifications() {
+        document.getElementById('notificationList').innerHTML =
+            '<div class="nb-notif-empty"><i class="fas fa-spinner fa-spin"></i> Loading…</div>';
+
+        fetch('get_notifications_dropdown.php')
+            .then(r => r.json())
+            .then(data => {
+                if (data && data.success) {
+                    renderNotifications(data.notifications);
+                    updateBadge(data.unread_count);
                 } else {
-                    currentBadge.hide();
+                    document.getElementById('notificationList').innerHTML =
+                        '<div class="nb-notif-empty">Could not load notifications.</div>';
                 }
-            }
-            
-            // Redirect to complaint
-            window.location.href = 'view_complaint.php?id=' + complaintId;
-        },
-        error: function() {
-            // Still redirect even if marking as read fails
-            window.location.href = 'view_complaint.php?id=' + complaintId;
-        }
-    });
-}
-
-function updateNotificationBadge(count) {
-    const badge = $('#notificationBadge');
-    if (count > 0) {
-        badge.text(count).show();
-    } else {
-        badge.hide();
+            })
+            .catch(() => {
+                document.getElementById('notificationList').innerHTML =
+                    '<div class="nb-notif-empty">Network error.</div>';
+            });
     }
-}
 
-function getTimeAgo(dateString) {
-    const now = new Date();
-    const date = new Date(dateString);
-    const diffInSeconds = Math.floor((now - date) / 1000);
-    
-    if (diffInSeconds < 60) return 'Just now';
-    if (diffInSeconds < 3600) return Math.floor(diffInSeconds / 60) + 'm ago';
-    if (diffInSeconds < 86400) return Math.floor(diffInSeconds / 3600) + 'h ago';
-    if (diffInSeconds < 604800) return Math.floor(diffInSeconds / 86400) + 'd ago';
-    
-    return date.toLocaleDateString();
-}
+    function renderNotifications(list) {
+        const el = document.getElementById('notificationList');
+        if (!list || !list.length) {
+            el.innerHTML = '<div class="nb-notif-empty">No notifications yet.</div>';
+            return;
+        }
+        el.innerHTML = list.map(n => `
+            <div class="nb-notif-item ${n.is_read == 0 ? 'unread' : ''}"
+                 onclick="nbNotifClick(${n.notification_id}, ${n.complaint_id})">
+                <div class="nb-notif-title">${esc(n.title || 'Notification')}</div>
+                <div class="nb-notif-msg">${esc(n.message || '')}</div>
+                <div class="nb-notif-time">${timeAgo(n.created_at)}</div>
+            </div>`).join('');
+    }
 
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-function markAsReadOnView(notificationId, isUnread) {
-    if (!isUnread) return; // Already read
-    
-    // Mark as read after a short delay (user has viewed it)
-    setTimeout(function() {
-        $.ajax({
-            url: 'mark_notification_read.php',
-            type: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify({notification_id: notificationId}),
-            success: function(response) {
-                if (response.success) {
-                    // Update the notification appearance
-                    const notificationElement = $(`[onclick*="${notificationId}"]`);
-                    notificationElement.removeClass('unread');
-                    notificationElement.find('.notification-icon').remove();
-                    
-                    // Update badge count
-                    const currentBadge = $('#notificationBadge');
-                    const currentCount = parseInt(currentBadge.text()) || 0;
-                    const newCount = Math.max(0, currentCount - 1);
-                    
-                    if (newCount > 0) {
-                        currentBadge.text(newCount).show();
-                    } else {
-                        currentBadge.hide();
-                    }
-                }
-            }
+    window.nbNotifClick = function (nid, cid) {
+        fetch('mark_notification_read.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({notification_id: nid})
+        }).finally(() => {
+            window.location.href = 'view_complaint.php?id=' + cid;
         });
-    }, 1000); // 1 second delay to ensure user has seen it
-}
-</script>
+    };
 
-<script>
-// Initialize tooltips and modern navbar functionality
-$(document).ready(function(){
-    // Initialize tooltips
-    $('[data-toggle="tooltip"]').tooltip();
-    
-    // Load notifications when dropdown is shown
-    $('#notificationDropdown').on('show.bs.dropdown', function() {
-        loadNotifications();
-    });
-    
-    // Handle mobile menu better
-    $('.navbar-toggler-modern').click(function() {
-        $(this).toggleClass('active');
-    });
-    
-    // Close mobile menu when clicking outside
-    $(document).click(function(e) {
-        if (!$(e.target).closest('.navbar').length) {
-            $('.navbar-collapse').removeClass('show');
-            $('.navbar-toggler-modern').removeClass('active');
-        }
-    });
-    
-    // Smooth scroll for anchor links
-    $('a[href^="#"]').on('click', function(event) {
-        var target = $(this.getAttribute('href'));
-        if( target.length ) {
-            event.preventDefault();
-            $('html, body').stop().animate({
-                scrollTop: target.offset().top - 80
-            }, 1000);
-        }
-    });
-});
-
-function loadNotifications() {
-    $('#notificationList').html('<div class="dropdown-item-modern text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</div>');
-    
-    $.ajax({
-        url: 'get_notifications_dropdown.php',
-        type: 'GET',
-        dataType: 'json',
-        timeout: 10000,
-        success: function(data) {
-            if (data && data.success) {
-                displayNotifications(data.notifications);
-                updateNotificationBadge(data.unread_count);
-            } else {
-                $('#notificationList').html('<div class="dropdown-item-modern text-center text-danger">Error: ' + (data.error || 'Unknown error') + '</div>');
-            }
-        },
-        error: function(xhr, status, error) {
-            let errorMsg = 'Error loading notifications';
-            
-            if (status === 'timeout') {
-                errorMsg = 'Request timed out';
-            } else if (xhr.status === 401) {
-                errorMsg = 'Session expired';
-                setTimeout(() => window.location.href = 'index.php', 2000);
-            } else if (xhr.status === 500) {
-                errorMsg = 'Server error';
-            } else if (xhr.status === 0) {
-                errorMsg = 'Network error';
-            }
-            
-            $('#notificationList').html('<div class="dropdown-item-modern text-center text-danger">' + errorMsg + '</div>');
-        }
-    });
-}
-
-function displayNotifications(notifications) {
-    const listContainer = $('#notificationList');
-    
-    if (!notifications || notifications.length === 0) {
-        listContainer.html('<div class="dropdown-item-modern text-center text-muted">No notifications</div>');
-        return;
+    function updateBadge(count) {
+        const b = document.getElementById('notificationBadge');
+        if (!b) return;
+        if (count > 0) { b.textContent = count; b.style.display = ''; }
+        else b.style.display = 'none';
     }
-    
-    let html = '';
-    try {
-        notifications.forEach(function(notification) {
-            if (!notification || !notification.notification_id) {
-                return;
-            }
-            
-            const isUnread = notification.is_read == 0;
-            const unreadClass = isUnread ? 'unread' : '';
-            const unreadIcon = isUnread ? '<span class="notification-icon"></span>' : '';
-            
-            const timeAgo = getTimeAgo(notification.created_at);
-            const title = notification.title || 'Notification';
-            const message = notification.message || '';
-            
-            html += `
-                <div class="dropdown-item-modern notification-item ${unreadClass}" onclick="handleNotificationClick(${notification.notification_id}, ${notification.complaint_id})" style="cursor: pointer; border-left: 3px solid ${isUnread ? '#ff4757' : 'transparent'};">
-                    <div style="font-weight: 600; color: #1e3c72; margin-bottom: 4px;">
-                        ${unreadIcon}${escapeHtml(title)}
-                    </div>
-                    <div style="font-size: 0.85rem; color: #6c757d; margin-bottom: 4px;">
-                        ${escapeHtml(message)}
-                    </div>
-                    <div style="font-size: 0.75rem; color: #adb5bd;">
-                        ${timeAgo}
-                    </div>
-                </div>
-            `;
-        });
-        
-        listContainer.html(html);
-    } catch (error) {
-        console.error('Error displaying notifications:', error);
-        listContainer.html('<div class="dropdown-item-modern text-center text-danger">Error displaying notifications</div>');
+
+    function timeAgo(ds) {
+        const s = Math.floor((Date.now() - new Date(ds)) / 1000);
+        if (s < 60)   return 'Just now';
+        if (s < 3600) return Math.floor(s/60) + 'm ago';
+        if (s < 86400)return Math.floor(s/3600) + 'h ago';
+        return Math.floor(s/86400) + 'd ago';
     }
-}
 
-function handleNotificationClick(notificationId, complaintId) {
-    // Mark as read and redirect
-    $.ajax({
-        url: 'mark_notification_read.php',
-        type: 'POST',
-        contentType: 'application/json',
-        data: JSON.stringify({notification_id: notificationId}),
-        success: function(response) {
-            if (response.success) {
-                updateNotificationBadge(Math.max(0, parseInt($('#notificationBadge').text() || 0) - 1));
-            }
-            window.location.href = 'view_complaint.php?id=' + complaintId;
-        },
-        error: function() {
-            window.location.href = 'view_complaint.php?id=' + complaintId;
-        }
-    });
-}
-
-function updateNotificationBadge(count) {
-    const badge = $('#notificationBadge');
-    if (count > 0) {
-        badge.text(count).show();
-    } else {
-        badge.hide();
+    function esc(t) {
+        const d = document.createElement('div');
+        d.textContent = t;
+        return d.innerHTML;
     }
-}
 
-function getTimeAgo(dateString) {
-    const now = new Date();
-    const date = new Date(dateString);
-    const diffInSeconds = Math.floor((now - date) / 1000);
-    
-    if (diffInSeconds < 60) return 'Just now';
-    if (diffInSeconds < 3600) return Math.floor(diffInSeconds / 60) + 'm ago';
-    if (diffInSeconds < 86400) return Math.floor(diffInSeconds / 3600) + 'h ago';
-    if (diffInSeconds < 604800) return Math.floor(diffInSeconds / 86400) + 'd ago';
-    
-    return date.toLocaleDateString();
-}
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+    // Keep legacy jQuery aliases alive for any inline calls
+    window.loadNotifications = loadNotifications;
+    window.updateNotificationBadge = updateBadge;
+    window.escapeHtml = esc;
+    window.getTimeAgo = timeAgo;
+    window.handleNotificationClick = window.nbNotifClick;
+})();
 </script>

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // Start output buffering to prevent header issues
 ob_start();
 
@@ -188,11 +188,11 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                                 $welcome_message .= "• Track your complaint status\n";
                                 $welcome_message .= "• View admin responses\n";
                                 $welcome_message .= "• Change your password\n\n";
-                                $welcome_message .= "Login URL: https://helpdesk.tsuniversity.edu.ng/student_login.php\n\n";
+                                $welcome_message .= "Login URL: https://helpdesk.tsuniversity.ng/student_login.php\n\n";
                                 $welcome_message .= "Best regards,\nTSU ICT Help Desk Team";
                                 
-                                $welcome_headers = "From: TSU ICT Help Desk <noreply@tsuniversity.edu.ng>\r\n";
-                                $welcome_headers .= "Reply-To: support@tsuniversity.edu.ng\r\n";
+                                $welcome_headers = "From: TSU ICT Help Desk <noreply@tsuniversity.ng>\r\n";
+                                $welcome_headers .= "Reply-To: support@tsuniversity.ng\r\n";
                                 $welcome_headers .= "X-Mailer: PHP/" . phpversion() . "\r\n";
                                 $welcome_headers .= "MIME-Version: 1.0\r\n";
                                 $welcome_headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
@@ -249,7 +249,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                                             $welcome_message .= "• Track your complaint status\n";
                                             $welcome_message .= "• View admin responses\n";
                                             $welcome_message .= "• Change your password\n\n";
-                                            $welcome_message .= "Login URL: https://helpdesk.tsuniversity.edu.ng/student_login.php\n\n";
+                                            $welcome_message .= "Login URL: https://helpdesk.tsuniversity.ng/student_login.php\n\n";
                                             $welcome_message .= "IMPORTANT SECURITY TIPS:\n";
                                             $welcome_message .= "• Keep your login credentials secure\n";
                                             $welcome_message .= "• Change your password regularly\n";
@@ -257,10 +257,10 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                                             $welcome_message .= "If you have any questions or need assistance, please don't hesitate to contact our support team.\n\n";
                                             $welcome_message .= "Best regards,\nTSU ICT Help Desk Team\n";
                                             $welcome_message .= "Taraba State University\n";
-                                            $welcome_message .= "Email: support@tsuniversity.edu.ng";
+                                            $welcome_message .= "Email: support@tsuniversity.ng";
                                             
-                                            $welcome_headers = "From: TSU ICT Help Desk <noreply@tsuniversity.edu.ng>\r\n";
-                                            $welcome_headers .= "Reply-To: support@tsuniversity.edu.ng\r\n";
+                                            $welcome_headers = "From: TSU ICT Help Desk <noreply@tsuniversity.ng>\r\n";
+                                            $welcome_headers .= "Reply-To: support@tsuniversity.ng\r\n";
                                             $welcome_headers .= "X-Mailer: PHP/" . phpversion() . "\r\n";
                                             $welcome_headers .= "MIME-Version: 1.0\r\n";
                                             $welcome_headers .= "Content-Type: text/plain; charset=UTF-8\r\n";

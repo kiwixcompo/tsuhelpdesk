@@ -1,0 +1,4 @@
+RewriteEngine On
+RewriteCond %{HTTP_HOST} ^helpdesk\.tsuniversity\.edu\.ng$ [NC,OR]
+RewriteCond %{HTTP_HOST} ^www\.helpdesk\.tsuniversity\.edu\.ng$ [NC]
+RewriteRule ^(.*)$ https://helpdesk.tsuniversity.ng/$1 [R=301,L]

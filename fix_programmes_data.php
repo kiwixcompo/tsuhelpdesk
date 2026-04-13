@@ -1,11 +1,11 @@
-<?php
+﻿<?php
 /**
  * TSU ICT Help Desk - Fix Programmes Data
  * This script populates the programmes table with comprehensive data
  * and provides debugging information for the dropdown issue
  * 
  * Usage: Upload to server and run via browser
- * URL: https://helpdesk.tsuniversity.edu.ng/fix_programmes_data.php
+ * URL: https://helpdesk.tsuniversity.ng/fix_programmes_data.php
  */
 
 // Start output buffering for clean display

@@ -1,11 +1,11 @@
-<?php
+﻿<?php
 /**
  * TSU ICT Help Desk - Online Database Update Script
  * This script safely updates the online database with all new features
  * Compatible with all MySQL versions - checks existence before adding
  * 
  * Usage: Upload to server and run via browser
- * URL: https://helpdesk.tsuniversity.edu.ng/update_online_database.php
+ * URL: https://helpdesk.tsuniversity.ng/update_online_database.php
  */
 
 // Start output buffering for clean display
@@ -132,7 +132,7 @@ set_time_limit(300); // 5 minutes
         <div class="header">
             <h1>🎓 TSU ICT Help Desk</h1>
             <p>Database Update System</p>
-            <small style="color: #1e3c72; font-weight: 600;">helpdesk.tsuniversity.edu.ng</small>
+            <small style="color: #1e3c72; font-weight: 600;">helpdesk.tsuniversity.ng</small>
         </div>
 
         <div class="log-container" id="logContainer">

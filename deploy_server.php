@@ -1,10 +1,10 @@
-<?php
+﻿<?php
 /**
  * TSU ICT Help Desk - Automated Deployment Script
  * This script automatically pulls updates from GitHub and deploys them to the server
  * 
  * Usage: Place this file in your web server directory and access via browser
- * URL: https://helpdesk.tsuniversity.edu.ng/deploy_server.php?key=TSU_DEPLOY_2026_SECURE_K3Y_H3LP_D3SK_SYS73M
+ * URL: https://helpdesk.tsuniversity.ng/deploy_server.php?key=TSU_DEPLOY_2026_SECURE_K3Y_H3LP_D3SK_SYS73M
  * 
  * Security: The SECRET_KEY below is unique and secure for TSU Help Desk
  */
@@ -298,7 +298,7 @@ function getDeploymentInfo() {
 function runDeployment() {
     writeLog("=== TSU ICT Help Desk Deployment Started ===");
     writeLog("Timestamp: " . date('Y-m-d H:i:s'));
-    writeLog("Server: helpdesk.tsuniversity.edu.ng");
+    writeLog("Server: helpdesk.tsuniversity.ng");
     writeLog("User Agent: " . ($_SERVER['HTTP_USER_AGENT'] ?? 'Unknown'));
     
     try {
@@ -500,7 +500,7 @@ checkAuth();
             <div class="tsu-logo">🎓</div>
             <h1>TSU ICT Help Desk</h1>
             <p>Automated Deployment System</p>
-            <small style="color: #1e3c72; font-weight: 600;">helpdesk.tsuniversity.edu.ng</small>
+            <small style="color: #1e3c72; font-weight: 600;">helpdesk.tsuniversity.ng</small>
         </div>
 
         <?php if (!isset($_GET['deploy'])): ?>
@@ -508,7 +508,7 @@ checkAuth();
                 <h3>📋 Deployment Information</h3>
                 <p><strong>Repository:</strong> <?php echo REPO_URL; ?></p>
                 <p><strong>Branch:</strong> <?php echo BRANCH; ?></p>
-                <p><strong>Server:</strong> helpdesk.tsuniversity.edu.ng</p>
+                <p><strong>Server:</strong> helpdesk.tsuniversity.ng</p>
                 <p><strong>Server Path:</strong> <?php echo PROJECT_PATH; ?></p>
                 <p><strong>Current Time:</strong> <?php echo date('Y-m-d H:i:s T'); ?></p>
             </div>

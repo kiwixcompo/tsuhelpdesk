@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // Start output buffering to prevent header issues
 ob_start();
 
@@ -37,7 +37,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                         mysqli_stmt_bind_param($update_stmt, "ssi", $reset_token, $expires_at, $row['student_id']);
                         if(mysqli_stmt_execute($update_stmt)){
                             // Send email (simplified version)
-                            $reset_link = "https://helpdesk.tsuniversity.edu.ng/student_reset_password.php?token=" . $reset_token;
+                            $reset_link = "https://helpdesk.tsuniversity.ng/student_reset_password.php?token=" . $reset_token;
                             
                             $to = $email;
                             $subject = "Password Reset - TSU ICT Help Desk";
@@ -51,8 +51,8 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                             $message .= "For security reasons, please do not share this link with anyone.\n\n";
                             $message .= "Best regards,\nTSU ICT Help Desk Team\nTaraba State University";
                             
-                            $headers = "From: TSU ICT Help Desk <noreply@tsuniversity.edu.ng>\r\n";
-                            $headers .= "Reply-To: support@tsuniversity.edu.ng\r\n";
+                            $headers = "From: TSU ICT Help Desk <noreply@tsuniversity.ng>\r\n";
+                            $headers .= "Reply-To: support@tsuniversity.ng\r\n";
                             $headers .= "X-Mailer: PHP/" . phpversion() . "\r\n";
                             $headers .= "MIME-Version: 1.0\r\n";
                             $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // API endpoint for managing student complaints by admin
 session_start();
 require_once "../config.php";
@@ -58,11 +58,11 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                                     $message .= "Admin Response:\n" . $admin_response . "\n\n";
                                 }
                                 $message .= "You can view your complaint details by logging into the student portal.\n\n";
-                                $message .= "Login URL: https://helpdesk.tsuniversity.edu.ng/student_login.php\n\n";
+                                $message .= "Login URL: https://helpdesk.tsuniversity.ng/student_login.php\n\n";
                                 $message .= "Best regards,\nTSU ICT Help Desk Team";
                                 
-                                $headers = "From: TSU ICT Help Desk <noreply@tsuniversity.edu.ng>\r\n";
-                                $headers .= "Reply-To: support@tsuniversity.edu.ng\r\n";
+                                $headers = "From: TSU ICT Help Desk <noreply@tsuniversity.ng>\r\n";
+                                $headers .= "Reply-To: support@tsuniversity.ng\r\n";
                                 
                                 @mail($to, $subject, $message, $headers);
                             }
