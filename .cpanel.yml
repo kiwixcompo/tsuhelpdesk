@@ -6,10 +6,7 @@ deployment:
     - /bin/mkdir -p $DEPLOYPATH
     - /bin/cp -R $REPOPATH/. $DEPLOYPATH/
     - /bin/cp $REPOPATH/.htaccess $DEPLOYPATH/ 2>/dev/null || true
-    - find $DEPLOYPATH -name "*.php" -exec chmod 644 {} \;
-    - find $DEPLOYPATH -type d -exec chmod 755 {} \;
     - chmod -R 755 $DEPLOYPATH/uploads/ 2>/dev/null || true
     - chmod -R 755 $DEPLOYPATH/logs/ 2>/dev/null || true
-    - rm -rf $DEPLOYPATH/.git 2>/dev/null || true
-    - rm -f $DEPLOYPATH/*.bat 2>/dev/null || true
-    - rm -f $DEPLOYPATH/.cpanel.yml 2>/dev/null || true
+    - /bin/rm -rf $DEPLOYPATH/.git 2>/dev/null || true
+    - /bin/rm -f $DEPLOYPATH/*.bat 2>/dev/null || true
