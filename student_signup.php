@@ -1,7 +1,5 @@
 ﻿<?php
-// Start output buffering to prevent header issues
 ob_start();
-
 session_start();
 require_once "config.php";
 
@@ -202,6 +200,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                                 app_mail($email, $welcome_subject, $welcome_message, $welcome_headers);
                                 
                                 // Registration successful, redirect to login
+                                ob_end_clean();
                                 header("location: student_login.php?registered=1");
                                 exit();
                             } else{
@@ -270,6 +269,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                                             app_mail($email, $welcome_subject, $welcome_message, $welcome_headers);
                                             
                                             // Registration successful, redirect to login
+                                            ob_end_clean();
                                             header("location: student_login.php?registered=1");
                                             exit();
                                         } else{
