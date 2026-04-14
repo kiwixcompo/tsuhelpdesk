@@ -43,8 +43,8 @@ function sendReminderEmail($to_email, $to_name, $subject, $body, $from_email, $f
     $headers = "From: $from_name <$from_email>\r\n";
     $headers .= "Reply-To: $from_email\r\n";
     $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
-    // Use mail() and return true/false
-    return mail($to_email, $subject, $body, $headers);
+    // Use app_mail() wrapper to handle disabled mail() gracefully
+    return app_mail($to_email, $subject, $body, $headers);
 }
 
 // === 1. Find unhandled complaints older than 24 hours, not yet reminded ===

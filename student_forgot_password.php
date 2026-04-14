@@ -51,13 +51,13 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                             $message .= "For security reasons, please do not share this link with anyone.\n\n";
                             $message .= "Best regards,\nTSU ICT Help Desk Team\nTaraba State University";
                             
-                            $headers = "From: TSU ICT Help Desk <noreply@tsuniversity.ng>\r\n";
-                            $headers .= "Reply-To: support@tsuniversity.ng\r\n";
+                            $headers = "From: TSU ICT Help Desk <noreply@tsuniversity.edu.ng>\r\n";
+                            $headers .= "Reply-To: support@tsuniversity.edu.ng\r\n";
                             $headers .= "X-Mailer: PHP/" . phpversion() . "\r\n";
                             $headers .= "MIME-Version: 1.0\r\n";
                             $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
                             
-                            if(mail($to, $subject, $message, $headers)){
+                            if(app_mail($to, $subject, $message, $headers)){
                                 $success_msg = "Password reset instructions have been sent to your email address.";
                             } else {
                                 $error_msg = "Failed to send email. Please try again later.";

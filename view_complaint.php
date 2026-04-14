@@ -373,7 +373,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['treat_payment_complain
                     
                     $headers = "From: noreply@tsuictcomplaint.com\r\n";
                     
-                    mail($user_email, $subject, $message, $headers);
+                    app_mail($user_email, $subject, $message, $headers);
                 }
             }
             

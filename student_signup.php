@@ -43,7 +43,8 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
         // Check if email already exists
         $sql = "SELECT student_id FROM students WHERE email = ?";
         if($stmt = mysqli_prepare($conn, $sql)){
-            mysqli_stmt_bind_param($stmt, "s", trim($_POST["email"]));
+            $email_input = trim($_POST["email"]);
+            mysqli_stmt_bind_param($stmt, "s", $email_input);
             if(mysqli_stmt_execute($stmt)){
                 $result = mysqli_stmt_get_result($stmt);
                 if(mysqli_num_rows($result) == 1){
@@ -191,14 +192,14 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                                 $welcome_message .= "Login URL: https://helpdesk.tsuniversity.ng/student_login.php\n\n";
                                 $welcome_message .= "Best regards,\nTSU ICT Help Desk Team";
                                 
-                                $welcome_headers = "From: TSU ICT Help Desk <noreply@tsuniversity.ng>\r\n";
-                                $welcome_headers .= "Reply-To: support@tsuniversity.ng\r\n";
+                                $welcome_headers = "From: TSU ICT Help Desk <noreply@tsuniversity.edu.ng>\r\n";
+                                $welcome_headers .= "Reply-To: support@tsuniversity.edu.ng\r\n";
                                 $welcome_headers .= "X-Mailer: PHP/" . phpversion() . "\r\n";
                                 $welcome_headers .= "MIME-Version: 1.0\r\n";
                                 $welcome_headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
                                 
                                 // Send welcome email (suppress errors to avoid blocking registration)
-                                @mail($email, $welcome_subject, $welcome_message, $welcome_headers);
+                                app_mail($email, $welcome_subject, $welcome_message, $welcome_headers);
                                 
                                 // Registration successful, redirect to login
                                 header("location: student_login.php?registered=1");
@@ -257,16 +258,16 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                                             $welcome_message .= "If you have any questions or need assistance, please don't hesitate to contact our support team.\n\n";
                                             $welcome_message .= "Best regards,\nTSU ICT Help Desk Team\n";
                                             $welcome_message .= "Taraba State University\n";
-                                            $welcome_message .= "Email: support@tsuniversity.ng";
+                                            $welcome_message .= "Email: support@tsuniversity.edu.ng";
                                             
-                                            $welcome_headers = "From: TSU ICT Help Desk <noreply@tsuniversity.ng>\r\n";
-                                            $welcome_headers .= "Reply-To: support@tsuniversity.ng\r\n";
+                                            $welcome_headers = "From: TSU ICT Help Desk <noreply@tsuniversity.edu.ng>\r\n";
+                                            $welcome_headers .= "Reply-To: support@tsuniversity.edu.ng\r\n";
                                             $welcome_headers .= "X-Mailer: PHP/" . phpversion() . "\r\n";
                                             $welcome_headers .= "MIME-Version: 1.0\r\n";
                                             $welcome_headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
                                             
                                             // Send welcome email (suppress errors to avoid blocking registration)
-                                            @mail($email, $welcome_subject, $welcome_message, $welcome_headers);
+                                            app_mail($email, $welcome_subject, $welcome_message, $welcome_headers);
                                             
                                             // Registration successful, redirect to login
                                             header("location: student_login.php?registered=1");

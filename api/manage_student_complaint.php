@@ -61,10 +61,10 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                                 $message .= "Login URL: https://helpdesk.tsuniversity.ng/student_login.php\n\n";
                                 $message .= "Best regards,\nTSU ICT Help Desk Team";
                                 
-                                $headers = "From: TSU ICT Help Desk <noreply@tsuniversity.ng>\r\n";
-                                $headers .= "Reply-To: support@tsuniversity.ng\r\n";
+                                $headers = "From: TSU ICT Help Desk <noreply@tsuniversity.edu.ng>\r\n";
+                                $headers .= "Reply-To: support@tsuniversity.edu.ng\r\n";
                                 
-                                @mail($to, $subject, $message, $headers);
+                                app_mail($to, $subject, $message, $headers);
                             }
                         }
                         mysqli_stmt_close($student_stmt);

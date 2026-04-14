@@ -89,7 +89,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                             $headers = "From: noreply@tsu.edu.ng\r\n";
                             $headers .= "Reply-To: support@tsu.edu.ng\r\n";
                             
-                            @mail($to, $subject, $message, $headers);
+                            app_mail($to, $subject, $message, $headers);
                         }
                     }
                     mysqli_stmt_close($email_stmt);

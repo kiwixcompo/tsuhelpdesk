@@ -42,6 +42,28 @@ function app_log(string $level, string $message, array $context = []): void
     error_log($line, 3, APP_LOG);
 }
 
+/**
+ * Safe mail() wrapper — silently skips sending if mail() is disabled on the server.
+ * Returns true on success, false if disabled or failed.
+ */
+function app_mail(string $to, string $subject, string $message, string $headers = ''): bool
+{
+    if (!function_exists('mail')) {
+        app_log('warning', 'mail() is disabled on this server — email not sent', [
+            'to'      => $to,
+            'subject' => $subject,
+        ]);
+        return false;
+    }
+    $result = @mail($to, $subject, $message, $headers);
+    if (!$result) {
+        app_log('warning', 'mail() returned false — email may not have been sent', [
+            'to'      => $to,
+            'subject' => $subject,
+        ]);
+    }
+    return (bool) $result;
+}
 // Catch fatal errors that the normal error handler misses
 register_shutdown_function(function () {
     $e = error_get_last();

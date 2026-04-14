@@ -122,13 +122,13 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                                 $message_body .= "Regards,\nTSU Helpdesk Team";
                                 
                                 // Better email headers
-                                $headers = "From: TSU Helpdesk <noreply@tsuniversity.ng>\r\n";
-                                $headers .= "Reply-To: noreply@tsuniversity.ng\r\n";
+                                $headers = "From: TSU Helpdesk <noreply@tsuniversity.edu.ng>\r\n";
+                                $headers .= "Reply-To: noreply@tsuniversity.edu.ng\r\n";
                                 $headers .= "X-Mailer: PHP/" . phpversion() . "\r\n";
                                 $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
                                 
                                 // Send email
-                                $mail_sent = @mail($to, $subject, $message_body, $headers);
+                                $mail_sent = app_mail($to, $subject, $message_body, $headers);
                                 
                                 if($mail_sent){
                                     $success = true;
