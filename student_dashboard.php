@@ -276,6 +276,33 @@ ob_end_flush();
         <?php endif; ?>
 
         <!-- Lodge New Complaint -->
+        <!-- Complaint Type Selector -->
+        <div class="row mb-4">
+            <div class="col-md-6 mb-3">
+                <div class="card h-100" style="border:2px solid #1e3c72;border-radius:12px;cursor:pointer" onclick="document.getElementById('resultSection').scrollIntoView({behavior:'smooth'})">
+                    <div class="card-body text-center py-4">
+                        <i class="fas fa-clipboard-check fa-2x mb-3" style="color:#1e3c72"></i>
+                        <h5 style="color:#1e3c72;font-weight:700">Result Verification</h5>
+                        <p class="text-muted mb-3" style="font-size:.88rem">FA, incorrect grade, or missing result</p>
+                        <span class="badge badge-primary px-3 py-2">Lodge Below ↓</span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <a href="student_ict_complaint.php" style="text-decoration:none">
+                    <div class="card h-100" style="border:2px solid #28a745;border-radius:12px;cursor:pointer">
+                        <div class="card-body text-center py-4">
+                            <i class="fas fa-headset fa-2x mb-3" style="color:#28a745"></i>
+                            <h5 style="color:#28a745;font-weight:700">ICT / Portal Complaint</h5>
+                            <p class="text-muted mb-3" style="font-size:.88rem">Login issues, payments, course registration, printing & more</p>
+                            <span class="badge badge-success px-3 py-2">Start Wizard →</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <div id="resultSection">
         <div class="card dashboard-card">
             <div class="card-header">
                 <h4 class="mb-0"><i class="fas fa-plus-circle mr-2"></i>Lodge Result Verification Complaint</h4>
@@ -364,6 +391,7 @@ ob_end_flush();
                 </form>
             </div>
         </div>
+        </div><!-- /resultSection -->
 
         <!-- My Complaints -->
         <div class="card dashboard-card">
