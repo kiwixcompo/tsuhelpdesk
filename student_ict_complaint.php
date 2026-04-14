@@ -159,11 +159,11 @@ function renderNode(node) {
 
 function renderQuestion(node, c) {
     let html = `<div class="question-text">${esc(node.label)}</div>
-                <div class="options-grid">`;
+                <div class="options-grid" id="optionsGrid">`;
 
-    (node.children || []).forEach(child => {
+    (node.children || []).forEach((child, idx) => {
         const icon = iconFor(child);
-        html += `<button class="opt-btn" onclick="selectOption(${JSON.stringify(JSON.stringify(child))})">
+        html += `<button class="opt-btn" data-idx="${idx}">
                     <i class="fas ${icon}"></i>
                     <span>${esc(child.label)}</span>
                  </button>`;
@@ -173,11 +173,22 @@ function renderQuestion(node, c) {
 
     if (state.path.length > 0) {
         html += `<div class="action-row">
-                    <button class="btn-outline-custom" onclick="goBack()"><i class="fas fa-arrow-left mr-1"></i>Back</button>
+                    <button class="btn-outline-custom" id="backBtn"><i class="fas fa-arrow-left mr-1"></i>Back</button>
                  </div>`;
     }
 
     c.innerHTML = html;
+
+    // Attach events after DOM is set
+    c.querySelectorAll('.opt-btn[data-idx]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const idx = parseInt(this.getAttribute('data-idx'));
+            selectOption(node.children[idx]);
+        });
+    });
+
+    const backBtn = c.querySelector('#backBtn');
+    if (backBtn) backBtn.addEventListener('click', goBack);
 }
 
 function renderLeaf(node, c) {
@@ -186,7 +197,6 @@ function renderLeaf(node, c) {
 
     let html = '';
 
-    // Show auto-response if applicable
     if (isAutoResponse && node.responseText) {
         html += `<div class="response-box">
                     <h6><i class="fas fa-info-circle mr-1"></i>Suggested Resolution</h6>
@@ -194,12 +204,10 @@ function renderLeaf(node, c) {
                  </div>`;
     }
 
-    // AI badge for free_text
     if (isFreeText && node.aiClassificationEnabled) {
         html += `<div class="ai-badge"><i class="fas fa-robot"></i> AI-assisted classification</div>`;
     }
 
-    // Free text description
     if (isFreeText || node.actionType === 'escalate') {
         html += `<div class="extra-fields">
                     <div class="form-group mb-2">
@@ -209,34 +217,48 @@ function renderLeaf(node, c) {
                  </div>`;
     }
 
-    // Required extra fields
     const fields = buildExtraFields(node.requiredFields || []);
     if (fields) {
         html += `<div class="extra-fields">${fields}</div>`;
     }
 
-    // Action buttons
-    html += `<div class="action-row">`;
+    html += `<div class="action-row" id="leafActions">`;
 
     if (isAutoResponse) {
-        html += `<button class="btn-primary-custom" onclick="submitComplaint(false)">
+        html += `<button class="btn-primary-custom" id="resolvedBtn">
                     <i class="fas fa-check mr-1"></i>This resolved my issue
                  </button>`;
         if (node.allowEscalation) {
-            html += `<button class="btn-outline-custom" onclick="submitComplaint(true)">
+            html += `<button class="btn-outline-custom" id="escalateBtn">
                         <i class="fas fa-user-headset mr-1"></i>Still need help — escalate to ICT
                      </button>`;
         }
     } else {
-        html += `<button class="btn-primary-custom" onclick="submitComplaint(true)">
+        html += `<button class="btn-primary-custom" id="submitBtn">
                     <i class="fas fa-paper-plane mr-1"></i>Submit Complaint
                  </button>`;
     }
 
-    html += `<button class="btn-outline-custom" onclick="goBack()"><i class="fas fa-arrow-left mr-1"></i>Back</button>`;
+    html += `<button class="btn-outline-custom" id="leafBackBtn"><i class="fas fa-arrow-left mr-1"></i>Back</button>`;
     html += `</div>`;
 
     c.innerHTML = html;
+
+    // Attach events after DOM is set
+    const descEl = c.querySelector('#descField');
+    if (descEl) descEl.addEventListener('input', () => { state.description = descEl.value; });
+
+    const resolvedBtn = c.querySelector('#resolvedBtn');
+    if (resolvedBtn) resolvedBtn.addEventListener('click', () => submitComplaint(false, node, resolvedBtn));
+
+    const escalateBtn = c.querySelector('#escalateBtn');
+    if (escalateBtn) escalateBtn.addEventListener('click', () => submitComplaint(true, node, escalateBtn));
+
+    const submitBtn = c.querySelector('#submitBtn');
+    if (submitBtn) submitBtn.addEventListener('click', () => submitComplaint(true, node, submitBtn));
+
+    const leafBackBtn = c.querySelector('#leafBackBtn');
+    if (leafBackBtn) leafBackBtn.addEventListener('click', goBack);
 }
 
 function buildExtraFields(fields) {
@@ -272,8 +294,7 @@ function buildExtraFields(fields) {
 }
 
 // ── Navigation ────────────────────────────────────────────
-function selectOption(nodeJson) {
-    const node = JSON.parse(nodeJson);
+function selectOption(node) {
     state.path.push(state.currentNode);
     state.pathLabels.push(node.label);
     state.depth++;
@@ -289,8 +310,8 @@ function goBack() {
 }
 
 // ── Submit ────────────────────────────────────────────────
-async function submitComplaint(escalated) {
-    const node = state.currentNode;
+async function submitComplaint(escalated, node, btn) {
+    node = node || state.currentNode;
 
     // Collect description
     const descEl = document.getElementById('descField');
@@ -301,9 +322,10 @@ async function submitComplaint(escalated) {
         await classifyWithAI(node);
     }
 
-    const btn = event.target;
-    btn.disabled = true;
-    btn.innerHTML = `<span class="spinner-sm"></span>Submitting…`;
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner-sm"></span>Submitting…`;
+    }
 
     const payload = {
         node_id:       node.id,
@@ -329,14 +351,16 @@ async function submitComplaint(escalated) {
             showSuccess(data, escalated, node);
         } else {
             alert('Error: ' + (data.message || 'Could not submit complaint'));
-            btn.disabled = false;
-            btn.innerHTML = escalated
-                ? '<i class="fas fa-paper-plane mr-1"></i>Submit Complaint'
-                : '<i class="fas fa-check mr-1"></i>This resolved my issue';
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = escalated
+                    ? '<i class="fas fa-paper-plane mr-1"></i>Submit Complaint'
+                    : '<i class="fas fa-check mr-1"></i>This resolved my issue';
+            }
         }
     } catch (e) {
         alert('Network error. Please try again.');
-        btn.disabled = false;
+        if (btn) btn.disabled = false;
     }
 }
 
@@ -381,11 +405,14 @@ function showSuccess(data, escalated, node) {
             <a href="student_dashboard.php" class="btn-primary-custom" style="text-decoration:none">
                 <i class="fas fa-home mr-1"></i>Back to Dashboard
             </a>
-            <button class="btn-outline-custom" onclick="resetWizard()">
+            <button class="btn-outline-custom" id="newComplaintBtn">
                 <i class="fas fa-plus mr-1"></i>New Complaint
             </button>
         </div>
     </div>`;
+
+    const newBtn = c.querySelector('#newComplaintBtn');
+    if (newBtn) newBtn.addEventListener('click', resetWizard);
 }
 
 function resetWizard() {
