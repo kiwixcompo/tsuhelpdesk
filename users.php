@@ -270,9 +270,19 @@ while($row = mysqli_fetch_assoc($result)){
             transform: translateZ(0);
         }
         
-        .modal {
-            will-change: transform;
-            transform: translateZ(0);
+        /* Fix modal flicker - disable animation on small modals */
+        .modal.fade .modal-dialog {
+            transition: none !important;
+        }
+        .modal-backdrop {
+            display: none !important;
+        }
+        body.modal-open {
+            overflow: auto !important;
+            padding-right: 0 !important;
+        }
+        .modal.show {
+            background: rgba(0,0,0,0.5);
         }
         
         /* Smooth transitions */

@@ -252,9 +252,6 @@ if($faculties_result){
 
 // Calculate pagination
 $total_pages = ceil($total_students / $per_page);
-
-// End output buffering and flush
-ob_end_flush();
 ?>
 
 <!DOCTYPE html>

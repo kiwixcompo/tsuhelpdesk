@@ -111,11 +111,8 @@ foreach (['uploads', 'logs'] as $dir) {
 }
 
 // Remove this deployer from the live directory (security)
-$selfInDest = DEST_PATH . '/cpanel_deploy.php';
-if (file_exists($selfInDest)) {
-    unlink($selfInDest);
-    logLine("Removed cpanel_deploy.php from live directory (security)");
-}
+// NOTE: kept intentionally so sync_and_deploy.bat can trigger it repeatedly
+// Delete manually when migration is complete
 
 $elapsed = round(microtime(true) - $start, 2);
 logLine("---");
