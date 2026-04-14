@@ -326,6 +326,7 @@ async function submitComplaint(escalated, node, btn) {
         btn.disabled = true;
         btn.innerHTML = `<span class="spinner-sm"></span>Submitting…`;
     }
+    const originalLabel = btn ? btn.innerHTML : '';
 
     const payload = {
         node_id:       node.id,
@@ -345,21 +346,28 @@ async function submitComplaint(escalated, node, btn) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
         });
-        const data = await res.json();
+
+        // Try to parse JSON — if it fails, show the raw response for debugging
+        let data;
+        const text = await res.text();
+        try {
+            data = JSON.parse(text);
+        } catch (e) {
+            console.error('Non-JSON response:', text);
+            alert('Server error. Check the browser console for details.');
+            if (btn) { btn.disabled = false; btn.innerHTML = originalLabel; }
+            return;
+        }
 
         if (data.success) {
             showSuccess(data, escalated, node);
         } else {
             alert('Error: ' + (data.message || 'Could not submit complaint'));
-            if (btn) {
-                btn.disabled = false;
-                btn.innerHTML = escalated
-                    ? '<i class="fas fa-paper-plane mr-1"></i>Submit Complaint'
-                    : '<i class="fas fa-check mr-1"></i>This resolved my issue';
-            }
+            if (btn) { btn.disabled = false; btn.innerHTML = originalLabel; }
         }
     } catch (e) {
-        alert('Network error. Please try again.');
+        console.error('Fetch error:', e);
+        alert('Network error: ' + e.message);
         if (btn) btn.disabled = false;
     }
 }
