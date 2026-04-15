@@ -217,6 +217,24 @@ body {
     background-color: var(--white);
 }
 
+/* Select elements need less padding so the selected text isn't clipped */
+select.form-control {
+    padding: 8px 12px;
+    height: auto;
+    min-height: 42px;
+    line-height: 1.5;
+    appearance: auto;
+    -webkit-appearance: auto;
+}
+
+/* Bootstrap form-control-sm also clips select text — override */
+select.form-control-sm {
+    height: auto !important;
+    min-height: 31px !important;
+    padding: 4px 8px !important;
+    line-height: 1.5 !important;
+}
+
 .form-control:focus {
     border-color: var(--primary-blue);
     box-shadow: 0 0 0 0.2rem rgba(30, 60, 114, 0.25);
@@ -280,6 +298,12 @@ body {
     text-overflow: clip !important;
     white-space: normal !important;
     box-sizing: border-box !important;
+}
+.modal select {
+    padding: 8px 12px !important;
+    height: auto !important;
+    min-height: 42px !important;
+    line-height: 1.5 !important;
 }
 .modal select option {
     white-space: normal !important;
