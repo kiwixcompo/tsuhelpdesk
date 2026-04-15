@@ -675,31 +675,13 @@ foreach ($complaints as $c) {
             white-space: nowrap;
             font-size: 0.75rem;
         }
-        /* CRITICAL FIX: Hide modal backdrop completely */
-        .modal-backdrop {
-            display: none !important;
-        }
-        /* Keep body scrollable when modal is open */
+        /* CRITICAL FIX: Keep body scrollable when modal is open */
         body.modal-open {
             overflow: auto !important;
             padding-right: 0 !important;
         }
-        /* Style modal for visibility without backdrop */
-        .modal.show {
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 1050;
-        }
         .modal-dialog {
-            z-index: 1051;
-        }
-        /* Ensure modal content is clickable */
-        .modal-content {
-            position: relative;
-            z-index: 1052;
-            background-color: #fff;
-            border: 1px solid rgba(0,0,0,.2);
-            border-radius: 0.3rem;
-            box-shadow: 0 0.25rem 0.5rem rgba(0,0,0,.5);
+            margin: 5vh auto;
         }
     </style>
 </head>

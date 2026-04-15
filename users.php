@@ -274,15 +274,12 @@ while($row = mysqli_fetch_assoc($result)){
         .modal.fade .modal-dialog {
             transition: none !important;
         }
-        .modal-backdrop {
-            display: none !important;
-        }
         body.modal-open {
             overflow: auto !important;
             padding-right: 0 !important;
         }
-        .modal.show {
-            background: rgba(0,0,0,0.5);
+        .modal-dialog {
+            margin: 5vh auto;
         }
         
         /* Smooth transitions */

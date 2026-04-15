@@ -18,6 +18,15 @@ if ($result && $row = mysqli_fetch_assoc($result)) $app_name = $row['setting_val
 
 $success_msg = $error_msg = '';
 
+// Flash messages from PRG redirect
+if (!empty($_GET['msg'])) {
+    if (($_GET['type'] ?? '') === 'success') {
+        $success_msg = htmlspecialchars($_GET['msg']);
+    } else {
+        $error_msg = htmlspecialchars($_GET['msg']);
+    }
+}
+
 // ── Handle feedback submission ────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_feedback'])) {
     $cid      = (int) $_POST['complaint_id'];
@@ -35,7 +44,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_feedback'])) {
         mysqli_stmt_bind_param($upd, 'ssii', $status, $response, $_SESSION['user_id'], $cid);
         if (mysqli_stmt_execute($upd)) {
             $success_msg = "Complaint #$cid updated successfully.";
-
             // Notify student — hide staff identity
             $get = mysqli_prepare($conn,
                 "SELECT student_id, node_label FROM student_ict_complaints WHERE complaint_id=?");
@@ -78,6 +86,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_feedback'])) {
         }
         mysqli_stmt_close($upd);
     }
+    // PRG redirect — prevents form resubmission and http/https mismatch
+    $msg_text = $success_msg ?: $error_msg;
+    $msg_type = $success_msg ? 'success' : 'error';
+    header("Location: ict_complaints_admin.php?msg=" . urlencode($msg_text) . "&type=$msg_type");
+    exit;
 }
 
 // ── Handle delete ─────────────────────────────────────────
@@ -86,9 +99,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_complaint'])) 
     $del = mysqli_prepare($conn, "DELETE FROM student_ict_complaints WHERE complaint_id=?");
     if ($del) {
         mysqli_stmt_bind_param($del, 'i', $cid);
-        mysqli_stmt_execute($del) ? $success_msg = "Complaint deleted." : $error_msg = "Delete failed.";
+        $del_ok = mysqli_stmt_execute($del);
         mysqli_stmt_close($del);
+        $msg_text = $del_ok ? 'Complaint deleted.' : 'Delete failed.';
+        $msg_type = $del_ok ? 'success' : 'error';
+    } else {
+        $msg_text = 'Database error.'; $msg_type = 'error';
     }
+    header("Location: ict_complaints_admin.php?msg=" . urlencode($msg_text) . "&type=$msg_type");
+    exit;
 }
 
 // ── Filters ───────────────────────────────────────────────
@@ -167,9 +186,11 @@ ob_end_flush();
 .stat-lbl  { font-size:.8rem; color:#6c757d; text-transform:uppercase; letter-spacing:.04em; }
 .badge-auto { background:#6f42c1; color:#fff; }
 .path-text { font-size:.8rem; color:#6c757d; max-width:260px; }
-.modal-backdrop { display:none!important; }
-body.modal-open { overflow:auto!important; padding-right:0!important; }
-.modal.show { background:rgba(0,0,0,.5); }
+
+/* ── Proper modal fix — no flicker ── */
+/* Let Bootstrap handle the backdrop normally but keep body scrollable */
+body.modal-open { overflow: auto !important; padding-right: 0 !important; }
+.modal-dialog { margin: 5vh auto; }
 </style>
 </head>
 <body>
@@ -310,12 +331,31 @@ include 'includes/dashboard_header.php';
                     </td>
                     <td><?php echo date('M d, Y', strtotime($c['created_at'])); ?></td>
                     <td>
-                        <button class="btn btn-sm btn-outline-primary mr-1"
-                                data-toggle="modal" data-target="#viewModal<?php echo $c['complaint_id']; ?>">
+                        <button class="btn btn-sm btn-outline-primary mr-1 btn-view"
+                                data-id="<?php echo $c['complaint_id']; ?>"
+                                data-name="<?php echo htmlspecialchars($c['student_name'], ENT_QUOTES); ?>"
+                                data-reg="<?php echo htmlspecialchars($c['registration_number'], ENT_QUOTES); ?>"
+                                data-email="<?php echo htmlspecialchars($c['email'], ENT_QUOTES); ?>"
+                                data-dept="<?php echo htmlspecialchars($c['department_name'] ?? '', ENT_QUOTES); ?>"
+                                data-faculty="<?php echo htmlspecialchars($c['faculty_name'] ?? '', ENT_QUOTES); ?>"
+                                data-category="<?php echo htmlspecialchars($c['category'], ENT_QUOTES); ?>"
+                                data-label="<?php echo htmlspecialchars($c['node_label'], ENT_QUOTES); ?>"
+                                data-status="<?php echo htmlspecialchars($c['status'], ENT_QUOTES); ?>"
+                                data-escalated="<?php echo $c['escalated'] ? 'Yes' : 'No'; ?>"
+                                data-date="<?php echo date('M d, Y H:i', strtotime($c['created_at'])); ?>"
+                                data-path="<?php echo htmlspecialchars($c['path_summary'], ENT_QUOTES); ?>"
+                                data-desc="<?php echo htmlspecialchars($c['description'] ?? '', ENT_QUOTES); ?>"
+                                data-auto="<?php echo htmlspecialchars($c['auto_response'] ?? '', ENT_QUOTES); ?>"
+                                data-response="<?php echo htmlspecialchars($c['admin_response'] ?? '', ENT_QUOTES); ?>"
+                                data-extra="<?php echo htmlspecialchars($c['extra_fields'] ?? '{}', ENT_QUOTES); ?>">
                             <i class="fas fa-eye"></i>
                         </button>
-                        <button class="btn btn-sm btn-outline-success mr-1"
-                                data-toggle="modal" data-target="#feedbackModal<?php echo $c['complaint_id']; ?>">
+                        <button class="btn btn-sm btn-outline-success mr-1 btn-reply"
+                                data-id="<?php echo $c['complaint_id']; ?>"
+                                data-name="<?php echo htmlspecialchars($c['student_name'], ENT_QUOTES); ?>"
+                                data-label="<?php echo htmlspecialchars($c['node_label'], ENT_QUOTES); ?>"
+                                data-status="<?php echo htmlspecialchars($c['status'], ENT_QUOTES); ?>"
+                                data-response="<?php echo htmlspecialchars($c['admin_response'] ?? '', ENT_QUOTES); ?>">
                             <i class="fas fa-reply"></i>
                         </button>
                         <form method="POST" style="display:inline"
@@ -327,124 +367,6 @@ include 'includes/dashboard_header.php';
                         </form>
                     </td>
                 </tr>
-
-                <!-- View Modal -->
-                <div class="modal fade" id="viewModal<?php echo $c['complaint_id']; ?>" tabindex="-1">
-                    <div class="modal-dialog modal-lg">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title">Complaint #<?php echo $c['complaint_id']; ?> — Details</h5>
-                                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
-                            </div>
-                            <div class="modal-body">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <h6>Student</h6>
-                                        <p><strong>Name:</strong> <?php echo htmlspecialchars($c['student_name']); ?></p>
-                                        <p><strong>Reg No:</strong> <?php echo htmlspecialchars($c['registration_number']); ?></p>
-                                        <p><strong>Email:</strong> <?php echo htmlspecialchars($c['email']); ?></p>
-                                        <p><strong>Department:</strong> <?php echo htmlspecialchars($c['department_name'] ?? 'N/A'); ?></p>
-                                        <p><strong>Faculty:</strong> <?php echo htmlspecialchars($c['faculty_name'] ?? 'N/A'); ?></p>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <h6>Complaint</h6>
-                                        <p><strong>Category:</strong> <?php echo htmlspecialchars($c['category']); ?></p>
-                                        <p><strong>Issue:</strong> <?php echo htmlspecialchars($c['node_label']); ?></p>
-                                        <p><strong>Status:</strong> <span class="badge badge-<?php echo $bc; ?>"><?php echo htmlspecialchars($c['status']); ?></span></p>
-                                        <p><strong>Escalated:</strong> <?php echo $c['escalated'] ? 'Yes' : 'No'; ?></p>
-                                        <p><strong>Submitted:</strong> <?php echo date('M d, Y H:i', strtotime($c['created_at'])); ?></p>
-                                    </div>
-                                </div>
-                                <hr>
-                                <h6>Decision Path</h6>
-                                <p class="text-muted"><?php echo htmlspecialchars($c['path_summary']); ?></p>
-
-                                <?php if ($c['description']): ?>
-                                    <h6>Additional Details</h6>
-                                    <p><?php echo nl2br(htmlspecialchars($c['description'])); ?></p>
-                                <?php endif; ?>
-
-                                <?php if ($c['auto_response']): ?>
-                                    <div class="alert alert-info">
-                                        <strong>Auto-Response Shown to Student:</strong><br>
-                                        <?php echo nl2br(htmlspecialchars($c['auto_response'])); ?>
-                                    </div>
-                                <?php endif; ?>
-
-                                <?php if ($c['admin_response']): ?>
-                                    <div class="alert alert-success">
-                                        <strong>ICT Response:</strong><br>
-                                        <?php echo nl2br(htmlspecialchars($c['admin_response'])); ?>
-                                    </div>
-                                <?php endif; ?>
-
-                                <?php
-                                // Extra fields
-                                $ef = json_decode($c['extra_fields'] ?? '{}', true);
-                                $ef = array_filter($ef ?? [], fn($v) => $v !== '' && $v !== null);
-                                if ($ef): ?>
-                                    <h6>Extra Information Provided</h6>
-                                    <table class="table table-sm table-bordered">
-                                        <?php foreach ($ef as $k => $v): ?>
-                                            <tr>
-                                                <td class="font-weight-bold" style="width:40%"><?php echo htmlspecialchars(ucwords(str_replace('_',' ',$k))); ?></td>
-                                                <td><?php echo htmlspecialchars($v); ?></td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    </table>
-                                <?php endif; ?>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Feedback Modal -->
-                <div class="modal fade" id="feedbackModal<?php echo $c['complaint_id']; ?>" tabindex="-1">
-                    <div class="modal-dialog">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title">Respond to Complaint #<?php echo $c['complaint_id']; ?></h5>
-                                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
-                            </div>
-                            <form method="POST">
-                                <div class="modal-body">
-                                    <input type="hidden" name="complaint_id" value="<?php echo $c['complaint_id']; ?>">
-                                    <p class="text-muted small">
-                                        <strong>Student:</strong> <?php echo htmlspecialchars($c['student_name']); ?><br>
-                                        <strong>Issue:</strong> <?php echo htmlspecialchars($c['node_label']); ?>
-                                    </p>
-                                    <div class="form-group">
-                                        <label class="font-weight-bold">Update Status</label>
-                                        <select name="status" class="form-control" required>
-                                            <?php foreach (['Pending','Under Review','Resolved','Rejected'] as $s): ?>
-                                                <option value="<?php echo $s; ?>" <?php echo $c['status']===$s?'selected':''; ?>><?php echo $s; ?></option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="font-weight-bold">Response to Student</label>
-                                        <textarea name="admin_response" class="form-control" rows="5"
-                                                  placeholder="Your response will be shown to the student. Your identity will not be revealed."><?php echo htmlspecialchars($c['admin_response'] ?? ''); ?></textarea>
-                                        <small class="text-muted">
-                                            <i class="fas fa-shield-alt mr-1"></i>
-                                            Your name will not be shown to the student.
-                                        </small>
-                                    </div>
-                                </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                                    <button type="submit" name="submit_feedback" class="btn btn-success">
-                                        <i class="fas fa-paper-plane mr-1"></i>Send Response
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-
             <?php endforeach; ?>
             <?php endif; ?>
             </tbody>
@@ -454,11 +376,151 @@ include 'includes/dashboard_header.php';
 
 </div><!-- /container -->
 
+<!-- ── Shared View Modal (outside table, no flicker) ── -->
+<div class="modal fade" id="sharedViewModal" tabindex="-1" role="dialog" aria-labelledby="viewModalTitle">
+    <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="viewModalTitle">Complaint Details</h5>
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body" id="sharedViewBody"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Shared Feedback Modal (outside table, no flicker) ── -->
+<div class="modal fade" id="sharedFeedbackModal" tabindex="-1" role="dialog" aria-labelledby="feedbackModalTitle">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="feedbackModalTitle">Respond to Complaint</h5>
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <form method="POST" id="feedbackForm">
+                <div class="modal-body">
+                    <input type="hidden" name="complaint_id" id="feedbackComplaintId">
+                    <p class="text-muted small" id="feedbackMeta"></p>
+                    <div class="form-group">
+                        <label class="font-weight-bold">Update Status</label>
+                        <select name="status" id="feedbackStatus" class="form-control" required>
+                            <option value="Pending">Pending</option>
+                            <option value="Under Review">Under Review</option>
+                            <option value="Resolved">Resolved</option>
+                            <option value="Rejected">Rejected</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="font-weight-bold">Response to Student</label>
+                        <textarea name="admin_response" id="feedbackResponse" class="form-control" rows="5"
+                                  placeholder="Your response will be shown to the student. Your identity will not be revealed."></textarea>
+                        <small class="text-muted">
+                            <i class="fas fa-shield-alt mr-1"></i>
+                            Your name will not be shown to the student.
+                        </small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" name="submit_feedback" class="btn btn-success">
+                        <i class="fas fa-paper-plane mr-1"></i>Send Response
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 <script>
-$('.alert').delay(5000).fadeOut();
+$(function() {
+    // Auto-dismiss alerts
+    $('.alert').delay(4000).fadeOut();
+
+    // ── View button ──────────────────────────────────────
+    $(document).on('click', '.btn-view', function() {
+        const d = $(this).data();
+        const statusColors = {
+            'Pending':'warning','Under Review':'info','Resolved':'success',
+            'Rejected':'danger','Auto-Resolved':'secondary'
+        };
+        const bc = statusColors[d.status] || 'secondary';
+
+        let extraHtml = '';
+        try {
+            const ef = JSON.parse(d.extra || '{}');
+            const filtered = Object.entries(ef).filter(([k,v]) => v !== '' && v !== null && k !== 'ai_category');
+            if (filtered.length) {
+                extraHtml = '<h6 class="mt-3">Extra Information Provided</h6><table class="table table-sm table-bordered">';
+                filtered.forEach(([k,v]) => {
+                    const label = k.replace(/_/g,' ').replace(/\b\w/g, l => l.toUpperCase());
+                    extraHtml += `<tr><td class="font-weight-bold" style="width:40%">${esc(label)}</td><td>${esc(String(v))}</td></tr>`;
+                });
+                extraHtml += '</table>';
+            }
+        } catch(e) {}
+
+        const autoHtml = d.auto
+            ? `<div class="alert alert-info mt-3"><strong>Auto-Response Shown to Student:</strong><br>${esc(d.auto).replace(/\n/g,'<br>')}</div>`
+            : '';
+        const respHtml = d.response
+            ? `<div class="alert alert-success mt-3"><strong>ICT Response:</strong><br>${esc(d.response).replace(/\n/g,'<br>')}</div>`
+            : '';
+        const descHtml = d.desc
+            ? `<h6 class="mt-3">Additional Details</h6><p>${esc(d.desc).replace(/\n/g,'<br>')}</p>`
+            : '';
+
+        const body = `
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>Student</h6>
+                    <p><strong>Name:</strong> ${esc(d.name)}</p>
+                    <p><strong>Reg No:</strong> ${esc(d.reg)}</p>
+                    <p><strong>Email:</strong> ${esc(d.email)}</p>
+                    <p><strong>Department:</strong> ${esc(d.dept || 'N/A')}</p>
+                    <p><strong>Faculty:</strong> ${esc(d.faculty || 'N/A')}</p>
+                </div>
+                <div class="col-md-6">
+                    <h6>Complaint</h6>
+                    <p><strong>Category:</strong> ${esc(d.category)}</p>
+                    <p><strong>Issue:</strong> ${esc(d.label)}</p>
+                    <p><strong>Status:</strong> <span class="badge badge-${bc}">${esc(d.status)}</span></p>
+                    <p><strong>Escalated:</strong> ${esc(d.escalated)}</p>
+                    <p><strong>Submitted:</strong> ${esc(d.date)}</p>
+                </div>
+            </div>
+            <hr>
+            <h6>Decision Path</h6>
+            <p class="text-muted">${esc(d.path)}</p>
+            ${descHtml}${autoHtml}${respHtml}${extraHtml}`;
+
+        $('#viewModalTitle').text('Complaint #' + d.id + ' — Details');
+        $('#sharedViewBody').html(body);
+        $('#sharedViewModal').modal('show');
+    });
+
+    // ── Reply button ─────────────────────────────────────
+    $(document).on('click', '.btn-reply', function() {
+        const d = $(this).data();
+        $('#feedbackModalTitle').text('Respond to Complaint #' + d.id);
+        $('#feedbackComplaintId').val(d.id);
+        $('#feedbackMeta').html('<strong>Student:</strong> ' + esc(d.name) + '<br><strong>Issue:</strong> ' + esc(d.label));
+        $('#feedbackStatus').val(d.status);
+        $('#feedbackResponse').val(d.response || '');
+        $('#sharedFeedbackModal').modal('show');
+    });
+
+    function esc(str) {
+        const d = document.createElement('div');
+        d.textContent = String(str || '');
+        return d.innerHTML;
+    }
+});
 </script>
 </body>
 </html>
