@@ -466,77 +466,77 @@ while($row = mysqli_fetch_assoc($result)){
                                             <td><?php echo date('M d, Y', strtotime($user['created_at'])); ?></td>
                                             <?php if($_SESSION["is_super_admin"] && $user['user_id'] != $_SESSION["user_id"]): ?>
                                             <td>
-                                                <button type="button" class="btn btn-sm btn-warning" data-toggle="modal" 
-                                                        data-target="#resetPasswordModal<?php echo $user['user_id']; ?>">
-                                                    Reset Password
+                                                <button type="button" class="btn btn-sm btn-warning btn-reset-pw"
+                                                        data-id="<?php echo $user['user_id']; ?>"
+                                                        data-name="<?php echo htmlspecialchars($user['full_name'], ENT_QUOTES); ?>">
+                                                    <i class="fas fa-key mr-1"></i>Reset Password
                                                 </button>
-                                                <button type="button" class="btn btn-sm btn-danger" data-toggle="modal" 
-                                                        data-target="#deleteUserModal<?php echo $user['user_id']; ?>">
-                                                    Delete
+                                                <button type="button" class="btn btn-sm btn-danger btn-delete-user"
+                                                        data-id="<?php echo $user['user_id']; ?>"
+                                                        data-name="<?php echo htmlspecialchars($user['full_name'], ENT_QUOTES); ?>">
+                                                    <i class="fas fa-trash mr-1"></i>Delete
                                                 </button>
                                             </td>
                                             <?php endif; ?>
                                         </tr>
-
-                                        <?php if($_SESSION["is_super_admin"] && $user['user_id'] != $_SESSION["user_id"]): ?>
-                                        <!-- Reset Password Modal -->
-                                        <div class="modal fade" id="resetPasswordModal<?php echo $user['user_id']; ?>" tabindex="-1">
-                                            <div class="modal-dialog">
-                                                <div class="modal-content">
-                                                    <div class="modal-header">
-                                                        <h5 class="modal-title">Reset Password for <?php echo htmlspecialchars($user['full_name']); ?></h5>
-                                                        <button type="button" class="close" data-dismiss="modal">
-                                                            <span>&times;</span>
-                                                        </button>
-                                                    </div>
-                                                    <form method="post">
-                                                        <div class="modal-body">
-                                                            <input type="hidden" name="user_id" value="<?php echo $user['user_id']; ?>">
-                                                            <div class="form-group">
-                                                                <label>New Password</label>
-                                                                <input type="password" name="new_password" class="form-control" required>
-                                                            </div>
-                                                        </div>
-                                                        <div class="modal-footer">
-                                                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                                                            <button type="submit" name="reset_password" class="btn btn-warning">Reset Password</button>
-                                                        </div>
-                                                    </form>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- Delete User Modal -->
-                                        <div class="modal fade" id="deleteUserModal<?php echo $user['user_id']; ?>" tabindex="-1">
-                                            <div class="modal-dialog">
-                                                <div class="modal-content">
-                                                    <div class="modal-header">
-                                                        <h5 class="modal-title">Delete User</h5>
-                                                        <button type="button" class="close" data-dismiss="modal">
-                                                            <span>&times;</span>
-                                                        </button>
-                                                    </div>
-                                                    <div class="modal-body">
-                                                        <p>Are you sure you want to delete user <strong><?php echo htmlspecialchars($user['full_name']); ?></strong>?</p>
-                                                        <p class="text-danger">This action cannot be undone.</p>
-                                                    </div>
-                                                    <form method="post">
-                                                        <input type="hidden" name="user_id" value="<?php echo $user['user_id']; ?>">
-                                                        <div class="modal-footer">
-                                                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                                                            <button type="submit" name="delete_user" class="btn btn-danger">Delete User</button>
-                                                        </div>
-                                                    </form>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <?php endif; ?>
                                     <?php endforeach; ?>
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Shared Reset Password Modal (outside table — no flicker) -->
+    <div class="modal fade" id="sharedResetPasswordModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="resetModalTitle">Reset Password</h5>
+                    <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                </div>
+                <form method="post">
+                    <div class="modal-body">
+                        <input type="hidden" name="user_id" id="resetUserId">
+                        <div class="form-group">
+                            <label>New Password for <strong id="resetUserName"></strong></label>
+                            <input type="password" name="new_password" id="resetPasswordInput" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="submit" name="reset_password" class="btn btn-warning">
+                            <i class="fas fa-key mr-1"></i>Reset Password
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Shared Delete User Modal (outside table — no flicker) -->
+    <div class="modal fade" id="sharedDeleteUserModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Delete User</h5>
+                    <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete <strong id="deleteUserName"></strong>?</p>
+                    <p class="text-danger"><i class="fas fa-exclamation-triangle mr-1"></i>This action cannot be undone.</p>
+                </div>
+                <form method="post">
+                    <input type="hidden" name="user_id" id="deleteUserId">
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="submit" name="delete_user" class="btn btn-danger">
+                            <i class="fas fa-trash mr-1"></i>Delete User
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -693,6 +693,26 @@ while($row = mysqli_fetch_assoc($result)){
         $('#bulkResetForm').on('submit', function(e) {
             e.preventDefault();
             processBulkPasswordReset();
+        });
+        
+        // Shared Reset Password button
+        $(document).on('click', '.btn-reset-pw', function() {
+            const id   = $(this).data('id');
+            const name = $(this).data('name');
+            $('#resetUserId').val(id);
+            $('#resetUserName').text(name);
+            $('#resetModalTitle').text('Reset Password for ' + name);
+            $('#resetPasswordInput').val('');
+            $('#sharedResetPasswordModal').modal('show');
+        });
+
+        // Shared Delete User button
+        $(document).on('click', '.btn-delete-user', function() {
+            const id   = $(this).data('id');
+            const name = $(this).data('name');
+            $('#deleteUserId').val(id);
+            $('#deleteUserName').text(name);
+            $('#sharedDeleteUserModal').modal('show');
         });
     });
     
@@ -1266,14 +1286,28 @@ while($row = mysqli_fetch_assoc($result)){
     
     function showResetPasswordModal(userId) {
         $('#userDetailModal').modal('hide');
-        // Find and trigger the existing reset password modal
-        $(`#resetPasswordModal${userId}`).modal('show');
+        // Trigger shared reset modal — find user name from table
+        const btn = document.querySelector(`.btn-reset-pw[data-id="${userId}"]`);
+        if (btn) {
+            const name = btn.getAttribute('data-name');
+            $('#resetUserId').val(userId);
+            $('#resetUserName').text(name);
+            $('#resetModalTitle').text('Reset Password for ' + name);
+            $('#resetPasswordInput').val('');
+            $('#sharedResetPasswordModal').modal('show');
+        }
     }
     
     function showDeleteUserModal(userId) {
         $('#userDetailModal').modal('hide');
-        // Find and trigger the existing delete user modal
-        $(`#deleteUserModal${userId}`).modal('show');
+        // Trigger shared delete modal — find user name from table
+        const btn = document.querySelector(`.btn-delete-user[data-id="${userId}"]`);
+        if (btn) {
+            const name = btn.getAttribute('data-name');
+            $('#deleteUserId').val(userId);
+            $('#deleteUserName').text(name);
+            $('#sharedDeleteUserModal').modal('show');
+        }
     }
     
     function escapeHtml(text) {
