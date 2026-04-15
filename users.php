@@ -258,6 +258,20 @@ while($row = mysqli_fetch_assoc($result)){
             table-layout: fixed;
             width: 100%;
         }
+        /* Ensure form controls inside modals are never clipped */
+        .modal select,
+        .modal .form-control,
+        .modal input,
+        .modal textarea {
+            width: 100% !important;
+            max-width: 100% !important;
+            overflow: visible !important;
+            text-overflow: unset !important;
+            white-space: normal !important;
+        }
+        .modal select option {
+            white-space: normal !important;
+        }
         
         .table td, .table th {
             word-wrap: break-word;

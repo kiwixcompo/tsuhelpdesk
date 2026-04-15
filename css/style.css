@@ -266,6 +266,26 @@ body {
     }
 } 
 
+/* ── Global modal form fix — prevent dropdown text clipping ── */
+.modal select,
+.modal .form-control,
+.modal input[type="text"],
+.modal input[type="email"],
+.modal input[type="password"],
+.modal input[type="date"],
+.modal textarea {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+    box-sizing: border-box !important;
+}
+.modal select option {
+    white-space: normal !important;
+    overflow: visible !important;
+}
+
 /* Professional Blue Theme Enhancements */
 .login-container {
     background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-blue-light) 100%);

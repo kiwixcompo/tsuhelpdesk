@@ -616,6 +616,21 @@ foreach ($complaints as $c) {
             table-layout: fixed;
             width: 100%;
         }
+        /* Ensure form controls inside modals are never clipped */
+        .modal select,
+        .modal .form-control,
+        .modal input,
+        .modal textarea {
+            table-layout: auto !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            overflow: visible !important;
+            text-overflow: unset !important;
+            white-space: normal !important;
+        }
+        .modal select option {
+            white-space: normal !important;
+        }
         /* Checkbox column - minimal width */
         .table th:first-child, .table td:first-child { 
             width: 40px;
