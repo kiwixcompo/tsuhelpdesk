@@ -60,7 +60,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_complaint'])){
     }
 }
 
-// Fetch student's complaints
+// Fetch student's result verification complaints
 $complaints = [];
 $sql = "SELECT * FROM student_complaints WHERE student_id = ? ORDER BY created_at DESC";
 if($stmt = mysqli_prepare($conn, $sql)){
@@ -72,6 +72,21 @@ if($stmt = mysqli_prepare($conn, $sql)){
         }
     }
     mysqli_stmt_close($stmt);
+}
+
+// Fetch student's ICT complaints
+$ict_complaints = [];
+$ict_table_check = mysqli_query($conn, "SHOW TABLES LIKE 'student_ict_complaints'");
+if (mysqli_num_rows($ict_table_check) > 0) {
+    $ict_sql = "SELECT * FROM student_ict_complaints WHERE student_id = ? ORDER BY created_at DESC";
+    if ($ict_stmt = mysqli_prepare($conn, $ict_sql)) {
+        mysqli_stmt_bind_param($ict_stmt, "i", $_SESSION["student_id"]);
+        if (mysqli_stmt_execute($ict_stmt)) {
+            $ict_result = mysqli_stmt_get_result($ict_stmt);
+            while ($row = mysqli_fetch_assoc($ict_result)) $ict_complaints[] = $row;
+        }
+        mysqli_stmt_close($ict_stmt);
+    }
 }
 
 // Generate academic sessions (current year back to 2021/2022)
@@ -492,6 +507,100 @@ ob_end_flush();
                 <?php endif; ?>
             </div>
         </div>
+
+        <!-- My ICT Complaints -->
+        <?php if (!empty($ict_complaints)): ?>
+        <div class="card dashboard-card">
+            <div class="card-header" style="background:linear-gradient(135deg,#1a6b3c,#27ae60)">
+                <h4 class="mb-0"><i class="fas fa-headset mr-2"></i>My ICT / Portal Complaints</h4>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th>Issue</th>
+                                <th>Status</th>
+                                <th>Submitted</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($ict_complaints as $ic): ?>
+                            <tr>
+                                <td><small><?php echo htmlspecialchars($ic['category']); ?></small></td>
+                                <td><?php echo htmlspecialchars($ic['node_label']); ?></td>
+                                <td>
+                                    <?php
+                                    $sc = ['Pending'=>'warning','Under Review'=>'info','Resolved'=>'success',
+                                           'Rejected'=>'danger','Auto-Resolved'=>'secondary'];
+                                    $bc = $sc[$ic['status']] ?? 'secondary';
+                                    ?>
+                                    <span class="badge badge-<?php echo $bc; ?>"><?php echo htmlspecialchars($ic['status']); ?></span>
+                                </td>
+                                <td><?php echo date('M d, Y', strtotime($ic['created_at'])); ?></td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-outline-primary"
+                                            data-toggle="modal" data-target="#ictModal<?php echo $ic['complaint_id']; ?>">
+                                        <i class="fas fa-eye"></i> View
+                                    </button>
+                                </td>
+                            </tr>
+
+                            <!-- ICT Complaint Modal -->
+                            <div class="modal fade" id="ictModal<?php echo $ic['complaint_id']; ?>" tabindex="-1">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">ICT Complaint Details</h5>
+                                            <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <p><strong>Category:</strong> <?php echo htmlspecialchars($ic['category']); ?></p>
+                                            <p><strong>Issue:</strong> <?php echo htmlspecialchars($ic['node_label']); ?></p>
+                                            <p><strong>Status:</strong>
+                                                <span class="badge badge-<?php echo $bc; ?>"><?php echo htmlspecialchars($ic['status']); ?></span>
+                                            </p>
+                                            <p><strong>Submitted:</strong> <?php echo date('M d, Y H:i', strtotime($ic['created_at'])); ?></p>
+
+                                            <?php if ($ic['description']): ?>
+                                                <hr>
+                                                <p><strong>Your Description:</strong></p>
+                                                <p class="text-muted"><?php echo nl2br(htmlspecialchars($ic['description'])); ?></p>
+                                            <?php endif; ?>
+
+                                            <?php if ($ic['auto_response'] && !$ic['escalated']): ?>
+                                                <hr>
+                                                <div class="alert alert-info">
+                                                    <strong><i class="fas fa-info-circle mr-1"></i>Suggested Resolution:</strong><br>
+                                                    <?php echo nl2br(htmlspecialchars($ic['auto_response'])); ?>
+                                                </div>
+                                            <?php endif; ?>
+
+                                            <?php if ($ic['admin_response']): ?>
+                                                <hr>
+                                                <div class="alert alert-success">
+                                                    <strong><i class="fas fa-reply mr-1"></i>Response from ICT:</strong><br>
+                                                    <?php echo nl2br(htmlspecialchars($ic['admin_response'])); ?>
+                                                </div>
+                                                <small class="text-muted">Responded by TSU ICT Help Desk</small>
+                                            <?php endif; ?>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
     </div>
 
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>

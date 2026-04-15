@@ -824,6 +824,34 @@ foreach ($complaints as $c) {
             </div>
         </div>
 
+        <!-- ICT Complaints Management -->
+        <div class="mb-4">
+            <div class="card bg-light">
+                <div class="card-body py-2">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h6 class="mb-0"><i class="fas fa-headset mr-2"></i>ICT & Portal Complaints</h6>
+                            <small class="text-muted">Student ICT complaints submitted via the decision tree wizard — login issues, payments, course registration, printing and more</small>
+                        </div>
+                        <div class="col-md-4 text-right">
+                            <?php
+                            // Show pending count badge
+                            $ict_pending = 0;
+                            $ict_r = mysqli_query($conn, "SELECT COUNT(*) c FROM student_ict_complaints WHERE status='Pending'");
+                            if ($ict_r && $ict_row = mysqli_fetch_assoc($ict_r)) $ict_pending = (int)$ict_row['c'];
+                            ?>
+                            <a href="ict_complaints_admin.php" class="btn btn-warning btn-sm">
+                                <i class="fas fa-headset mr-1"></i> Manage ICT Complaints
+                                <?php if ($ict_pending > 0): ?>
+                                    <span class="badge badge-danger ml-1"><?php echo $ict_pending; ?></span>
+                                <?php endif; ?>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Search and Filter Section -->
         <div class="row mb-3">
             <div class="col-md-6">
