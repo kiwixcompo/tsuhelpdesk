@@ -373,87 +373,83 @@ ob_end_flush();
         <!-- Filters -->
         <div class="filter-section">
             <h5><i class="fas fa-filter mr-2"></i>Filter Complaints</h5>
-            <form method="GET" class="row">
-                <div class="col-md-2">
-                    <label>Date From</label>
-                    <input type="date" name="date_from" class="form-control" value="<?php echo htmlspecialchars($date_from); ?>">
-                </div>
-                <div class="col-md-2">
-                    <label>Date To</label>
-                    <input type="date" name="date_to" class="form-control" value="<?php echo htmlspecialchars($date_to); ?>">
-                </div>
-                <div class="col-md-2">
-                    <label>Faculty</label>
-                    <select name="faculty_id" class="form-control">
-                        <option value="">All Faculties</option>
-                        <?php foreach($faculties as $faculty): ?>
-                            <option value="<?php echo $faculty['faculty_id']; ?>" 
-                                    <?php echo ($faculty_filter == $faculty['faculty_id']) ? 'selected' : ''; ?>>
-                                <?php echo htmlspecialchars($faculty['faculty_name']); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label>Department</label>
-                    <select name="department_id" class="form-control">
-                        <option value="">All Departments</option>
-                        <?php foreach($departments as $department): ?>
-                            <option value="<?php echo $department['department_id']; ?>" 
-                                    <?php echo ($department_filter == $department['department_id']) ? 'selected' : ''; ?>>
-                                <?php echo htmlspecialchars($department['faculty_name'] . ' - ' . $department['department_name']); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label>Academic Session</label>
-                    <select name="academic_session" class="form-control">
-                        <option value="">All Sessions</option>
-                        <?php foreach($sessions as $session): ?>
-                            <option value="<?php echo $session; ?>" 
-                                    <?php echo ($session_filter == $session) ? 'selected' : ''; ?>>
-                                <?php echo htmlspecialchars($session); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label>Status</label>
-                    <select name="status" class="form-control">
-                        <option value="">All Status</option>
-                        <option value="Pending" <?php echo ($status_filter == 'Pending') ? 'selected' : ''; ?>>Pending</option>
-                        <option value="Under Review" <?php echo ($status_filter == 'Under Review') ? 'selected' : ''; ?>>Under Review</option>
-                        <option value="Resolved" <?php echo ($status_filter == 'Resolved') ? 'selected' : ''; ?>>Resolved</option>
-                        <option value="Rejected" <?php echo ($status_filter == 'Rejected') ? 'selected' : ''; ?>>Rejected</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label>Complaint Type</label>
-                    <select name="complaint_type" class="form-control">
-                        <option value="">All Types</option>
-                        <option value="FA" <?php echo ($complaint_type_filter == 'FA') ? 'selected' : ''; ?>>Fail Absent (FA)</option>
-                        <option value="F" <?php echo ($complaint_type_filter == 'F') ? 'selected' : ''; ?>>Fail (F)</option>
-                        <option value="Incorrect Grade" <?php echo ($complaint_type_filter == 'Incorrect Grade') ? 'selected' : ''; ?>>Incorrect Grade</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label>&nbsp;</label>
-                    <div>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-search mr-1"></i>Filter
-                        </button>
-                        <a href="enhanced_student_complaints_report.php" class="btn btn-secondary">
-                            <i class="fas fa-times mr-1"></i>Clear
-                        </a>
+            <form method="GET">
+                <div class="row">
+                    <div class="col-md-3 col-sm-6 mb-2">
+                        <label class="small font-weight-bold">Date From</label>
+                        <input type="date" name="date_from" class="form-control" value="<?php echo htmlspecialchars($date_from); ?>">
                     </div>
-                </div>
-                <div class="col-md-2">
-                    <label>&nbsp;</label>
-                    <div>
-                        <a href="api/export_student_complaints.php?<?php echo http_build_query($_GET); ?>" class="btn btn-success">
-                            <i class="fas fa-download mr-1"></i>Export Excel
-                        </a>
+                    <div class="col-md-3 col-sm-6 mb-2">
+                        <label class="small font-weight-bold">Date To</label>
+                        <input type="date" name="date_to" class="form-control" value="<?php echo htmlspecialchars($date_to); ?>">
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-2">
+                        <label class="small font-weight-bold">Faculty</label>
+                        <select name="faculty_id" class="form-control">
+                            <option value="">All Faculties</option>
+                            <?php foreach($faculties as $faculty): ?>
+                                <option value="<?php echo $faculty['faculty_id']; ?>"
+                                        <?php echo ($faculty_filter == $faculty['faculty_id']) ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($faculty['faculty_name']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-2">
+                        <label class="small font-weight-bold">Department</label>
+                        <select name="department_id" class="form-control">
+                            <option value="">All Departments</option>
+                            <?php foreach($departments as $department): ?>
+                                <option value="<?php echo $department['department_id']; ?>"
+                                        <?php echo ($department_filter == $department['department_id']) ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($department['department_name']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-2">
+                        <label class="small font-weight-bold">Academic Session</label>
+                        <select name="academic_session" class="form-control">
+                            <option value="">All Sessions</option>
+                            <?php foreach($sessions as $session): ?>
+                                <option value="<?php echo $session; ?>"
+                                        <?php echo ($session_filter == $session) ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($session); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-2">
+                        <label class="small font-weight-bold">Status</label>
+                        <select name="status" class="form-control">
+                            <option value="">All Statuses</option>
+                            <option value="Pending"      <?php echo ($status_filter == 'Pending')      ? 'selected' : ''; ?>>Pending</option>
+                            <option value="Under Review" <?php echo ($status_filter == 'Under Review') ? 'selected' : ''; ?>>Under Review</option>
+                            <option value="Resolved"     <?php echo ($status_filter == 'Resolved')     ? 'selected' : ''; ?>>Resolved</option>
+                            <option value="Rejected"     <?php echo ($status_filter == 'Rejected')     ? 'selected' : ''; ?>>Rejected</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-2">
+                        <label class="small font-weight-bold">Complaint Type</label>
+                        <select name="complaint_type" class="form-control">
+                            <option value="">All Types</option>
+                            <option value="FA"             <?php echo ($complaint_type_filter == 'FA')             ? 'selected' : ''; ?>>Fail Absent (FA)</option>
+                            <option value="F"              <?php echo ($complaint_type_filter == 'F')              ? 'selected' : ''; ?>>Fail (F)</option>
+                            <option value="Incorrect Grade"<?php echo ($complaint_type_filter == 'Incorrect Grade')? 'selected' : ''; ?>>Incorrect Grade</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-2 d-flex align-items-end">
+                        <div class="btn-group w-100">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search mr-1"></i>Filter
+                            </button>
+                            <a href="enhanced_student_complaints_report.php" class="btn btn-secondary">
+                                <i class="fas fa-times mr-1"></i>Clear
+                            </a>
+                            <a href="api/export_student_complaints.php?<?php echo http_build_query($_GET); ?>" class="btn btn-success">
+                                <i class="fas fa-download mr-1"></i>Export
+                            </a>
+                        </div>
                     </div>
                 </div>
             </form>

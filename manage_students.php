@@ -543,126 +543,30 @@ $total_pages = ceil($total_students / $per_page);
                                             <?php echo date('M d, Y', strtotime($student['created_at'])); ?>
                                         </td>
                                         <td>
-                                            <button type="button" class="btn btn-primary btn-sm" 
-                                                    data-toggle="modal" data-target="#editModal<?php echo $student['student_id']; ?>">
+                                            <button type="button" class="btn btn-primary btn-sm btn-edit-student"
+                                                    data-id="<?php echo $student['student_id']; ?>"
+                                                    data-firstname="<?php echo htmlspecialchars($student['first_name'], ENT_QUOTES); ?>"
+                                                    data-middlename="<?php echo htmlspecialchars($student['middle_name'], ENT_QUOTES); ?>"
+                                                    data-lastname="<?php echo htmlspecialchars($student['last_name'], ENT_QUOTES); ?>"
+                                                    data-email="<?php echo htmlspecialchars($student['email'], ENT_QUOTES); ?>"
+                                                    data-reg="<?php echo htmlspecialchars($student['registration_number'], ENT_QUOTES); ?>"
+                                                    data-active="<?php echo $student['is_active']; ?>">
                                                 <i class="fas fa-edit"></i>
                                             </button>
-                                            <button type="button" class="btn btn-warning btn-sm" 
-                                                    data-toggle="modal" data-target="#resetPasswordModal<?php echo $student['student_id']; ?>">
+                                            <button type="button" class="btn btn-warning btn-sm btn-reset-student"
+                                                    data-id="<?php echo $student['student_id']; ?>"
+                                                    data-name="<?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name'], ENT_QUOTES); ?>"
+                                                    data-email="<?php echo htmlspecialchars($student['email'], ENT_QUOTES); ?>">
                                                 <i class="fas fa-key"></i>
                                             </button>
                                             <?php if(!empty($_SESSION["is_super_admin"])): ?>
-                                                <button type="button" class="btn btn-danger btn-sm" 
+                                                <button type="button" class="btn btn-danger btn-sm"
                                                         onclick="confirmDelete(<?php echo $student['student_id']; ?>, '<?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>')">
                                                     <i class="fas fa-trash"></i>
                                                 </button>
                                             <?php endif; ?>
                                         </td>
                                     </tr>
-
-                                    <!-- Edit Student Modal -->
-                                    <div class="modal fade" id="editModal<?php echo $student['student_id']; ?>" tabindex="-1">
-                                        <div class="modal-dialog">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    <h5 class="modal-title">Edit Student</h5>
-                                                    <button type="button" class="close" data-dismiss="modal">
-                                                        <span>&times;</span>
-                                                    </button>
-                                                </div>
-                                                <form method="POST">
-                                                    <div class="modal-body">
-                                                        <input type="hidden" name="action" value="update_student">
-                                                        <input type="hidden" name="student_id" value="<?php echo $student['student_id']; ?>">
-                                                        
-                                                        <div class="row">
-                                                            <div class="col-md-6">
-                                                                <div class="form-group">
-                                                                    <label>First Name</label>
-                                                                    <input type="text" name="first_name" class="form-control" 
-                                                                           value="<?php echo htmlspecialchars($student['first_name']); ?>" required>
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-md-6">
-                                                                <div class="form-group">
-                                                                    <label>Middle Name</label>
-                                                                    <input type="text" name="middle_name" class="form-control" 
-                                                                           value="<?php echo htmlspecialchars($student['middle_name']); ?>">
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        
-                                                        <div class="form-group">
-                                                            <label>Last Name</label>
-                                                            <input type="text" name="last_name" class="form-control" 
-                                                                   value="<?php echo htmlspecialchars($student['last_name']); ?>" required>
-                                                        </div>
-                                                        
-                                                        <div class="form-group">
-                                                            <label>Email</label>
-                                                            <input type="email" name="email" class="form-control" 
-                                                                   value="<?php echo htmlspecialchars($student['email']); ?>" required>
-                                                        </div>
-                                                        
-                                                        <div class="form-group">
-                                                            <label>Registration Number</label>
-                                                            <input type="text" name="registration_number" class="form-control" 
-                                                                   value="<?php echo htmlspecialchars($student['registration_number']); ?>" required>
-                                                        </div>
-                                                        
-                                                        <div class="form-group">
-                                                            <div class="custom-control custom-checkbox">
-                                                                <input type="checkbox" class="custom-control-input" 
-                                                                       id="isActive<?php echo $student['student_id']; ?>" 
-                                                                       name="is_active" <?php echo $student['is_active'] ? 'checked' : ''; ?>>
-                                                                <label class="custom-control-label" for="isActive<?php echo $student['student_id']; ?>">
-                                                                    Active Account
-                                                                </label>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div class="modal-footer">
-                                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                                                        <button type="submit" class="btn btn-primary">Update Student</button>
-                                                    </div>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Reset Password Modal -->
-                                    <div class="modal fade" id="resetPasswordModal<?php echo $student['student_id']; ?>" tabindex="-1">
-                                        <div class="modal-dialog">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    <h5 class="modal-title">Reset Password</h5>
-                                                    <button type="button" class="close" data-dismiss="modal">
-                                                        <span>&times;</span>
-                                                    </button>
-                                                </div>
-                                                <form method="POST">
-                                                    <div class="modal-body">
-                                                        <input type="hidden" name="action" value="reset_password">
-                                                        <input type="hidden" name="student_id" value="<?php echo $student['student_id']; ?>">
-                                                        
-                                                        <p><strong>Student:</strong> <?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?></p>
-                                                        <p><strong>Email:</strong> <?php echo htmlspecialchars($student['email']); ?></p>
-                                                        
-                                                        <div class="form-group">
-                                                            <label>New Password</label>
-                                                            <input type="password" name="new_password" class="form-control" 
-                                                                   placeholder="Enter new password" required minlength="6">
-                                                            <small class="form-text text-muted">Minimum 6 characters. Student will be notified via email.</small>
-                                                        </div>
-                                                    </div>
-                                                    <div class="modal-footer">
-                                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                                                        <button type="submit" class="btn btn-warning">Reset Password</button>
-                                                    </div>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    </div>
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
@@ -703,6 +607,90 @@ $total_pages = ceil($total_students / $per_page);
         </div>
     </div>
 
+    <!-- Shared Edit Student Modal (outside table — no flicker) -->
+    <div class="modal fade" id="sharedEditModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Student</h5>
+                    <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                </div>
+                <form method="POST">
+                    <div class="modal-body">
+                        <input type="hidden" name="action" value="update_student">
+                        <input type="hidden" name="student_id" id="editStudentId">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>First Name</label>
+                                    <input type="text" name="first_name" id="editFirstName" class="form-control" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>Middle Name</label>
+                                    <input type="text" name="middle_name" id="editMiddleName" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Last Name</label>
+                            <input type="text" name="last_name" id="editLastName" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" name="email" id="editEmail" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Registration Number</label>
+                            <input type="text" name="registration_number" id="editRegNumber" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input" id="editIsActive" name="is_active">
+                                <label class="custom-control-label" for="editIsActive">Active Account</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Update Student</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Shared Reset Password Modal (outside table — no flicker) -->
+    <div class="modal fade" id="sharedResetModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Reset Student Password</h5>
+                    <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                </div>
+                <form method="POST">
+                    <div class="modal-body">
+                        <input type="hidden" name="action" value="reset_password">
+                        <input type="hidden" name="student_id" id="resetStudentId">
+                        <p><strong>Student:</strong> <span id="resetStudentName"></span></p>
+                        <p><strong>Email:</strong> <span id="resetStudentEmail"></span></p>
+                        <div class="form-group">
+                            <label>New Password</label>
+                            <input type="password" name="new_password" class="form-control"
+                                   placeholder="Enter new password" required minlength="6">
+                            <small class="form-text text-muted">Minimum 6 characters. Student will be notified via email.</small>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-warning"><i class="fas fa-key mr-1"></i>Reset Password</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Delete Confirmation Form -->
     <form id="deleteForm" method="POST" style="display: none;">
         <input type="hidden" name="action" value="delete_student">
@@ -720,6 +708,28 @@ $total_pages = ceil($total_students / $per_page);
                 document.getElementById('deleteForm').submit();
             }
         }
+
+        // Shared Edit modal
+        $(document).on('click', '.btn-edit-student', function() {
+            const d = $(this).data();
+            $('#editStudentId').val(d.id);
+            $('#editFirstName').val(d.firstname);
+            $('#editMiddleName').val(d.middlename);
+            $('#editLastName').val(d.lastname);
+            $('#editEmail').val(d.email);
+            $('#editRegNumber').val(d.reg);
+            $('#editIsActive').prop('checked', d.active == 1);
+            $('#sharedEditModal').modal('show');
+        });
+
+        // Shared Reset Password modal
+        $(document).on('click', '.btn-reset-student', function() {
+            const d = $(this).data();
+            $('#resetStudentId').val(d.id);
+            $('#resetStudentName').text(d.name);
+            $('#resetStudentEmail').text(d.email);
+            $('#sharedResetModal').modal('show');
+        });
         
         // Student bulk selection functions
         function toggleAllStudents(checkbox) {

@@ -38,10 +38,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_feedback'])) {
 
     $upd = mysqli_prepare($conn,
         "UPDATE student_ict_complaints
-         SET status=?, admin_response=?, handled_by=?, updated_at=NOW()
+         SET status=?, admin_response=?, handled_by=?, forwarded_to=?, updated_at=NOW()
          WHERE complaint_id=?");
     if ($upd) {
-        mysqli_stmt_bind_param($upd, 'ssii', $status, $response, $_SESSION['user_id'], $cid);
+        $forwarded_to = trim($_POST['forwarded_to'] ?? '');
+        mysqli_stmt_bind_param($upd, 'ssiis', $status, $response, $_SESSION['user_id'], $forwarded_to, $cid);
         if (mysqli_stmt_execute($upd)) {
             $success_msg = "Complaint #$cid updated successfully.";
             // Notify student — hide staff identity
@@ -101,6 +102,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_complaint'])) 
         mysqli_stmt_bind_param($del, 'i', $cid);
         $del_ok = mysqli_stmt_execute($del);
         mysqli_stmt_close($del);
+        $msg_text = $del_ok ? 'Complaint deleted.' : 'Delete failed.';
+        $msg_type = $del_ok ? 'success' : 'error';
+    } else {
+        $msg_text = 'Database error.'; $msg_type = 'error';
+    }
     header("Location: ict_complaints_admin.php?msg=" . urlencode($msg_text) . "&type=$msg_type");
     exit;
 }
@@ -392,6 +398,7 @@ include 'includes/dashboard_header.php';
                                 data-label="<?php echo htmlspecialchars($c['node_label'], ENT_QUOTES); ?>"
                                 data-status="<?php echo htmlspecialchars($c['status'], ENT_QUOTES); ?>"
                                 data-response="<?php echo htmlspecialchars($c['admin_response'] ?? '', ENT_QUOTES); ?>"
+                                data-forwarded="<?php echo htmlspecialchars($c['forwarded_to'] ?? '', ENT_QUOTES); ?>"
                                 title="Respond to Student">
                             <i class="fas fa-reply"></i>
                         </button>
@@ -467,6 +474,23 @@ include 'includes/dashboard_header.php';
                             <i class="fas fa-shield-alt mr-1"></i>
                             Your name will not be shown to the student.
                         </small>
+                    </div>
+                    <div class="form-group">
+                        <label class="font-weight-bold">
+                            <i class="fas fa-share mr-1"></i>Forward to Department / Unit
+                            <span class="text-muted font-weight-normal">(optional)</span>
+                        </label>
+                        <input type="text" id="forwardSearch" class="form-control mb-1"
+                               placeholder="Type to search department or unit…" autocomplete="off">
+                        <select name="forwarded_to" id="feedbackForwardTo" class="form-control">
+                            <option value="">— Do not forward —</option>
+                            <?php foreach ($departments_for_forward as $dept): ?>
+                                <option value="<?php echo htmlspecialchars($dept['full_name']); ?>">
+                                    <?php echo htmlspecialchars($dept['full_name']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <small class="text-muted">If forwarded, the department will be noted in the complaint record.</small>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -600,7 +624,25 @@ $(function() {
         $('#feedbackMeta').html('<strong>Student:</strong> ' + esc(d.name) + '<br><strong>Issue:</strong> ' + esc(d.label));
         $('#feedbackStatus').val(d.status);
         $('#feedbackResponse').val(d.response || '');
+        $('#feedbackForwardTo').val(d.forwarded || '');
+        $('#forwardSearch').val('');
+        // Reset forward dropdown to show all options
+        $('#feedbackForwardTo option').show();
         $('#sharedFeedbackModal').modal('show');
+    });
+
+    // Live search for forward dropdown
+    $('#forwardSearch').on('input', function() {
+        const q = $(this).val().toLowerCase();
+        $('#feedbackForwardTo option').each(function() {
+            const txt = $(this).text().toLowerCase();
+            $(this).toggle(txt.includes(q) || $(this).val() === '');
+        });
+        // Reset selection if current doesn't match
+        const cur = $('#feedbackForwardTo').val();
+        if (cur && !$('#feedbackForwardTo option:selected').is(':visible')) {
+            $('#feedbackForwardTo').val('');
+        }
     });
 
     // ── Forward button ─────────────────────────────────────
