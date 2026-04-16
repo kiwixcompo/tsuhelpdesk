@@ -245,6 +245,10 @@ ob_end_flush();
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="css/style.css?v=<?php echo filemtime('css/style.css'); ?>">
     <style>
+        /* Anti-flicker modal fix */
+        body.modal-open { overflow: auto !important; padding-right: 0 !important; }
+        .modal-dialog { margin: 5vh auto; }
+
         .report-header {
             background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             color: white;
