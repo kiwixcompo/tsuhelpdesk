@@ -209,7 +209,7 @@ ob_end_flush();
     <title>Enhanced Student Complaints Report - TSU ICT Help Desk</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v=<?php echo filemtime('css/style.css'); ?>">
     <style>
         .report-header {
             background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
