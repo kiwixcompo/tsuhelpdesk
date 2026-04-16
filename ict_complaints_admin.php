@@ -347,6 +347,7 @@ include 'includes/dashboard_header.php';
                                 data-desc="<?php echo htmlspecialchars($c['description'] ?? '', ENT_QUOTES); ?>"
                                 data-auto="<?php echo htmlspecialchars($c['auto_response'] ?? '', ENT_QUOTES); ?>"
                                 data-response="<?php echo htmlspecialchars($c['admin_response'] ?? '', ENT_QUOTES); ?>"
+                                data-attachment="<?php echo htmlspecialchars($c['attachment_path'] ?? '', ENT_QUOTES); ?>"
                                 data-extra="<?php echo htmlspecialchars($c['extra_fields'] ?? '{}', ENT_QUOTES); ?>">
                             <i class="fas fa-eye"></i>
                         </button>
@@ -475,6 +476,10 @@ $(function() {
             ? `<h6 class="mt-3">Additional Details</h6><p>${esc(d.desc).replace(/\n/g,'<br>')}</p>`
             : '';
 
+        const attachmentHtml = d.attachment
+            ? `<h6 class="mt-3">Attachment</h6><a href="${esc(d.attachment)}" target="_blank" class="btn btn-sm btn-info"><i class="fas fa-file-download mr-1"></i> View Attached File</a>`
+            : '';
+
         const body = `
             <div class="row">
                 <div class="col-md-6">
@@ -497,7 +502,7 @@ $(function() {
             <hr>
             <h6>Decision Path</h6>
             <p class="text-muted">${esc(d.path)}</p>
-            ${descHtml}${autoHtml}${respHtml}${extraHtml}`;
+            ${descHtml}${attachmentHtml}${autoHtml}${respHtml}${extraHtml}`;
 
         $('#viewModalTitle').text('Complaint #' + d.id + ' — Details');
         $('#sharedViewBody').html(body);

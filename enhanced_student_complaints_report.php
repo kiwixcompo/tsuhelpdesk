@@ -542,6 +542,8 @@ ob_end_flush();
                                                 </td>
                                             </tr>
 
+                                            <!-- Modal collection start -->
+                                            <?php ob_start(); ?>
                                             <!-- View Modal -->
                                             <div class="modal fade" id="viewModal<?php echo $complaint['complaint_id']; ?>" tabindex="-1">
                                                 <div class="modal-dialog modal-lg">
@@ -641,6 +643,11 @@ ob_end_flush();
                                                     </div>
                                                 </div>
                                             </div>
+                                            <?php 
+                                            global $modals_html;
+                                            if(!isset($modals_html)) $modals_html = '';
+                                            $modals_html .= ob_get_clean(); 
+                                            ?>
                                             <?php endforeach; ?>
                                         </tbody>
                                     </table>
@@ -683,6 +690,9 @@ ob_end_flush();
             <?php endif; ?>
         </div>
     </div>
+
+    <!-- Render Collected Dynamic Modals -->
+    <?php echo isset($modals_html) ? $modals_html : ''; ?>
 
     <!-- Delete Confirmation Modal -->
     <div class="modal fade" id="deleteModal" tabindex="-1">

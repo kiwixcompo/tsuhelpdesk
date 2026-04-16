@@ -570,6 +570,12 @@ ob_end_flush();
                                                 <p class="text-muted"><?php echo nl2br(htmlspecialchars($ic['description'])); ?></p>
                                             <?php endif; ?>
 
+                                            <?php if (!empty($ic['attachment_path'])): ?>
+                                                <hr>
+                                                <p><strong>Attachment:</strong></p>
+                                                <p><a href="<?php echo htmlspecialchars($ic['attachment_path']); ?>" target="_blank" class="btn btn-sm btn-info"><i class="fas fa-file-download mr-1"></i> View Uploaded File</a></p>
+                                            <?php endif; ?>
+
                                             <?php if ($ic['auto_response'] && !$ic['escalated']): ?>
                                                 <hr>
                                                 <div class="alert alert-info">

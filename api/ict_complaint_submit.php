@@ -14,10 +14,32 @@ if (!isset($_SESSION["student_loggedin"]) || $_SESSION["student_loggedin"] !== t
     exit;
 }
 
-$data = json_decode(file_get_contents('php://input'), true);
+$data = [];
+if (isset($_POST['payload'])) {
+    $data = json_decode($_POST['payload'], true);
+} else {
+    $data = json_decode(file_get_contents('php://input'), true);
+}
+
 if (!$data) {
     echo json_encode(['success' => false, 'message' => 'Invalid request body']);
     exit;
+}
+
+$attachment_path = null;
+if (isset($_FILES['attachment']) && $_FILES['attachment']['error'] === UPLOAD_ERR_OK) {
+    $upload_dir = '../uploads/complaints/';
+    if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
+    
+    $ext = strtolower(pathinfo($_FILES['attachment']['name'], PATHINFO_EXTENSION));
+    $allowed = ['jpg','jpeg','png','pdf','doc','docx'];
+    if (in_array($ext, $allowed)) {
+        $filename = uniqid('comp_') . '_' . time() . '.' . $ext;
+        $dest = $upload_dir . $filename;
+        if (move_uploaded_file($_FILES['attachment']['tmp_name'], $dest)) {
+            $attachment_path = 'uploads/complaints/' . $filename;
+        }
+    }
 }
 
 $student_id    = (int) $_SESSION['student_id'];
@@ -53,6 +75,7 @@ $create_sql = "CREATE TABLE IF NOT EXISTS student_ict_complaints (
     auto_response TEXT,
     escalated     TINYINT(1) NOT NULL DEFAULT 0,
     extra_fields  TEXT,
+    attachment_path VARCHAR(255) NULL,
     status        VARCHAR(30) NOT NULL DEFAULT 'Pending',
     admin_response TEXT,
     handled_by    INT NULL,
@@ -64,10 +87,13 @@ $create_sql = "CREATE TABLE IF NOT EXISTS student_ict_complaints (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
 mysqli_query($conn, $create_sql); // silently create if missing
 
+// Also attempt to add attachment_path if the table already exists
+mysqli_query($conn, "ALTER TABLE student_ict_complaints ADD COLUMN attachment_path VARCHAR(255) NULL AFTER extra_fields");
+
 $sql = "INSERT INTO student_ict_complaints
         (student_id, node_id, node_label, category, path_summary, description,
-         action_type, auto_response, escalated, extra_fields, status, admin_response, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+         action_type, auto_response, escalated, extra_fields, attachment_path, status, admin_response, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
 
 $stmt = mysqli_prepare($conn, $sql);
 if (!$stmt) {
@@ -75,10 +101,10 @@ if (!$stmt) {
     exit;
 }
 
-mysqli_stmt_bind_param($stmt, 'isssssssisss',
+mysqli_stmt_bind_param($stmt, 'isssssssissss',
     $student_id, $node_id, $node_label, $category, $path_summary,
     $full_description, $action_type, $auto_response, $escalated,
-    $extra_fields, $status, $admin_response
+    $extra_fields, $attachment_path, $status, $admin_response
 );
 
 if (mysqli_stmt_execute($stmt)) {

@@ -208,11 +208,15 @@ function renderLeaf(node, c) {
         html += `<div class="ai-badge"><i class="fas fa-robot"></i> AI-assisted classification</div>`;
     }
 
-    if (isFreeText || node.actionType === 'escalate') {
+    if (isFreeText || node.actionType === 'escalate' || node.actionType === 'auto_response') {
         html += `<div class="extra-fields">
-                    <div class="form-group mb-2">
-                        <label>Describe your issue <span class="text-muted">(optional but helpful)</span></label>
+                    <div class="form-group mb-3">
+                        <label>Describe your issue <span class="text-muted">(optional but in-depth details help)</span></label>
                         <textarea id="descField" class="form-control" rows="3" placeholder="Add any extra details...">${esc(state.description)}</textarea>
+                    </div>
+                    <div class="form-group mb-2">
+                        <label>Upload Supporting Document/Screenshot <span class="text-muted">(optional)</span></label>
+                        <input type="file" id="attachmentField" class="form-control-file text-muted" accept="image/*,.pdf,.doc,.docx" style="font-size:0.85rem;">
                     </div>
                  </div>`;
     }
@@ -266,7 +270,10 @@ function buildExtraFields(fields) {
     const labels = {
         registered_email: 'Registered Email',
         matric_number: 'Matric Number',
-        jamb_number: 'JAMB Number',
+        jamb_number: 'JAMB Reg Number',
+        jamb_login_email: 'JAMB Profile/Login Email',
+        jamb_login_password: 'JAMB Profile Password',
+        jamb_profile_code: 'JAMB Profile Code',
         course_code: 'Course Code',
         current_session: 'Current Session',
         target_session: 'Target Session',
@@ -341,10 +348,17 @@ async function submitComplaint(escalated, node, btn) {
     };
 
     try {
+        const formData = new FormData();
+        formData.append('payload', JSON.stringify(payload));
+        
+        const attachField = document.getElementById('attachmentField');
+        if (attachField && attachField.files.length > 0) {
+            formData.append('attachment', attachField.files[0]);
+        }
+
         const res = await fetch('api/ict_complaint_submit.php', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
+            body: formData,
         });
 
         // Try to parse JSON — if it fails, show the raw response for debugging
