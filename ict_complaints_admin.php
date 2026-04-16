@@ -114,28 +114,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_complaint'])) 
 // ── Handle Forwarding ─────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['forward_complaint'])) {
     $cid        = (int) $_POST['complaint_id'];
-    $forward_to = (int) $_POST['forwarded_to'];
-    
-    $upd = mysqli_prepare($conn, "UPDATE student_ict_complaints SET forwarded_to=?, status='Under Review', updated_at=NOW() WHERE complaint_id=?");
+    $forward_to = trim($_POST['forwarded_to'] ?? '');  // VARCHAR — department name
+
+    if (empty($forward_to)) {
+        header("Location: ict_complaints_admin.php?msg=" . urlencode('Please select a department.') . "&type=error");
+        exit;
+    }
+
+    // Auto-create forwarded_to column if it doesn't exist yet
+    mysqli_query($conn, "ALTER TABLE student_ict_complaints ADD COLUMN IF NOT EXISTS forwarded_to VARCHAR(255) NULL DEFAULT NULL");
+
+    $upd = mysqli_prepare($conn,
+        "UPDATE student_ict_complaints
+         SET forwarded_to=?, status='Under Review', updated_at=NOW()
+         WHERE complaint_id=?");
     if ($upd) {
-        mysqli_stmt_bind_param($upd, 'ii', $forward_to, $cid);
+        mysqli_stmt_bind_param($upd, 'si', $forward_to, $cid);
         if (mysqli_stmt_execute($upd)) {
-            $success_msg = "Complaint #$cid forwarded successfully.";
-            
-            // Add notification for the department
-            $msg = "A new ICT complaint (#$cid) has been forwarded to your department.";
-            $notif = mysqli_prepare($conn, "INSERT INTO notifications (user_id, complaint_id, type, title, message) VALUES (?, ?, 'feedback_reply', 'Forwarded Complaint', ?)");
-            if ($notif) {
-                mysqli_stmt_bind_param($notif, 'iis', $forward_to, $cid, $msg);
-                mysqli_stmt_execute($notif);
-                mysqli_stmt_close($notif);
-            }
+            $success_msg = "Complaint #$cid forwarded to $forward_to.";
         } else {
-            $error_msg = "Failed to forward complaint.";
+            $error_msg = "Failed to forward complaint: " . mysqli_error($conn);
         }
         mysqli_stmt_close($upd);
     }
-    
+
     $msg_text = $success_msg ?: $error_msg;
     $msg_type = $success_msg ? 'success' : 'error';
     header("Location: ict_complaints_admin.php?msg=" . urlencode($msg_text) . "&type=$msg_type");
@@ -521,14 +523,18 @@ include 'includes/dashboard_header.php';
                     </div>
                     <div class="form-group">
                         <label class="font-weight-bold">Select Department / Unit</label>
-                        <input type="text" id="fwDeptSearch" class="form-control mb-2" placeholder="Search department...">
-                        <select name="forwarded_to" id="fwDeptSelect" class="form-control" size="8" required>
+                        <input type="text" id="fwDeptSearch" class="form-control mb-2"
+                               placeholder="Type to search…" autocomplete="off">
+                        <select name="forwarded_to" id="fwDeptSelect" class="form-control" required
+                                style="height:auto; max-height:200px; overflow-y:auto;">
+                            <option value="">— Select department —</option>
                             <?php foreach ($departments_for_forward as $dept): ?>
-                                <option value="<?php echo $dept['user_id']; ?>">
+                                <option value="<?php echo htmlspecialchars($dept['full_name'], ENT_QUOTES); ?>">
                                     <?php echo htmlspecialchars($dept['full_name']); ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
+                        <small class="text-muted">The department name will be recorded on the complaint.</small>
                     </div>
                 </div>
                 <div class="modal-footer">

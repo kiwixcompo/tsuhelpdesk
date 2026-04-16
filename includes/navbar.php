@@ -19,15 +19,15 @@ if (!isset($unread_count)) {
 }
 
 $role_id = $_SESSION["role_id"];
-$dashboard_file = match($role_id) {
+$dashboard_map = [
     3 => 'director_dashboard.php',
     4 => 'dvc_dashboard.php',
     5 => 'i4cus_staff_dashboard.php',
     6 => 'payment_admin_dashboard.php',
     7 => 'department_dashboard.php',
     8 => 'deputy_director_dashboard.php',
-    default => 'dashboard.php',
-};
+];
+$dashboard_file = $dashboard_map[$role_id] ?? 'dashboard.php';
 
 $app_logo = $app_logo ?? '';
 $app_name = $app_name ?? 'TSU ICT Help Desk';
