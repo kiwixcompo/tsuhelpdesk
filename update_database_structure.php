@@ -562,13 +562,16 @@ if(!tableExists($conn, 'student_complaints')) {
         status ENUM('Pending', 'Under Review', 'Resolved', 'Rejected') DEFAULT 'Pending',
         admin_response TEXT DEFAULT NULL,
         handled_by INT DEFAULT NULL,
+        forwarded_to INT DEFAULT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         FOREIGN KEY (student_id) REFERENCES students(student_id) ON DELETE CASCADE,
         FOREIGN KEY (handled_by) REFERENCES users(user_id) ON DELETE SET NULL,
+        FOREIGN KEY (forwarded_to) REFERENCES users(user_id) ON DELETE SET NULL,
         KEY idx_student_id (student_id),
         KEY idx_status (status),
-        KEY idx_complaint_type (complaint_type)
+        KEY idx_complaint_type (complaint_type),
+        KEY idx_forwarded_to (forwarded_to)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
     
     if(executeSql($conn, $sql, "Created student_complaints table")) {
@@ -632,7 +635,8 @@ $departments = [
     ['username' => 'peace_conf', 'full_name' => 'Peace & Conflict Studies'],
     ['username' => 'sociol', 'full_name' => 'Sociology'],
     ['username' => 'islam_stu', 'full_name' => 'Islamic Studies'],
-    ['username' => 'crs', 'full_name' => 'CRS']
+    ['username' => 'crs', 'full_name' => 'CRS'],
+    ['username' => 'gst_unit', 'full_name' => 'General Studies (GST) Unit']
 ];
 
 $password = 'user2026';

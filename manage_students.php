@@ -294,6 +294,10 @@ $total_pages = ceil($total_students / $per_page);
             border-radius: 10px;
             margin-bottom: 2rem;
         }
+
+        /* Anti-flicker modal fix */
+        body.modal-open { overflow: auto !important; padding-right: 0 !important; }
+        .modal-dialog { margin: 5vh auto; }
     </style>
 </head>
 <body>

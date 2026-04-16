@@ -101,11 +101,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_complaint'])) 
         mysqli_stmt_bind_param($del, 'i', $cid);
         $del_ok = mysqli_stmt_execute($del);
         mysqli_stmt_close($del);
-        $msg_text = $del_ok ? 'Complaint deleted.' : 'Delete failed.';
-        $msg_type = $del_ok ? 'success' : 'error';
-    } else {
-        $msg_text = 'Database error.'; $msg_type = 'error';
+    header("Location: ict_complaints_admin.php?msg=" . urlencode($msg_text) . "&type=$msg_type");
+    exit;
+}
+
+// ── Handle Forwarding ─────────────────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['forward_complaint'])) {
+    $cid        = (int) $_POST['complaint_id'];
+    $forward_to = (int) $_POST['forwarded_to'];
+    
+    $upd = mysqli_prepare($conn, "UPDATE student_ict_complaints SET forwarded_to=?, status='Under Review', updated_at=NOW() WHERE complaint_id=?");
+    if ($upd) {
+        mysqli_stmt_bind_param($upd, 'ii', $forward_to, $cid);
+        if (mysqli_stmt_execute($upd)) {
+            $success_msg = "Complaint #$cid forwarded successfully.";
+            
+            // Add notification for the department
+            $msg = "A new ICT complaint (#$cid) has been forwarded to your department.";
+            $notif = mysqli_prepare($conn, "INSERT INTO notifications (user_id, complaint_id, type, title, message) VALUES (?, ?, 'feedback_reply', 'Forwarded Complaint', ?)");
+            if ($notif) {
+                mysqli_stmt_bind_param($notif, 'iis', $forward_to, $cid, $msg);
+                mysqli_stmt_execute($notif);
+                mysqli_stmt_close($notif);
+            }
+        } else {
+            $error_msg = "Failed to forward complaint.";
+        }
+        mysqli_stmt_close($upd);
     }
+    
+    $msg_text = $success_msg ?: $error_msg;
+    $msg_type = $success_msg ? 'success' : 'error';
     header("Location: ict_complaints_admin.php?msg=" . urlencode($msg_text) . "&type=$msg_type");
     exit;
 }
@@ -167,6 +193,15 @@ if ($stmt) {
 $cats = [];
 $cr = mysqli_query($conn, "SELECT DISTINCT category FROM student_ict_complaints WHERE category!='' ORDER BY category");
 if ($cr) while ($row = mysqli_fetch_assoc($cr)) $cats[] = $row['category'];
+
+// Get departments for forwarding
+$departments_for_forward = [];
+$dept_res = mysqli_query($conn, "SELECT user_id, full_name FROM users WHERE role_id = 7 ORDER BY full_name");
+if ($dept_res) {
+    while ($r = mysqli_fetch_assoc($dept_res)) {
+        $departments_for_forward[] = $r;
+    }
+}
 
 ob_end_flush();
 ?>
@@ -356,9 +391,19 @@ include 'includes/dashboard_header.php';
                                 data-name="<?php echo htmlspecialchars($c['student_name'], ENT_QUOTES); ?>"
                                 data-label="<?php echo htmlspecialchars($c['node_label'], ENT_QUOTES); ?>"
                                 data-status="<?php echo htmlspecialchars($c['status'], ENT_QUOTES); ?>"
-                                data-response="<?php echo htmlspecialchars($c['admin_response'] ?? '', ENT_QUOTES); ?>">
+                                data-response="<?php echo htmlspecialchars($c['admin_response'] ?? '', ENT_QUOTES); ?>"
+                                title="Respond to Student">
                             <i class="fas fa-reply"></i>
                         </button>
+                        <?php if (in_array($c['status'], ['Pending', 'Under Review'])): ?>
+                        <button class="btn btn-sm btn-outline-info mr-1 btn-forward"
+                                data-id="<?php echo $c['complaint_id']; ?>"
+                                data-name="<?php echo htmlspecialchars($c['student_name'], ENT_QUOTES); ?>"
+                                data-label="<?php echo htmlspecialchars($c['node_label'], ENT_QUOTES); ?>"
+                                title="Forward to Department">
+                            <i class="fas fa-share-square"></i>
+                        </button>
+                        <?php endif; ?>
                         <form method="POST" style="display:inline"
                               onsubmit="return confirm('Delete this complaint?')">
                             <input type="hidden" name="complaint_id" value="<?php echo $c['complaint_id']; ?>">
@@ -428,6 +473,44 @@ include 'includes/dashboard_header.php';
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
                     <button type="submit" name="submit_feedback" class="btn btn-success">
                         <i class="fas fa-paper-plane mr-1"></i>Send Response
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ── Shared Forward Modal (outside table, no flicker) ── -->
+<div class="modal fade" id="sharedForwardModal" tabindex="-1" role="dialog" aria-labelledby="forwardModalTitle">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="forwardModalTitle">Forward Complaint</h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <form method="POST" id="forwardForm">
+                <div class="modal-body">
+                    <input type="hidden" name="complaint_id" id="forwardComplaintId">
+                    <div class="alert alert-light border">
+                        <strong>Student:</strong> <span id="fwStudentName"></span><br>
+                        <strong>Issue:</strong> <span id="fwIssueLabel"></span>
+                    </div>
+                    <div class="form-group">
+                        <label class="font-weight-bold">Select Department / Unit</label>
+                        <input type="text" id="fwDeptSearch" class="form-control mb-2" placeholder="Search department...">
+                        <select name="forwarded_to" id="fwDeptSelect" class="form-control" size="8" required>
+                            <?php foreach ($departments_for_forward as $dept): ?>
+                                <option value="<?php echo $dept['user_id']; ?>">
+                                    <?php echo htmlspecialchars($dept['full_name']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" name="forward_complaint" class="btn btn-info">
+                        <i class="fas fa-share-square mr-1"></i>Forward
                     </button>
                 </div>
             </form>
@@ -518,6 +601,27 @@ $(function() {
         $('#feedbackStatus').val(d.status);
         $('#feedbackResponse').val(d.response || '');
         $('#sharedFeedbackModal').modal('show');
+    });
+
+    // ── Forward button ─────────────────────────────────────
+    $(document).on('click', '.btn-forward', function() {
+        const d = $(this).data();
+        $('#forwardComplaintId').val(d.id);
+        $('#fwStudentName').text(d.name);
+        $('#fwIssueLabel').text(d.label);
+        $('#fwDeptSearch').val('');
+        $('#fwDeptSelect option').show();
+        $('#fwDeptSelect').val([]);
+        $('#sharedForwardModal').modal('show');
+    });
+
+    // Handle department search filtering inside the modal
+    $('#fwDeptSearch').on('input', function() {
+        const val = $(this).val().toLowerCase();
+        $('#fwDeptSelect option').each(function() {
+            const text = $(this).text().toLowerCase();
+            $(this).toggle(text.indexOf(val) > -1);
+        });
     });
 
     function esc(str) {

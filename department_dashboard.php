@@ -142,6 +142,44 @@ if($stmt = mysqli_prepare($conn, $sql)){
 $total_complaints = count($complaints);
 $pending_complaints = count(array_filter($complaints, function($c) { return $c['status'] != 'Treated'; }));
 $treated_complaints = count(array_filter($complaints, function($c) { return $c['status'] == 'Treated'; }));
+
+// --- Fetch forwarded cases from ICT ---
+$forwarded_cases = [];
+$fw_sql = "SELECT c.*, CONCAT(s.first_name, ' ', s.last_name) as student_name, s.registration_number
+           FROM student_ict_complaints c
+           JOIN students s ON c.student_id = s.student_id
+           WHERE c.forwarded_to = ? ORDER BY c.created_at DESC";
+if ($fw_stmt = mysqli_prepare($conn, $fw_sql)) {
+    mysqli_stmt_bind_param($fw_stmt, "i", $_SESSION['user_id']);
+    mysqli_stmt_execute($fw_stmt);
+    $fw_res = mysqli_stmt_get_result($fw_stmt);
+    $forwarded_cases = mysqli_fetch_all($fw_res, MYSQLI_ASSOC);
+    mysqli_stmt_close($fw_stmt);
+}
+
+// Handle department response to forwarded case
+if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
+    $cid = (int)$_POST["complaint_id"];
+    $status = $_POST["status"];
+    $response = trim($_POST["dept_response"]);
+    
+    // Format the response and update the DB
+    $formatted_response = "Response from " . $_SESSION['full_name'] . ":\n" . $response;
+    
+    $upd = mysqli_prepare($conn, "UPDATE student_ict_complaints SET status=?, admin_response=?, handled_by=?, updated_at=NOW() WHERE complaint_id=? AND forwarded_to=?");
+    if($upd) {
+        mysqli_stmt_bind_param($upd, "ssiii", $status, $formatted_response, $_SESSION['user_id'], $cid, $_SESSION['user_id']);
+        if(mysqli_stmt_execute($upd)) {
+            $success_message = "Response submitted successfully.";
+            // PRG redirect
+            header("Location: department_dashboard.php");
+            exit;
+        } else {
+            $error_message = "Failed to submit response.";
+        }
+        mysqli_stmt_close($upd);
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -248,6 +286,66 @@ $treated_complaints = count(array_filter($complaints, function($c) { return $c['
                 </div>
             </div>
         </div>
+
+        <!-- Forwarded ICT Complaints -->
+        <?php if (!empty($forwarded_cases)): ?>
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-info shadow-sm">
+                    <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-share-square mr-2"></i>Cases Forwarded From ICT (<?php echo count($forwarded_cases); ?>)</h5>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Student</th>
+                                    <th>Issue Title</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($forwarded_cases as $fc): ?>
+                                <tr>
+                                    <td><?php echo $fc['complaint_id']; ?></td>
+                                    <td>
+                                        <strong><?php echo htmlspecialchars($fc['student_name']); ?></strong><br>
+                                        <small class="text-muted"><?php echo htmlspecialchars($fc['registration_number']); ?></small>
+                                    </td>
+                                    <td>
+                                        <div><?php echo htmlspecialchars($fc['node_label']); ?></div>
+                                        <small class="text-muted"><?php echo htmlspecialchars($fc['category']); ?></small>
+                                    </td>
+                                    <td>
+                                        <?php
+                                        $sc = ['Pending'=>'warning','Under Review'=>'info','Resolved'=>'success','Rejected'=>'danger','Auto-Resolved'=>'secondary'];
+                                        $bc = $sc[$fc['status']] ?? 'secondary';
+                                        ?>
+                                        <span class="badge badge-<?php echo $bc; ?>"><?php echo htmlspecialchars($fc['status']); ?></span>
+                                    </td>
+                                    <td><?php echo date('M d, Y', strtotime($fc['created_at'])); ?></td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-outline-primary btn-respond-fw"
+                                                data-id="<?php echo $fc['complaint_id']; ?>"
+                                                data-student="<?php echo htmlspecialchars($fc['student_name'], ENT_QUOTES); ?>"
+                                                data-label="<?php echo htmlspecialchars($fc['node_label'], ENT_QUOTES); ?>"
+                                                data-status="<?php echo htmlspecialchars($fc['status'], ENT_QUOTES); ?>"
+                                                data-desc="<?php echo htmlspecialchars($fc['description'] ?? '', ENT_QUOTES); ?>">
+                                            <i class="fas fa-reply mr-1"></i>Respond
+                                        </button>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
 
         <div class="row">
             <!-- Submit New Complaint -->
@@ -409,8 +507,61 @@ $treated_complaints = count(array_filter($complaints, function($c) { return $c['
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script src="js/clipboard-paste.js"></script>
     
+    <!-- Forwarded Case Response Modal -->
+    <div class="modal fade" id="forwardedReplyModal" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">Respond to Forwarded Case</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+                </div>
+                <form method="POST">
+                    <div class="modal-body">
+                        <input type="hidden" name="complaint_id" id="fwReplyId">
+                        <div class="alert alert-light border">
+                            <strong>Student:</strong> <span id="fwReplyStudent"></span><br>
+                            <strong>Issue:</strong> <span id="fwReplyLabel"></span><br><br>
+                            <strong>Details:</strong>
+                            <p class="text-muted small mt-1 mb-0" id="fwReplyDesc"></p>
+                        </div>
+                        <div class="form-group">
+                            <label class="font-weight-bold">Update Status</label>
+                            <select name="status" id="fwReplyStatus" class="form-control" required>
+                                <option value="Under Review">Under Review</option>
+                                <option value="Resolved">Resolved</option>
+                                <option value="Rejected">Rejected</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="font-weight-bold">Your Response</label>
+                            <textarea name="dept_response" class="form-control" rows="4" required placeholder="Type the resolution or feedback..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="submit" name="reply_forwarded" class="btn btn-primary">
+                            <i class="fas fa-paper-plane mr-1"></i>Send Response
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
     <script>
         $(document).ready(function() {
+            // Forwarded Response Button Handler
+            $('.btn-respond-fw').click(function() {
+                var d = $(this).data();
+                $('#fwReplyId').val(d.id);
+                $('#fwReplyStudent').text(d.student);
+                $('#fwReplyLabel').text(d.label);
+                $('#fwReplyDesc').text(d.desc || 'No additional details provided.');
+                $('#fwReplyStatus').val(d.status);
+                
+                $('#forwardedReplyModal').modal('show');
+            });
+            
             // Initialize clipboard paste for complaint textarea
             if (window.clipboardPasteHandler) {
                 const complaintTextarea = document.querySelector('textarea[name="complaint_text"]');
