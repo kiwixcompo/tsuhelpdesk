@@ -220,7 +220,10 @@ if($count_stmt = mysqli_prepare($conn, $count_sql)){
 }
 
 // Get students with pagination
-$students_sql = "SELECT s.*, f.faculty_name, sd.department_name, p.programme_name,
+$students_sql = "SELECT s.*, f.faculty_name, sd.department_name,
+                 COALESCE(p.programme_name,
+                     (SELECT programme_name FROM programmes WHERE programme_id = s.programme_id LIMIT 1),
+                     'Unknown Programme') AS programme_name,
                  (SELECT COUNT(*) FROM student_complaints sc WHERE sc.student_id = s.student_id) as complaint_count
                  FROM students s 
                  LEFT JOIN faculties f ON s.faculty_id = f.faculty_id 
@@ -521,7 +524,7 @@ $total_pages = ceil($total_students / $per_page);
                                         </td>
                                         <td>
                                             <div>
-                                                <strong><?php echo htmlspecialchars($student['programme_name'] ?? 'N/A'); ?></strong>
+                                                <strong><?php echo htmlspecialchars($student['programme_name']); ?></strong>
                                                 <br>
                                                 <small class="text-muted"><?php echo htmlspecialchars($student['department_name'] ?? 'N/A'); ?></small>
                                                 <br>

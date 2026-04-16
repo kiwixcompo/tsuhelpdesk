@@ -39,22 +39,26 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
     // Validate credentials
     if(empty($registration_number_err) && empty($password_err)){
         $sql = "SELECT s.student_id, s.registration_number, s.password, s.first_name, s.last_name, s.email, s.is_active,
-                       f.faculty_name, d.department_name, p.programme_name
+                       COALESCE(f.faculty_name, 'N/A') AS faculty_name,
+                       COALESCE(d.department_name, 'N/A') AS department_name,
+                       COALESCE(p.programme_name,
+                           (SELECT programme_name FROM programmes WHERE programme_id = s.programme_id LIMIT 1),
+                           'N/A') AS programme_name
                 FROM students s
-                JOIN faculties f ON s.faculty_id = f.faculty_id
-                JOIN student_departments d ON s.department_id = d.department_id
-                JOIN programmes p ON s.programme_id = p.programme_id
-                WHERE s.registration_number = ?";
+                LEFT JOIN faculties f ON s.faculty_id = f.faculty_id
+                LEFT JOIN student_departments d ON s.department_id = d.department_id
+                LEFT JOIN programmes p ON s.programme_id = p.programme_id
+                WHERE s.registration_number = ? OR s.email = ?
+                LIMIT 1";
         
         if($stmt = mysqli_prepare($conn, $sql)){
-            mysqli_stmt_bind_param($stmt, "s", $registration_number);
+            mysqli_stmt_bind_param($stmt, "ss", $registration_number, $registration_number);
             
             if(mysqli_stmt_execute($stmt)){
                 $result = mysqli_stmt_get_result($stmt);
+                $row = mysqli_fetch_assoc($result);
                 
-                if(mysqli_num_rows($result) == 1){
-                    $row = mysqli_fetch_assoc($result);
-                    
+                if($row){
                     // Check if account is active
                     if($row['is_active'] != 1){
                         $login_err = "Your account has been deactivated. Please contact administration.";
