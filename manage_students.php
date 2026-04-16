@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // Start output buffering to prevent header issues
 ob_start();
 
@@ -100,7 +100,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                 break;
                 
             case "delete_student":
-                if($_SESSION["is_super_admin"]){
+                if(!empty($_SESSION["is_super_admin"])){
                     $student_id = $_POST["student_id"];
                     
                     // First delete related complaints
@@ -204,7 +204,11 @@ $count_sql = "SELECT COUNT(*) as total FROM students s
 $total_students = 0;
 if($count_stmt = mysqli_prepare($conn, $count_sql)){
     if(!empty($params)){
-        mysqli_stmt_bind_param($count_stmt, $param_types, ...$params);
+        $bind_params = array($param_types);
+        foreach($params as $key => $value) {
+            $bind_params[] = &$params[$key];
+        }
+        call_user_func_array(array($count_stmt, 'bind_param'), $bind_params);
     }
     if(mysqli_stmt_execute($count_stmt)){
         $count_result = mysqli_stmt_get_result($count_stmt);
@@ -229,7 +233,11 @@ $students_sql = "SELECT s.*, f.faculty_name, sd.department_name, p.programme_nam
 $students = [];
 if($students_stmt = mysqli_prepare($conn, $students_sql)){
     if(!empty($params)){
-        mysqli_stmt_bind_param($students_stmt, $param_types, ...$params);
+        $bind_params = array($param_types);
+        foreach($params as $key => $value) {
+            $bind_params[] = &$params[$key];
+        }
+        call_user_func_array(array($students_stmt, 'bind_param'), $bind_params);
     }
     if(mysqli_stmt_execute($students_stmt)){
         $students_result = mysqli_stmt_get_result($students_stmt);
@@ -453,7 +461,7 @@ $total_pages = ceil($total_students / $per_page);
                                     <button type="button" class="btn btn-sm btn-secondary" onclick="bulkDeactivateStudents()" disabled id="bulkDeactivateBtn">
                                         <i class="fas fa-ban"></i> Deactivate Selected
                                     </button>
-                                    <?php if($_SESSION["is_super_admin"]): ?>
+                                    <?php if(!empty($_SESSION["is_super_admin"])): ?>
                                     <button type="button" class="btn btn-sm btn-danger" onclick="bulkDeleteStudents()" disabled id="bulkDeleteStudentsBtn">
                                         <i class="fas fa-trash"></i> Delete Selected
                                     </button>
@@ -539,7 +547,7 @@ $total_pages = ceil($total_students / $per_page);
                                                     data-toggle="modal" data-target="#resetPasswordModal<?php echo $student['student_id']; ?>">
                                                 <i class="fas fa-key"></i>
                                             </button>
-                                            <?php if($_SESSION["is_super_admin"]): ?>
+                                            <?php if(!empty($_SESSION["is_super_admin"])): ?>
                                                 <button type="button" class="btn btn-danger btn-sm" 
                                                         onclick="confirmDelete(<?php echo $student['student_id']; ?>, '<?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>')">
                                                     <i class="fas fa-trash"></i>

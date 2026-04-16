@@ -155,6 +155,7 @@ if ($session_result) {
 // Get complaints data for display
 $complaints_sql = "SELECT 
     sc.complaint_id,
+    s.student_id,
     sc.course_code,
     sc.course_title,
     sc.complaint_type,
@@ -186,7 +187,11 @@ ORDER BY sc.created_at DESC";
 $complaints = [];
 if ($stmt = mysqli_prepare($conn, $complaints_sql)) {
     if (!empty($params)) {
-        mysqli_stmt_bind_param($stmt, $param_types, ...$params);
+        $bind_params = array($param_types);
+        foreach($params as $key => $value) {
+            $bind_params[] = &$params[$key];
+        }
+        call_user_func_array(array($stmt, 'bind_param'), $bind_params);
     }
     if (mysqli_stmt_execute($stmt)) {
         $result = mysqli_stmt_get_result($stmt);
@@ -196,6 +201,35 @@ if ($stmt = mysqli_prepare($conn, $complaints_sql)) {
     }
     mysqli_stmt_close($stmt);
 }
+
+// Group complaints by student account
+$grouped_complaints = [];
+foreach ($complaints as $complaint) {
+    $student_id = $complaint['student_id'];
+    if (!isset($grouped_complaints[$student_id])) {
+        $grouped_complaints[$student_id] = [
+            'student_id' => $student_id,
+            'full_name' => $complaint['full_name'],
+            'registration_number' => $complaint['registration_number'],
+            'email' => $complaint['email'],
+            'department_name' => $complaint['department_name'],
+            'faculty_code' => $complaint['faculty_code'],
+            'programme_name' => $complaint['programme_name'],
+            'complaints' => []
+        ];
+    }
+    $grouped_complaints[$student_id]['complaints'][] = $complaint;
+}
+
+// Pagination logic based on groups
+$per_page = 15;
+$total_students = count($grouped_complaints);
+$total_pages = ceil($total_students / $per_page);
+$page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+if ($page > $total_pages && $total_pages > 0) $page = $total_pages;
+$offset = ($page - 1) * $per_page;
+
+$paginated_students = array_slice($grouped_complaints, $offset, $per_page, true);
 
 // End output buffering and flush
 ob_end_flush();
@@ -421,181 +455,232 @@ ob_end_flush();
             </form>
         </div>
 
-        <!-- Complaints Table -->
-        <div class="complaints-table">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead class="thead-dark">
-                        <tr>
-                            <th>Student</th>
-                            <th>Course</th>
-                            <th>Type</th>
-                            <th>Session</th>
-                            <th>Faculty/Dept</th>
-                            <th>Status</th>
-                            <th>Date</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if(empty($complaints)): ?>
-                            <tr>
-                                <td colspan="8" class="text-center py-4">
-                                    <i class="fas fa-inbox fa-2x text-muted mb-2"></i>
-                                    <p class="text-muted">No complaints found matching the selected criteria.</p>
-                                </td>
-                            </tr>
-                        <?php else: ?>
-                            <?php foreach($complaints as $complaint): ?>
-                                <tr>
-                                    <td>
-                                        <strong><?php echo htmlspecialchars($complaint['full_name']); ?></strong><br>
-                                        <small class="text-muted"><?php echo htmlspecialchars($complaint['registration_number']); ?></small>
-                                    </td>
-                                    <td>
-                                        <strong><?php echo htmlspecialchars($complaint['course_code']); ?></strong><br>
-                                        <small><?php echo htmlspecialchars($complaint['course_title']); ?></small>
-                                    </td>
-                                    <td>
-                                        <span class="badge badge-info">
-                                            <?php echo htmlspecialchars($complaint['complaint_type']); ?>
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span class="badge badge-secondary">
-                                            <?php echo htmlspecialchars($complaint['academic_session']); ?>
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <strong><?php echo htmlspecialchars($complaint['faculty_code']); ?></strong><br>
-                                        <small><?php echo htmlspecialchars($complaint['department_name']); ?></small>
-                                    </td>
-                                    <td>
-                                        <span class="status-badge status-<?php echo strtolower(str_replace(' ', '-', $complaint['status'])); ?>">
-                                            <?php echo htmlspecialchars($complaint['status']); ?>
-                                        </span>
-                                    </td>
-                                    <td><?php echo date('M d, Y', strtotime($complaint['created_at'])); ?></td>
-                                    <td>
-                                        <button type="button" class="btn btn-sm btn-outline-primary btn-action" 
-                                                data-toggle="modal" data-target="#viewModal<?php echo $complaint['complaint_id']; ?>">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-outline-success btn-action" 
-                                                data-toggle="modal" data-target="#updateModal<?php echo $complaint['complaint_id']; ?>">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-outline-danger btn-action" 
-                                                onclick="confirmDelete(<?php echo $complaint['complaint_id']; ?>)">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-
-                                <!-- View Modal -->
-                                <div class="modal fade" id="viewModal<?php echo $complaint['complaint_id']; ?>" tabindex="-1">
-                                    <div class="modal-dialog modal-lg">
-                                        <div class="modal-content">
-                                            <div class="modal-header">
-                                                <h5 class="modal-title">Complaint Details</h5>
-                                                <button type="button" class="close" data-dismiss="modal">
-                                                    <span>&times;</span>
-                                                </button>
-                                            </div>
-                                            <div class="modal-body">
-                                                <div class="row">
-                                                    <div class="col-md-6">
-                                                        <h6>Student Information</h6>
-                                                        <p><strong>Name:</strong> <?php echo htmlspecialchars($complaint['full_name']); ?></p>
-                                                        <p><strong>Registration:</strong> <?php echo htmlspecialchars($complaint['registration_number']); ?></p>
-                                                        <p><strong>Email:</strong> <?php echo htmlspecialchars($complaint['email']); ?></p>
-                                                        <p><strong>Programme:</strong> <?php echo htmlspecialchars($complaint['programme_name']); ?></p>
-                                                        <p><strong>Department:</strong> <?php echo htmlspecialchars($complaint['department_name']); ?></p>
-                                                        <p><strong>Faculty:</strong> <?php echo htmlspecialchars($complaint['faculty_name']); ?></p>
-                                                    </div>
-                                                    <div class="col-md-6">
-                                                        <h6>Complaint Information</h6>
-                                                        <p><strong>Course:</strong> <?php echo htmlspecialchars($complaint['course_code'] . ' - ' . $complaint['course_title']); ?></p>
-                                                        <p><strong>Type:</strong> <?php echo htmlspecialchars($complaint['complaint_type']); ?></p>
-                                                        <p><strong>Academic Session:</strong> <?php echo htmlspecialchars($complaint['academic_session']); ?></p>
-                                                        <p><strong>Status:</strong> 
-                                                            <span class="status-badge status-<?php echo strtolower(str_replace(' ', '-', $complaint['status'])); ?>">
-                                                                <?php echo htmlspecialchars($complaint['status']); ?>
-                                                            </span>
-                                                        </p>
-                                                        <p><strong>Submitted:</strong> <?php echo date('M d, Y h:i A', strtotime($complaint['created_at'])); ?></p>
-                                                        <?php if($complaint['updated_at'] != $complaint['created_at']): ?>
-                                                            <p><strong>Last Updated:</strong> <?php echo date('M d, Y h:i A', strtotime($complaint['updated_at'])); ?></p>
-                                                        <?php endif; ?>
-                                                    </div>
-                                                </div>
-                                                
-                                                <?php if(!empty($complaint['description'])): ?>
-                                                    <hr>
-                                                    <h6>Description</h6>
-                                                    <p><?php echo nl2br(htmlspecialchars($complaint['description'])); ?></p>
-                                                <?php endif; ?>
-                                                
-                                                <?php if(!empty($complaint['admin_response'])): ?>
-                                                    <hr>
-                                                    <h6>Admin Response</h6>
-                                                    <div class="alert alert-info">
-                                                        <?php echo nl2br(htmlspecialchars($complaint['admin_response'])); ?>
-                                                    </div>
-                                                <?php endif; ?>
-                                            </div>
-                                            <div class="modal-footer">
-                                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                                            </div>
+        <!-- Complaints Grouped Accordion -->
+        <div class="complaints-accordion">
+            <?php if(empty($paginated_students)): ?>
+                <div class="card mb-3" style="border: none; border-radius: 10px; box-shadow: 0 4px 15px rgba(30, 60, 114, 0.1);">
+                    <div class="card-body text-center py-5">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No complaints found</h5>
+                        <p class="text-muted">Try adjusting your filter criteria</p>
+                    </div>
+                </div>
+            <?php else: ?>
+                <div class="accordion" id="complaintsAccordion">
+                    <?php foreach($paginated_students as $student_id => $group): ?>
+                        <div class="card mb-3" style="border: none; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 15px rgba(30, 60, 114, 0.1);">
+                            <div class="card-header bg-white" id="heading<?php echo $student_id; ?>" style="cursor: pointer;" data-toggle="collapse" data-target="#collapse<?php echo $student_id; ?>" aria-expanded="false" aria-controls="collapse<?php echo $student_id; ?>">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h5 class="mb-1 text-primary" style="font-weight: 600;">
+                                            <i class="fas fa-user-circle mr-2"></i>
+                                            <?php echo htmlspecialchars($group['full_name']); ?>
+                                        </h5>
+                                        <div class="text-muted small">
+                                            <span class="mr-3"><i class="fas fa-id-card mr-1"></i> <?php echo htmlspecialchars($group['registration_number']); ?></span>
+                                            <span><i class="fas fa-building mr-1"></i> <?php echo htmlspecialchars($group['department_name'] ?? ''); ?> (<?php echo htmlspecialchars($group['faculty_code'] ?? ''); ?>)</span>
                                         </div>
                                     </div>
-                                </div>
-
-                                <!-- Update Modal -->
-                                <div class="modal fade" id="updateModal<?php echo $complaint['complaint_id']; ?>" tabindex="-1">
-                                    <div class="modal-dialog">
-                                        <div class="modal-content">
-                                            <div class="modal-header">
-                                                <h5 class="modal-title">Update Complaint Status</h5>
-                                                <button type="button" class="close" data-dismiss="modal">
-                                                    <span>&times;</span>
-                                                </button>
-                                            </div>
-                                            <form method="POST" onsubmit="return updateComplaint(<?php echo $complaint['complaint_id']; ?>, this)">
-                                                <div class="modal-body">
-                                                    <div class="form-group">
-                                                        <label><strong>Student:</strong> <?php echo htmlspecialchars($complaint['full_name']); ?></label>
-                                                        <p class="text-muted"><?php echo htmlspecialchars($complaint['course_code'] . ' - ' . $complaint['course_title']); ?></p>
-                                                    </div>
-                                                    
-                                                    <div class="form-group">
-                                                        <label for="status<?php echo $complaint['complaint_id']; ?>">Status</label>
-                                                        <select name="status" id="status<?php echo $complaint['complaint_id']; ?>" class="form-control" required>
-                                                            <option value="Pending" <?php echo ($complaint['status'] == 'Pending') ? 'selected' : ''; ?>>Pending</option>
-                                                            <option value="Under Review" <?php echo ($complaint['status'] == 'Under Review') ? 'selected' : ''; ?>>Under Review</option>
-                                                            <option value="Resolved" <?php echo ($complaint['status'] == 'Resolved') ? 'selected' : ''; ?>>Resolved</option>
-                                                            <option value="Rejected" <?php echo ($complaint['status'] == 'Rejected') ? 'selected' : ''; ?>>Rejected</option>
-                                                        </select>
-                                                    </div>
-                                                    
-                                                    <div class="form-group">
-                                                        <label for="response<?php echo $complaint['complaint_id']; ?>">Admin Response</label>
-                                                        <textarea name="response" id="response<?php echo $complaint['complaint_id']; ?>" class="form-control" rows="4" placeholder="Enter your response to the student..."><?php echo htmlspecialchars($complaint['admin_response'] ?? ''); ?></textarea>
-                                                    </div>
-                                                </div>
-                                                <div class="modal-footer">
-                                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                                                    <button type="submit" class="btn btn-primary">Update Complaint</button>
-                                                </div>
-                                            </form>
-                                        </div>
+                                    <div class="text-right">
+                                        <span class="badge badge-primary mr-3" style="font-size: 0.9rem; padding: 0.4rem 0.8rem; border-radius: 20px;">
+                                            <?php echo count($group['complaints']); ?> Complaint(s)
+                                        </span>
+                                        <i class="fas fa-chevron-down text-muted"></i>
                                     </div>
                                 </div>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
+                            </div>
+
+                            <div id="collapse<?php echo $student_id; ?>" class="collapse" aria-labelledby="heading<?php echo $student_id; ?>" data-parent="#complaintsAccordion">
+                                <div class="table-responsive">
+                                    <table class="table table-hover mb-0">
+                                        <thead class="thead-light">
+                                            <tr>
+                                                <th>Course</th>
+                                                <th>Type</th>
+                                                <th>Session</th>
+                                                <th>Status</th>
+                                                <th>Date</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach($group['complaints'] as $complaint): ?>
+                                            <tr>
+                                                <td>
+                                                    <strong><?php echo htmlspecialchars($complaint['course_code']); ?></strong><br>
+                                                    <small><?php echo htmlspecialchars($complaint['course_title']); ?></small>
+                                                </td>
+                                                <td>
+                                                    <span class="badge badge-info">
+                                                        <?php echo htmlspecialchars($complaint['complaint_type']); ?>
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span class="badge badge-secondary">
+                                                        <?php echo htmlspecialchars($complaint['academic_session']); ?>
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span class="status-badge status-<?php echo strtolower(str_replace(' ', '-', $complaint['status'])); ?>">
+                                                        <?php echo htmlspecialchars($complaint['status']); ?>
+                                                    </span>
+                                                </td>
+                                                <td><?php echo date('M d, Y', strtotime($complaint['created_at'])); ?></td>
+                                                <td>
+                                                    <button type="button" class="btn btn-sm btn-outline-primary btn-action" 
+                                                            data-toggle="modal" data-target="#viewModal<?php echo $complaint['complaint_id']; ?>">
+                                                        <i class="fas fa-eye"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-outline-success btn-action" 
+                                                            data-toggle="modal" data-target="#updateModal<?php echo $complaint['complaint_id']; ?>">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-outline-danger btn-action" 
+                                                            onclick="confirmDelete(<?php echo $complaint['complaint_id']; ?>)">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+
+                                            <!-- View Modal -->
+                                            <div class="modal fade" id="viewModal<?php echo $complaint['complaint_id']; ?>" tabindex="-1">
+                                                <div class="modal-dialog modal-lg">
+                                                    <div class="modal-content">
+                                                        <div class="modal-header">
+                                                            <h5 class="modal-title">Complaint Details</h5>
+                                                            <button type="button" class="close" data-dismiss="modal">
+                                                                <span>&times;</span>
+                                                            </button>
+                                                        </div>
+                                                        <div class="modal-body">
+                                                            <div class="row">
+                                                                <div class="col-md-6">
+                                                                    <h6>Student Information</h6>
+                                                                    <p><strong>Name:</strong> <?php echo htmlspecialchars($complaint['full_name']); ?></p>
+                                                                    <p><strong>Registration:</strong> <?php echo htmlspecialchars($complaint['registration_number']); ?></p>
+                                                                    <p><strong>Email:</strong> <?php echo htmlspecialchars($complaint['email']); ?></p>
+                                                                    <p><strong>Programme:</strong> <?php echo htmlspecialchars($complaint['programme_name']); ?></p>
+                                                                    <p><strong>Department:</strong> <?php echo htmlspecialchars($complaint['department_name']); ?></p>
+                                                                    <p><strong>Faculty:</strong> <?php echo htmlspecialchars($complaint['faculty_name']); ?></p>
+                                                                </div>
+                                                                <div class="col-md-6">
+                                                                    <h6>Complaint Information</h6>
+                                                                    <p><strong>Course:</strong> <?php echo htmlspecialchars($complaint['course_code'] . ' - ' . $complaint['course_title']); ?></p>
+                                                                    <p><strong>Type:</strong> <?php echo htmlspecialchars($complaint['complaint_type']); ?></p>
+                                                                    <p><strong>Academic Session:</strong> <?php echo htmlspecialchars($complaint['academic_session']); ?></p>
+                                                                    <p><strong>Status:</strong> 
+                                                                        <span class="status-badge status-<?php echo strtolower(str_replace(' ', '-', $complaint['status'])); ?>">
+                                                                            <?php echo htmlspecialchars($complaint['status']); ?>
+                                                                        </span>
+                                                                    </p>
+                                                                    <p><strong>Submitted:</strong> <?php echo date('M d, Y h:i A', strtotime($complaint['created_at'])); ?></p>
+                                                                    <?php if($complaint['updated_at'] != $complaint['created_at']): ?>
+                                                                        <p><strong>Last Updated:</strong> <?php echo date('M d, Y h:i A', strtotime($complaint['updated_at'])); ?></p>
+                                                                    <?php endif; ?>
+                                                                </div>
+                                                            </div>
+                                                            
+                                                            <?php if(!empty($complaint['description'])): ?>
+                                                                <hr>
+                                                                <h6>Description</h6>
+                                                                <p><?php echo nl2br(htmlspecialchars($complaint['description'])); ?></p>
+                                                            <?php endif; ?>
+                                                            
+                                                            <?php if(!empty($complaint['admin_response'])): ?>
+                                                                <hr>
+                                                                <h6>Admin Response</h6>
+                                                                <div class="alert alert-info">
+                                                                    <?php echo nl2br(htmlspecialchars($complaint['admin_response'])); ?>
+                                                                </div>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                        <div class="modal-footer">
+                                                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Update Modal -->
+                                            <div class="modal fade" id="updateModal<?php echo $complaint['complaint_id']; ?>" tabindex="-1">
+                                                <div class="modal-dialog">
+                                                    <div class="modal-content">
+                                                        <div class="modal-header">
+                                                            <h5 class="modal-title">Update Complaint Status</h5>
+                                                            <button type="button" class="close" data-dismiss="modal">
+                                                                <span>&times;</span>
+                                                            </button>
+                                                        </div>
+                                                        <form method="POST" onsubmit="return updateComplaint(<?php echo $complaint['complaint_id']; ?>, this)">
+                                                            <div class="modal-body">
+                                                                <div class="form-group">
+                                                                    <label><strong>Student:</strong> <?php echo htmlspecialchars($complaint['full_name']); ?></label>
+                                                                    <p class="text-muted"><?php echo htmlspecialchars($complaint['course_code'] . ' - ' . $complaint['course_title']); ?></p>
+                                                                </div>
+                                                                
+                                                                <div class="form-group">
+                                                                    <label for="status<?php echo $complaint['complaint_id']; ?>">Status</label>
+                                                                    <select name="status" id="status<?php echo $complaint['complaint_id']; ?>" class="form-control" required>
+                                                                        <option value="Pending" <?php echo ($complaint['status'] == 'Pending') ? 'selected' : ''; ?>>Pending</option>
+                                                                        <option value="Under Review" <?php echo ($complaint['status'] == 'Under Review') ? 'selected' : ''; ?>>Under Review</option>
+                                                                        <option value="Resolved" <?php echo ($complaint['status'] == 'Resolved') ? 'selected' : ''; ?>>Resolved</option>
+                                                                        <option value="Rejected" <?php echo ($complaint['status'] == 'Rejected') ? 'selected' : ''; ?>>Rejected</option>
+                                                                    </select>
+                                                                </div>
+                                                                
+                                                                <div class="form-group">
+                                                                    <label for="response<?php echo $complaint['complaint_id']; ?>">Admin Response</label>
+                                                                    <textarea name="response" id="response<?php echo $complaint['complaint_id']; ?>" class="form-control" rows="4" placeholder="Enter your response to the student..."><?php echo htmlspecialchars($complaint['admin_response'] ?? ''); ?></textarea>
+                                                                </div>
+                                                            </div>
+                                                            <div class="modal-footer">
+                                                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                                                                <button type="submit" class="btn btn-primary">Update Complaint</button>
+                                                            </div>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+                
+                <!-- Pagination -->
+                <?php if($total_pages > 1): ?>
+                    <nav aria-label="Complaints grouping pagination" class="mt-4">
+                        <ul class="pagination justify-content-center">
+                            <?php if($page > 1): ?>
+                                <li class="page-item">
+                                    <a class="page-link" href="?<?php echo http_build_query(array_merge($_GET, ['page' => $page - 1])); ?>">
+                                        <i class="fas fa-chevron-left"></i> Previous
+                                    </a>
+                                </li>
+                            <?php endif; ?>
+
+                            <?php for($i = max(1, $page - 2); $i <= min($total_pages, $page + 2); $i++): ?>
+                                <li class="page-item <?php echo ($i == $page) ? 'active' : ''; ?>">
+                                    <a class="page-link" href="?<?php echo http_build_query(array_merge($_GET, ['page' => $i])); ?>">
+                                        <?php echo $i; ?>
+                                    </a>
+                                </li>
+                            <?php endfor; ?>
+
+                            <?php if($page < $total_pages): ?>
+                                <li class="page-item">
+                                    <a class="page-link" href="?<?php echo http_build_query(array_merge($_GET, ['page' => $page + 1])); ?>">
+                                        Next <i class="fas fa-chevron-right"></i>
+                                    </a>
+                                </li>
+                            <?php endif; ?>
+                        </ul>
+                    </nav>
+                <?php endif; ?>
+            <?php endif; ?>
         </div>
     </div>
 
