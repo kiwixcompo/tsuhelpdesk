@@ -469,7 +469,7 @@ ob_end_flush();
                 <div class="accordion" id="complaintsAccordion">
                     <?php foreach($paginated_students as $student_id => $group): ?>
                         <div class="card mb-3" style="border: none; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 15px rgba(30, 60, 114, 0.1);">
-                            <div class="card-header bg-white" id="heading<?php echo $student_id; ?>" style="cursor: pointer;" data-toggle="collapse" data-target="#collapse<?php echo $student_id; ?>" aria-expanded="false" aria-controls="collapse<?php echo $student_id; ?>">
+                            <div class="card-header" id="heading<?php echo $student_id; ?>" style="cursor: pointer; background: #fff !important; border-bottom: 1px solid rgba(0,0,0,.125) !important;" data-toggle="collapse" data-target="#collapse<?php echo $student_id; ?>" aria-expanded="false" aria-controls="collapse<?php echo $student_id; ?>">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
                                         <h5 class="mb-1 text-primary" style="font-weight: 600;">
