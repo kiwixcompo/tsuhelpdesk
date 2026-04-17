@@ -229,7 +229,7 @@ ob_end_flush();
                                 </div>
                             </div>
                             <div class="dropdown-divider"></div>
-                            <a class="dropdown-item text-center" href="notifications.php">
+                            <a class="dropdown-item text-center" href="student_notifications.php">
                                 <i class="fas fa-eye mr-2"></i> View All Notifications
                             </a>
                         </div>
