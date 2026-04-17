@@ -154,9 +154,14 @@ $treated_complaints = count(array_filter($complaints, function($c) { return $c['
 $forwarded_cases = [];
 $dept_full_name = $_SESSION['full_name'] ?? '';
 if (!empty($dept_full_name)) {
-    $fw_sql = "SELECT c.*, CONCAT(s.first_name, ' ', s.last_name) as student_name, s.registration_number
+    $fw_sql = "SELECT c.*, CONCAT(s.first_name, ' ', s.last_name) as student_name,
+                       s.registration_number, s.email,
+                       sd.department_name, f.faculty_name, p.programme_name
                FROM student_ict_complaints c
                JOIN students s ON c.student_id = s.student_id
+               LEFT JOIN student_departments sd ON s.department_id = sd.department_id
+               LEFT JOIN faculties f ON s.faculty_id = f.faculty_id
+               LEFT JOIN programmes p ON s.programme_id = p.programme_id
                WHERE c.forwarded_to = ? ORDER BY c.created_at DESC";
     if ($fw_stmt = mysqli_prepare($conn, $fw_sql)) {
         mysqli_stmt_bind_param($fw_stmt, "s", $dept_full_name);
@@ -311,40 +316,70 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
                                 <tr>
                                     <th>#</th>
                                     <th>Student</th>
-                                    <th>Issue Title</th>
+                                    <th>Category / Issue</th>
+                                    <th>Decision Path</th>
                                     <th>Status</th>
                                     <th>Date</th>
-                                    <th>Action</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($forwarded_cases as $fc): ?>
+                                <?php foreach ($forwarded_cases as $fc):
+                                    $sc = ['Pending'=>'warning','Under Review'=>'info','Resolved'=>'success','Rejected'=>'danger','Auto-Resolved'=>'secondary'];
+                                    $bc = $sc[$fc['status']] ?? 'secondary';
+                                ?>
                                 <tr>
                                     <td><?php echo $fc['complaint_id']; ?></td>
                                     <td>
                                         <strong><?php echo htmlspecialchars($fc['student_name']); ?></strong><br>
-                                        <small class="text-muted"><?php echo htmlspecialchars($fc['registration_number']); ?></small>
+                                        <small class="text-muted"><?php echo htmlspecialchars($fc['registration_number']); ?></small><br>
+                                        <small class="text-muted"><?php echo htmlspecialchars($fc['email'] ?? ''); ?></small>
                                     </td>
                                     <td>
-                                        <div><?php echo htmlspecialchars($fc['node_label']); ?></div>
-                                        <small class="text-muted"><?php echo htmlspecialchars($fc['category']); ?></small>
+                                        <div class="font-weight-bold"><?php echo htmlspecialchars($fc['category']); ?></div>
+                                        <small class="text-muted"><?php echo htmlspecialchars($fc['node_label']); ?></small>
                                     </td>
                                     <td>
-                                        <?php
-                                        $sc = ['Pending'=>'warning','Under Review'=>'info','Resolved'=>'success','Rejected'=>'danger','Auto-Resolved'=>'secondary'];
-                                        $bc = $sc[$fc['status']] ?? 'secondary';
-                                        ?>
+                                        <small class="text-muted" style="max-width:200px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+                                               title="<?php echo htmlspecialchars($fc['path_summary']); ?>">
+                                            <?php echo htmlspecialchars($fc['path_summary']); ?>
+                                        </small>
+                                    </td>
+                                    <td>
                                         <span class="badge badge-<?php echo $bc; ?>"><?php echo htmlspecialchars($fc['status']); ?></span>
+                                        <?php if (!empty($fc['admin_response'])): ?>
+                                            <br><small class="text-success"><i class="fas fa-check-circle mr-1"></i>ICT responded</small>
+                                        <?php endif; ?>
                                     </td>
                                     <td><?php echo date('M d, Y', strtotime($fc['created_at'])); ?></td>
                                     <td>
-                                        <button type="button" class="btn btn-sm btn-outline-primary btn-respond-fw"
+                                        <!-- View button — stores all data as attributes -->
+                                        <button type="button" class="btn btn-sm btn-outline-info mr-1 btn-view-fw"
+                                                data-id="<?php echo $fc['complaint_id']; ?>"
+                                                data-student="<?php echo htmlspecialchars($fc['student_name'], ENT_QUOTES); ?>"
+                                                data-reg="<?php echo htmlspecialchars($fc['registration_number'], ENT_QUOTES); ?>"
+                                                data-email="<?php echo htmlspecialchars($fc['email'] ?? '', ENT_QUOTES); ?>"
+                                                data-dept="<?php echo htmlspecialchars($fc['department_name'] ?? '', ENT_QUOTES); ?>"
+                                                data-faculty="<?php echo htmlspecialchars($fc['faculty_name'] ?? '', ENT_QUOTES); ?>"
+                                                data-programme="<?php echo htmlspecialchars($fc['programme_name'] ?? '', ENT_QUOTES); ?>"
+                                                data-category="<?php echo htmlspecialchars($fc['category'], ENT_QUOTES); ?>"
+                                                data-label="<?php echo htmlspecialchars($fc['node_label'], ENT_QUOTES); ?>"
+                                                data-path="<?php echo htmlspecialchars($fc['path_summary'], ENT_QUOTES); ?>"
+                                                data-desc="<?php echo htmlspecialchars($fc['description'] ?? '', ENT_QUOTES); ?>"
+                                                data-auto="<?php echo htmlspecialchars($fc['auto_response'] ?? '', ENT_QUOTES); ?>"
+                                                data-ict-response="<?php echo htmlspecialchars($fc['admin_response'] ?? '', ENT_QUOTES); ?>"
+                                                data-status="<?php echo htmlspecialchars($fc['status'], ENT_QUOTES); ?>"
+                                                data-date="<?php echo date('M d, Y H:i', strtotime($fc['created_at'])); ?>"
+                                                data-extra="<?php echo htmlspecialchars($fc['extra_fields'] ?? '{}', ENT_QUOTES); ?>">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <!-- Respond button -->
+                                        <button type="button" class="btn btn-sm btn-outline-success btn-respond-fw"
                                                 data-id="<?php echo $fc['complaint_id']; ?>"
                                                 data-student="<?php echo htmlspecialchars($fc['student_name'], ENT_QUOTES); ?>"
                                                 data-label="<?php echo htmlspecialchars($fc['node_label'], ENT_QUOTES); ?>"
-                                                data-status="<?php echo htmlspecialchars($fc['status'], ENT_QUOTES); ?>"
-                                                data-desc="<?php echo htmlspecialchars($fc['description'] ?? '', ENT_QUOTES); ?>">
-                                            <i class="fas fa-reply mr-1"></i>Respond
+                                                data-status="<?php echo htmlspecialchars($fc['status'], ENT_QUOTES); ?>">
+                                            <i class="fas fa-reply"></i>
                                         </button>
                                     </td>
                                 </tr>
@@ -517,6 +552,25 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script src="js/clipboard-paste.js"></script>
     
+    <!-- Forwarded Case View Modal (full details) -->
+    <div class="modal fade" id="forwardedViewModal" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title"><i class="fas fa-eye mr-2"></i>Forwarded Case Details</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+                </div>
+                <div class="modal-body" id="fwViewBody"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-success" id="fwViewToRespond">
+                        <i class="fas fa-reply mr-1"></i>Respond to This Case
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Forwarded Case Response Modal -->
     <div class="modal fade" id="forwardedReplyModal" tabindex="-1" role="dialog">
         <div class="modal-dialog modal-dialog-centered" role="document">
@@ -530,9 +584,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
                         <input type="hidden" name="complaint_id" id="fwReplyId">
                         <div class="alert alert-light border">
                             <strong>Student:</strong> <span id="fwReplyStudent"></span><br>
-                            <strong>Issue:</strong> <span id="fwReplyLabel"></span><br><br>
-                            <strong>Details:</strong>
-                            <p class="text-muted small mt-1 mb-0" id="fwReplyDesc"></p>
+                            <strong>Issue:</strong> <span id="fwReplyLabel"></span>
                         </div>
                         <div class="form-group">
                             <label class="font-weight-bold">Update Status</label>
@@ -559,32 +611,114 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
     </div>
     
     <script>
-        $(document).ready(function() {
-            // Forwarded Response Button Handler
-            $('.btn-respond-fw').click(function() {
-                var d = $(this).data();
-                $('#fwReplyId').val(d.id);
-                $('#fwReplyStudent').text(d.student);
-                $('#fwReplyLabel').text(d.label);
-                $('#fwReplyDesc').text(d.desc || 'No additional details provided.');
-                $('#fwReplyStatus').val(d.status);
-                
-                $('#forwardedReplyModal').modal('show');
-            });
-            
-            // Initialize clipboard paste for complaint textarea
-            if (window.clipboardPasteHandler) {
-                const complaintTextarea = document.querySelector('textarea[name="complaint_text"]');
-                const complaintFileInput = document.getElementById('complaint_images');
-                
-                if (complaintTextarea && complaintFileInput && typeof initializeClipboardPaste === 'function') {
-                    initializeClipboardPaste(complaintTextarea, complaintFileInput);
+    function esc(str) {
+        const d = document.createElement('div');
+        d.textContent = String(str || '');
+        return d.innerHTML;
+    }
+
+    // Store current view data for "Respond" button inside view modal
+    let _currentFwData = {};
+
+    $(document).ready(function() {
+
+        // ── View button ──────────────────────────────────────
+        $(document).on('click', '.btn-view-fw', function() {
+            const d = $(this).data();
+            _currentFwData = d;
+
+            const statusColors = {
+                'Pending':'warning','Under Review':'info','Resolved':'success',
+                'Rejected':'danger','Auto-Resolved':'secondary'
+            };
+            const bc = statusColors[d.status] || 'secondary';
+
+            // Parse extra fields
+            let extraHtml = '';
+            try {
+                const ef = JSON.parse(d.extra || '{}');
+                const filtered = Object.entries(ef).filter(([k,v]) => v !== '' && v !== null && k !== 'ai_category');
+                if (filtered.length) {
+                    extraHtml = '<h6 class="mt-3">Extra Information Provided by Student</h6><table class="table table-sm table-bordered">';
+                    filtered.forEach(([k,v]) => {
+                        const label = k.replace(/_/g,' ').replace(/\b\w/g, l => l.toUpperCase());
+                        extraHtml += `<tr><td class="font-weight-bold" style="width:40%">${esc(label)}</td><td>${esc(String(v))}</td></tr>`;
+                    });
+                    extraHtml += '</table>';
                 }
-            }
-            
-            // Auto-dismiss alerts
-            $('.alert').delay(5000).fadeOut();
+            } catch(e) {}
+
+            const autoHtml = d.auto
+                ? `<div class="alert alert-info mt-3"><strong>Auto-Response Shown to Student:</strong><br>${esc(d.auto).replace(/\n/g,'<br>')}</div>`
+                : '';
+            const ictRespHtml = d.ictResponse
+                ? `<div class="alert alert-success mt-3"><strong>ICT Response:</strong><br>${esc(d.ictResponse).replace(/\n/g,'<br>')}</div>`
+                : '';
+            const descHtml = d.desc
+                ? `<h6 class="mt-3">Additional Details from Student</h6><p class="text-muted">${esc(d.desc).replace(/\n/g,'<br>')}</p>`
+                : '';
+
+            const body = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Student Information</h6>
+                        <p><strong>Name:</strong> ${esc(d.student)}</p>
+                        <p><strong>Reg No:</strong> ${esc(d.reg)}</p>
+                        <p><strong>Email:</strong> ${esc(d.email)}</p>
+                        <p><strong>Programme:</strong> ${esc(d.programme || 'N/A')}</p>
+                        <p><strong>Department:</strong> ${esc(d.dept || 'N/A')}</p>
+                        <p><strong>Faculty:</strong> ${esc(d.faculty || 'N/A')}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Complaint Information</h6>
+                        <p><strong>Category:</strong> ${esc(d.category)}</p>
+                        <p><strong>Issue:</strong> ${esc(d.label)}</p>
+                        <p><strong>Status:</strong> <span class="badge badge-${bc}">${esc(d.status)}</span></p>
+                        <p><strong>Submitted:</strong> ${esc(d.date)}</p>
+                    </div>
+                </div>
+                <hr>
+                <h6>Decision Path Taken by Student</h6>
+                <p class="text-muted small">${esc(d.path)}</p>
+                ${descHtml}${autoHtml}${ictRespHtml}${extraHtml}`;
+
+            $('#fwViewBody').html(body);
+            $('#forwardedViewModal').modal('show');
         });
+
+        // "Respond" button inside view modal
+        $('#fwViewToRespond').click(function() {
+            $('#forwardedViewModal').modal('hide');
+            setTimeout(function() {
+                openRespondModal(_currentFwData);
+            }, 300);
+        });
+
+        // ── Respond button ───────────────────────────────────
+        $(document).on('click', '.btn-respond-fw', function() {
+            openRespondModal($(this).data());
+        });
+
+        function openRespondModal(d) {
+            $('#fwReplyId').val(d.id);
+            $('#fwReplyStudent').text(d.student);
+            $('#fwReplyLabel').text(d.label);
+            $('#fwReplyStatus').val(d.status);
+            $('#forwardedReplyModal').modal('show');
+        }
+        
+        // Initialize clipboard paste for complaint textarea
+        if (window.clipboardPasteHandler) {
+            const complaintTextarea = document.querySelector('textarea[name="complaint_text"]');
+            const complaintFileInput = document.getElementById('complaint_images');
+            if (complaintTextarea && complaintFileInput && typeof initializeClipboardPaste === 'function') {
+                initializeClipboardPaste(complaintTextarea, complaintFileInput);
+            }
+        }
+        
+        // Auto-dismiss alerts
+        $('.alert').delay(5000).fadeOut();
+    });
     </script>
 </body>
 </html>
