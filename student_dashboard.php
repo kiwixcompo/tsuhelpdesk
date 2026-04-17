@@ -104,10 +104,13 @@ function generateAcademicSessions() {
     return $sessions;
 }
 
-// Get notification count for student
+// Get notification count for student — from student_notifications table
 $notification_count = 0;
-if (function_exists('getUnreadNotificationCount')) {
-    $notification_count = getUnreadNotificationCount($conn, $_SESSION["student_id"]);
+$notif_count_result = mysqli_query($conn,
+    "SELECT COUNT(*) as c FROM student_notifications
+     WHERE student_id = " . (int)$_SESSION["student_id"] . " AND is_read = 0");
+if ($notif_count_result && $notif_row = mysqli_fetch_assoc($notif_count_result)) {
+    $notification_count = (int) $notif_row['c'];
 }
 
 // End output buffering and flush
