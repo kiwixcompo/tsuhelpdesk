@@ -16,6 +16,12 @@ $app_name = 'TSU ICT Help Desk';
 $result = mysqli_query($conn, "SELECT setting_value FROM settings WHERE setting_key='app_name'");
 if ($result && $row = mysqli_fetch_assoc($result)) $app_name = $row['setting_value'] ?: $app_name;
 
+// Ensure forwarded_to column exists (MySQL 5.x compatible)
+$_col = mysqli_query($conn, "SHOW COLUMNS FROM student_ict_complaints LIKE 'forwarded_to'");
+if ($_col && mysqli_num_rows($_col) === 0) {
+    mysqli_query($conn, "ALTER TABLE student_ict_complaints ADD COLUMN forwarded_to VARCHAR(255) NULL DEFAULT NULL");
+}
+
 $success_msg = $error_msg = '';
 
 // Flash messages from PRG redirect
@@ -121,8 +127,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['forward_complaint']))
         exit;
     }
 
-    // Auto-create forwarded_to column if it doesn't exist yet
-    mysqli_query($conn, "ALTER TABLE student_ict_complaints ADD COLUMN IF NOT EXISTS forwarded_to VARCHAR(255) NULL DEFAULT NULL");
+    // Add forwarded_to column if it doesn't exist (compatible with MySQL 5.x)
+    $col_check = mysqli_query($conn, "SHOW COLUMNS FROM student_ict_complaints LIKE 'forwarded_to'");
+    if ($col_check && mysqli_num_rows($col_check) === 0) {
+        mysqli_query($conn, "ALTER TABLE student_ict_complaints ADD COLUMN forwarded_to VARCHAR(255) NULL DEFAULT NULL");
+    }
 
     $upd = mysqli_prepare($conn,
         "UPDATE student_ict_complaints

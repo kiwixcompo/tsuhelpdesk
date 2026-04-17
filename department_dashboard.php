@@ -20,6 +20,12 @@ if (function_exists('getUnreadNotificationCount')) {
     $notification_count = getUnreadNotificationCount($conn, $_SESSION["user_id"]);
 }
 
+// Ensure forwarded_to column exists before any query uses it (MySQL 5.x compatible)
+$_col = mysqli_query($conn, "SHOW COLUMNS FROM student_ict_complaints LIKE 'forwarded_to'");
+if ($_col && mysqli_num_rows($_col) === 0) {
+    mysqli_query($conn, "ALTER TABLE student_ict_complaints ADD COLUMN forwarded_to VARCHAR(255) NULL DEFAULT NULL");
+}
+
 $success_message = "";
 $error_message = "";
 
@@ -144,17 +150,21 @@ $pending_complaints = count(array_filter($complaints, function($c) { return $c['
 $treated_complaints = count(array_filter($complaints, function($c) { return $c['status'] == 'Treated'; }));
 
 // --- Fetch forwarded cases from ICT ---
+// forwarded_to stores the department's full_name (VARCHAR), not user_id
 $forwarded_cases = [];
-$fw_sql = "SELECT c.*, CONCAT(s.first_name, ' ', s.last_name) as student_name, s.registration_number
-           FROM student_ict_complaints c
-           JOIN students s ON c.student_id = s.student_id
-           WHERE c.forwarded_to = ? ORDER BY c.created_at DESC";
-if ($fw_stmt = mysqli_prepare($conn, $fw_sql)) {
-    mysqli_stmt_bind_param($fw_stmt, "i", $_SESSION['user_id']);
-    mysqli_stmt_execute($fw_stmt);
-    $fw_res = mysqli_stmt_get_result($fw_stmt);
-    $forwarded_cases = mysqli_fetch_all($fw_res, MYSQLI_ASSOC);
-    mysqli_stmt_close($fw_stmt);
+$dept_full_name = $_SESSION['full_name'] ?? '';
+if (!empty($dept_full_name)) {
+    $fw_sql = "SELECT c.*, CONCAT(s.first_name, ' ', s.last_name) as student_name, s.registration_number
+               FROM student_ict_complaints c
+               JOIN students s ON c.student_id = s.student_id
+               WHERE c.forwarded_to = ? ORDER BY c.created_at DESC";
+    if ($fw_stmt = mysqli_prepare($conn, $fw_sql)) {
+        mysqli_stmt_bind_param($fw_stmt, "s", $dept_full_name);
+        mysqli_stmt_execute($fw_stmt);
+        $fw_res = mysqli_stmt_get_result($fw_stmt);
+        $forwarded_cases = mysqli_fetch_all($fw_res, MYSQLI_ASSOC);
+        mysqli_stmt_close($fw_stmt);
+    }
 }
 
 // Handle department response to forwarded case
@@ -168,7 +178,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
     
     $upd = mysqli_prepare($conn, "UPDATE student_ict_complaints SET status=?, admin_response=?, handled_by=?, updated_at=NOW() WHERE complaint_id=? AND forwarded_to=?");
     if($upd) {
-        mysqli_stmt_bind_param($upd, "ssiii", $status, $formatted_response, $_SESSION['user_id'], $cid, $_SESSION['user_id']);
+        mysqli_stmt_bind_param($upd, "ssiis", $status, $formatted_response, $_SESSION['user_id'], $cid, $dept_full_name);
         if(mysqli_stmt_execute($upd)) {
             $success_message = "Response submitted successfully.";
             // PRG redirect
