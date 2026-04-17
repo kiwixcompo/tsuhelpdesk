@@ -212,8 +212,13 @@ $cr = mysqli_query($conn, "SELECT DISTINCT category FROM student_ict_complaints 
 if ($cr) while ($row = mysqli_fetch_assoc($cr)) $cats[] = $row['category'];
 
 // Get departments for forwarding
+// Get departments + special roles for forwarding
 $departments_for_forward = [];
-$dept_res = mysqli_query($conn, "SELECT user_id, full_name FROM users WHERE role_id = 7 ORDER BY full_name");
+// Departments (role 7), i4Cus staff (role 5), Payment Admin (role 6)
+$dept_res = mysqli_query($conn,
+    "SELECT user_id, full_name, role_id FROM users
+     WHERE role_id IN (5, 6, 7)
+     ORDER BY role_id, full_name");
 if ($dept_res) {
     while ($r = mysqli_fetch_assoc($dept_res)) {
         $departments_for_forward[] = $r;
@@ -380,6 +385,12 @@ include 'includes/dashboard_header.php';
                         $bc = $sc[$c['status']] ?? 'secondary';
                         ?>
                         <span class="badge badge-<?php echo $bc; ?>"><?php echo htmlspecialchars($c['status']); ?></span>
+                        <?php if (!empty($c['forwarded_to'])): ?>
+                            <br>
+                            <span class="badge badge-light border mt-1" style="font-size:.7rem;color:#0c5460;background:#d1ecf1;border-color:#bee5eb!important">
+                                <i class="fas fa-share-square mr-1"></i><?php echo htmlspecialchars($c['forwarded_to']); ?>
+                            </span>
+                        <?php endif; ?>
                     </td>
                     <td><?php echo date('M d, Y', strtotime($c['created_at'])); ?></td>
                     <td>
@@ -495,11 +506,21 @@ include 'includes/dashboard_header.php';
                                placeholder="Type to search department or unit…" autocomplete="off">
                         <select name="forwarded_to" id="feedbackForwardTo" class="form-control">
                             <option value="">— Do not forward —</option>
-                            <?php foreach ($departments_for_forward as $dept): ?>
-                                <option value="<?php echo htmlspecialchars($dept['full_name']); ?>">
+                            <?php
+                            $rl = [5=>'i4Cus Staff', 6=>'Payment Admin', 7=>'Department'];
+                            $cur_grp = null;
+                            foreach ($departments_for_forward as $dept):
+                                $grp = $rl[$dept['role_id']] ?? 'Other';
+                                if ($grp !== $cur_grp):
+                                    if ($cur_grp !== null) echo '</optgroup>';
+                                    echo '<optgroup label="' . htmlspecialchars($grp) . '">';
+                                    $cur_grp = $grp;
+                                endif;
+                            ?>
+                                <option value="<?php echo htmlspecialchars($dept['full_name'], ENT_QUOTES); ?>">
                                     <?php echo htmlspecialchars($dept['full_name']); ?>
                                 </option>
-                            <?php endforeach; ?>
+                            <?php endforeach; if ($cur_grp !== null) echo '</optgroup>'; ?>
                         </select>
                         <small class="text-muted">If forwarded, the department will be noted in the complaint record.</small>
                     </div>
@@ -536,12 +557,22 @@ include 'includes/dashboard_header.php';
                                placeholder="Type to search…" autocomplete="off">
                         <select name="forwarded_to" id="fwDeptSelect" class="form-control" required
                                 style="height:auto; max-height:200px; overflow-y:auto;">
-                            <option value="">— Select department —</option>
-                            <?php foreach ($departments_for_forward as $dept): ?>
+                            <option value="">— Select recipient —</option>
+                            <?php
+                            $rl2 = [5=>'i4Cus Staff', 6=>'Payment Admin', 7=>'Department'];
+                            $cur_grp2 = null;
+                            foreach ($departments_for_forward as $dept):
+                                $grp2 = $rl2[$dept['role_id']] ?? 'Other';
+                                if ($grp2 !== $cur_grp2):
+                                    if ($cur_grp2 !== null) echo '</optgroup>';
+                                    echo '<optgroup label="' . htmlspecialchars($grp2) . '">';
+                                    $cur_grp2 = $grp2;
+                                endif;
+                            ?>
                                 <option value="<?php echo htmlspecialchars($dept['full_name'], ENT_QUOTES); ?>">
                                     <?php echo htmlspecialchars($dept['full_name']); ?>
                                 </option>
-                            <?php endforeach; ?>
+                            <?php endforeach; if ($cur_grp2 !== null) echo '</optgroup>'; ?>
                         </select>
                         <small class="text-muted">The department name will be recorded on the complaint.</small>
                     </div>

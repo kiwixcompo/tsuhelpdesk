@@ -260,7 +260,82 @@ function getImagePath($path) {
     include 'includes/dashboard_header.php';
     ?>
     <div class="container main-content">
-        
+
+        <!-- Forwarded ICT Complaints -->
+        <?php
+        // Fetch ICT complaints forwarded to Payment Admin
+        $payment_admin_name = $_SESSION['full_name'] ?? '';
+        $fwd_ict = [];
+        $fwd_col = mysqli_query($conn, "SHOW COLUMNS FROM student_ict_complaints LIKE 'forwarded_to'");
+        if ($fwd_col && mysqli_num_rows($fwd_col) > 0 && !empty($payment_admin_name)) {
+            $fwd_sql = "SELECT c.*, CONCAT(s.first_name,' ',s.last_name) AS student_name,
+                               s.registration_number, s.email
+                        FROM student_ict_complaints c
+                        JOIN students s ON c.student_id = s.student_id
+                        WHERE c.forwarded_to = ?
+                        ORDER BY c.created_at DESC";
+            if ($fs = mysqli_prepare($conn, $fwd_sql)) {
+                mysqli_stmt_bind_param($fs, 's', $payment_admin_name);
+                mysqli_stmt_execute($fs);
+                $fr = mysqli_stmt_get_result($fs);
+                $fwd_ict = mysqli_fetch_all($fr, MYSQLI_ASSOC);
+                mysqli_stmt_close($fs);
+            }
+        }
+        ?>
+        <?php if (!empty($fwd_ict)): ?>
+        <div class="card mb-4 border-warning">
+            <div class="card-header" style="background:#fff3cd;color:#856404">
+                <h5 class="mb-0">
+                    <i class="fas fa-share-square mr-2"></i>
+                    ICT Complaints Forwarded to You
+                    <span class="badge badge-warning ml-2"><?php echo count($fwd_ict); ?></span>
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Student</th>
+                                <th>Category / Issue</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        <?php foreach ($fwd_ict as $fi):
+                            $fsc = ['Pending'=>'warning','Under Review'=>'info','Resolved'=>'success','Rejected'=>'danger','Auto-Resolved'=>'secondary'];
+                            $fbc = $fsc[$fi['status']] ?? 'secondary';
+                        ?>
+                            <tr>
+                                <td><?php echo $fi['complaint_id']; ?></td>
+                                <td>
+                                    <strong><?php echo htmlspecialchars($fi['student_name']); ?></strong><br>
+                                    <small class="text-muted"><?php echo htmlspecialchars($fi['registration_number']); ?></small>
+                                </td>
+                                <td>
+                                    <div><?php echo htmlspecialchars($fi['category']); ?></div>
+                                    <small class="text-muted"><?php echo htmlspecialchars($fi['node_label']); ?></small>
+                                </td>
+                                <td><span class="badge badge-<?php echo $fbc; ?>"><?php echo htmlspecialchars($fi['status']); ?></span></td>
+                                <td><?php echo date('M d, Y', strtotime($fi['created_at'])); ?></td>
+                                <td>
+                                    <a href="ict_complaints_admin.php" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-external-link-alt mr-1"></i>View in ICT
+                                    </a>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <div class="card mb-4">
             <div class="card-header bg-primary text-white">
                 <h4 class="mb-0">Search & Filter Payment Complaints</h4>
