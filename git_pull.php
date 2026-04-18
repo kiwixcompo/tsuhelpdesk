@@ -19,6 +19,8 @@ if (($_GET['key'] ?? '') !== DEPLOY_KEY) {
 }
 
 header('Content-Type: text/plain; charset=utf-8');
+// Give the script enough time to run git pull + copy files
+set_time_limit(120);
 
 // ── Step 1: git pull in the repo directory ───────────────
 echo "=== TSU ICT Help Desk — Git Pull + Deploy ===\n";

@@ -78,7 +78,7 @@ REM ═════════════════════════�
 echo  [3/3] Triggering server git pull and file deploy...
 echo.
 
-curl -s "https://helpdesk.tsuniversity.ng/git_pull.php?key=DEPLOY_TSU_2026"
+curl -s --max-time 120 "https://helpdesk.tsuniversity.ng/git_pull.php?key=DEPLOY_TSU_2026"
 
 echo.
 echo.
