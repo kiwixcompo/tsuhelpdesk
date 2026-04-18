@@ -49,6 +49,7 @@ function app_log(string $level, string $message, array $context = []): void
  * Safe mail() wrapper — uses PHPMailer via SMTP if available, falls back to PHP mail().
  * Never outputs to browser. Returns true on success, false on failure.
  */
+if (!function_exists('app_mail')) {
 function app_mail($to, $subject, $message, $headers = '') {
     // Try PHPMailer first (SMTP — bypasses server mail() restrictions)
     $phpmailer_path = __DIR__ . '/../PHPMailer/src/PHPMailer.php';
@@ -92,6 +93,8 @@ function app_mail($to, $subject, $message, $headers = '') {
     }
     return (bool) $result;
 }
+} // end function_exists('app_mail')
+
 // Catch fatal errors that the normal error handler misses
 register_shutdown_function(function () {
     $e = error_get_last();
