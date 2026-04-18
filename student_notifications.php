@@ -43,7 +43,7 @@ if ($stmt = mysqli_prepare($conn, $sql)) {
     mysqli_stmt_close($stmt);
 }
 
-$unread_count = count(array_filter($notifications, fn($n) => !$n['is_read']));
+$unread_count = count(array_filter($notifications, function($n) { return !$n['is_read']; }));
 
 ob_end_flush();
 ?>

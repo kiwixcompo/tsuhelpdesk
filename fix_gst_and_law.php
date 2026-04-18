@@ -15,7 +15,7 @@ function run(string $label, string $sql): void {
         $steps[] = ['ok', $label];
     } else {
         $err = mysqli_error($conn);
-        if (str_contains($err, 'Duplicate') || str_contains($err, 'already exists')) {
+        if (strpos($err, 'Duplicate') !== false || strpos($err, 'already exists') !== false) {
             $steps[] = ['skip', "$label (already exists)"];
         } else {
             $steps[] = ['err', "$label: $err"];
@@ -112,7 +112,7 @@ run('Add forwarded_to column to student_ict_complaints',
         </tbody>
     </table>
 
-    <?php $errs = array_filter($steps, fn($s)=>$s[0]==='err'); ?>
+    <?php $errs = array_filter($steps, function($s) { return $s[0] === 'err'; }); ?>
     <?php if (empty($errs)): ?>
         <div class="alert alert-success">
             <strong>✓ Done.</strong> GST Unit added and law programmes fixed.

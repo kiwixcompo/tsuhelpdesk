@@ -1,5 +1,4 @@
 <?php
-ob_implicit_flush(false);
 ob_start();
 session_start();
 require_once "config.php";

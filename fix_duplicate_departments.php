@@ -149,7 +149,7 @@ if ($dup_prog) {
         </tbody>
     </table>
 
-    <?php $errors = array_filter($steps, fn($s) => $s[0] === 'err'); ?>
+    <?php $errors = array_filter($steps, function($s) { return $s[0] === 'err'; }); ?>
     <?php if (empty($errors)): ?>
         <div class="alert alert-success">
             <strong>✓ Cleanup complete.</strong>

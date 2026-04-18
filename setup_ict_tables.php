@@ -91,7 +91,7 @@ run('Add complaint_type column to student_notifications (if missing)',
         </tbody>
     </table>
 
-    <?php $errors = array_filter($steps, fn($s) => $s[0] === 'err'); ?>
+    <?php $errors = array_filter($steps, function($s) { return $s[0] === 'err'; }); ?>
     <?php if (empty($errors)): ?>
         <div class="alert alert-success">
             <strong>✓ Setup complete.</strong> Delete this file from the server for security.
