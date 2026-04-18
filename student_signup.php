@@ -299,9 +299,8 @@ if($result){
     }
 }
 
-// End output buffering and flush
-ob_end_flush();
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
