@@ -1,4 +1,5 @@
 <?php
+ob_implicit_flush(false);
 ob_start();
 session_start();
 require_once "config.php";
@@ -200,8 +201,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                                 app_mail($email, $welcome_subject, $welcome_message, $welcome_headers);
                                 
                                 // Registration successful, redirect to login
-                                ob_clean();
-                                header("location: student_login.php?registered=1");
+                                while (ob_get_level() > 0) ob_end_clean();                                header("location: student_login.php?registered=1");
                                 exit();
                             } else{
                                 $signup_err = "Something went wrong. Please try again.";
@@ -269,8 +269,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                                             app_mail($email, $welcome_subject, $welcome_message, $welcome_headers);
                                             
                                             // Registration successful, redirect to login
-                                            ob_clean();
-                                            header("location: student_login.php?registered=1");
+                                            while (ob_get_level() > 0) ob_end_clean();                                            header("location: student_login.php?registered=1");
                                             exit();
                                         } else{
                                             $signup_err = "Something went wrong. Please try again.";

@@ -39,8 +39,10 @@ function app_log(string $level, string $message, array $context = []): void
         $line .= ' | ' . json_encode($context, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     }
     $line .= ' | URI: ' . $uri . "\n";
-    // Suppress any output from error_log — use @ to prevent fallback to browser output
-    @error_log($line, 3, APP_LOG);
+    // Use @ and file_put_contents as fallback — never output to browser
+    if (!@error_log($line, 3, APP_LOG)) {
+        @file_put_contents(APP_LOG, $line, FILE_APPEND | LOCK_EX);
+    }
 }
 
 /**
