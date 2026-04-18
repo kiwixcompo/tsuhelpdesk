@@ -159,9 +159,9 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                 error_log("Failed to execute user lookup query: " . mysqli_stmt_error($stmt));
             }
             
-            // Close statement if it wasn't closed earlier
-            if(isset($stmt) && $stmt !== false) {
-                mysqli_stmt_close($stmt);
+            // Close statement only if not already closed
+            if(isset($stmt) && $stmt instanceof mysqli_stmt) {
+                // Already closed at line 95 after successful lookup
             }
         } else {
             $message = "Database connection error. Error: " . mysqli_error($conn);

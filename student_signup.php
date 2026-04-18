@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 ob_start();
 session_start();
 require_once "config.php";
@@ -183,10 +183,10 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                                 $welcome_message .= "Programme: Registration numbers not applicable for this programme\n";
                                 $welcome_message .= "Email: " . $email . "\n\n";
                                 $welcome_message .= "You can now login to the student portal to:\n";
-                                $welcome_message .= "• Lodge result verification complaints\n";
-                                $welcome_message .= "• Track your complaint status\n";
-                                $welcome_message .= "• View admin responses\n";
-                                $welcome_message .= "• Change your password\n\n";
+                                $welcome_message .= "� Lodge result verification complaints\n";
+                                $welcome_message .= "� Track your complaint status\n";
+                                $welcome_message .= "� View admin responses\n";
+                                $welcome_message .= "� Change your password\n\n";
                                 $welcome_message .= "Login URL: https://helpdesk.tsuniversity.ng/student_login.php\n\n";
                                 $welcome_message .= "Best regards,\nTSU ICT Help Desk Team";
                                 
@@ -200,7 +200,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                                 app_mail($email, $welcome_subject, $welcome_message, $welcome_headers);
                                 
                                 // Registration successful, redirect to login
-                                ob_end_clean();
+                                ob_clean();
                                 header("location: student_login.php?registered=1");
                                 exit();
                             } else{
@@ -245,15 +245,15 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                                             $welcome_message .= "Registration Number: " . $registration_number . "\n";
                                             $welcome_message .= "Email: " . $email . "\n\n";
                                             $welcome_message .= "You can now login to the student portal to:\n";
-                                            $welcome_message .= "• Lodge result verification complaints\n";
-                                            $welcome_message .= "• Track your complaint status\n";
-                                            $welcome_message .= "• View admin responses\n";
-                                            $welcome_message .= "• Change your password\n\n";
+                                            $welcome_message .= "� Lodge result verification complaints\n";
+                                            $welcome_message .= "� Track your complaint status\n";
+                                            $welcome_message .= "� View admin responses\n";
+                                            $welcome_message .= "� Change your password\n\n";
                                             $welcome_message .= "Login URL: https://helpdesk.tsuniversity.ng/student_login.php\n\n";
                                             $welcome_message .= "IMPORTANT SECURITY TIPS:\n";
-                                            $welcome_message .= "• Keep your login credentials secure\n";
-                                            $welcome_message .= "• Change your password regularly\n";
-                                            $welcome_message .= "• Never share your account details with others\n\n";
+                                            $welcome_message .= "� Keep your login credentials secure\n";
+                                            $welcome_message .= "� Change your password regularly\n";
+                                            $welcome_message .= "� Never share your account details with others\n\n";
                                             $welcome_message .= "If you have any questions or need assistance, please don't hesitate to contact our support team.\n\n";
                                             $welcome_message .= "Best regards,\nTSU ICT Help Desk Team\n";
                                             $welcome_message .= "Taraba State University\n";
@@ -269,7 +269,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                                             app_mail($email, $welcome_subject, $welcome_message, $welcome_headers);
                                             
                                             // Registration successful, redirect to login
-                                            ob_end_clean();
+                                            ob_clean();
                                             header("location: student_login.php?registered=1");
                                             exit();
                                         } else{
@@ -592,17 +592,36 @@ ob_end_flush();
                             
                             <div class="form-group">
                                 <label for="password">Password *</label>
-                                <input type="password" id="password" name="password" 
-                                       class="form-control <?php echo (!empty($password_err)) ? 'is-invalid' : ''; ?>" required>
+                                <div class="input-group">
+                                    <input type="password" id="password" name="password" 
+                                           class="form-control <?php echo (!empty($password_err)) ? 'is-invalid' : ''; ?>" required>
+                                    <div class="input-group-append">
+                                        <button type="button" class="btn btn-outline-secondary toggle-pw" data-target="password" tabindex="-1">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                    <?php if(!empty($password_err)): ?>
+                                        <div class="invalid-feedback"><?php echo $password_err; ?></div>
+                                    <?php endif; ?>
+                                </div>
                                 <small class="form-text text-muted">Minimum 6 characters</small>
                                 <div class="invalid-feedback"><?php echo $password_err; ?></div>
                             </div>
                             
                             <div class="form-group">
                                 <label for="confirm_password">Confirm Password *</label>
-                                <input type="password" id="confirm_password" name="confirm_password" 
-                                       class="form-control <?php echo (!empty($confirm_password_err)) ? 'is-invalid' : ''; ?>" required>
-                                <div class="invalid-feedback"><?php echo $confirm_password_err; ?></div>
+                                <div class="input-group">
+                                    <input type="password" id="confirm_password" name="confirm_password" 
+                                           class="form-control <?php echo (!empty($confirm_password_err)) ? 'is-invalid' : ''; ?>" required>
+                                    <div class="input-group-append">
+                                        <button type="button" class="btn btn-outline-secondary toggle-pw" data-target="confirm_password" tabindex="-1">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                    <?php if(!empty($confirm_password_err)): ?>
+                                        <div class="invalid-feedback"><?php echo $confirm_password_err; ?></div>
+                                    <?php endif; ?>
+                                </div>
                             </div>
                             
                             <div class="form-group mb-4 mt-4">
@@ -760,6 +779,22 @@ ob_end_flush();
             // Auto-dismiss alerts
             $('.alert').delay(5000).fadeOut();
         });
+    </script>
+    <script>
+    // Password visibility toggle
+    document.querySelectorAll('.toggle-pw').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var input = document.getElementById(this.getAttribute('data-target'));
+            var icon  = this.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.replace('fa-eye', 'fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.replace('fa-eye-slash', 'fa-eye');
+            }
+        });
+    });
     </script>
 </body>
 </html>

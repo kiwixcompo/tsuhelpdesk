@@ -832,10 +832,13 @@ foreach ($complaints as $c) {
                         </div>
                         <div class="col-md-4 text-right">
                             <?php
-                            // Show pending count badge
+                            // Show pending count badge — only if table exists
                             $ict_pending = 0;
-                            $ict_r = mysqli_query($conn, "SELECT COUNT(*) c FROM student_ict_complaints WHERE status='Pending'");
-                            if ($ict_r && $ict_row = mysqli_fetch_assoc($ict_r)) $ict_pending = (int)$ict_row['c'];
+                            $tbl_check = mysqli_query($conn, "SHOW TABLES LIKE 'student_ict_complaints'");
+                            if ($tbl_check && mysqli_num_rows($tbl_check) > 0) {
+                                $ict_r = mysqli_query($conn, "SELECT COUNT(*) c FROM student_ict_complaints WHERE status='Pending'");
+                                if ($ict_r && $ict_row = mysqli_fetch_assoc($ict_r)) $ict_pending = (int)$ict_row['c'];
+                            }
                             ?>
                             <a href="ict_complaints_admin.php" class="btn btn-warning btn-sm">
                                 <i class="fas fa-headset mr-1"></i> Manage ICT Complaints
