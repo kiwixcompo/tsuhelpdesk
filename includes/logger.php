@@ -46,24 +46,49 @@ function app_log(string $level, string $message, array $context = []): void
 }
 
 /**
- * Safe mail() wrapper — silently skips sending if mail() is disabled on the server.
- * Returns true on success, false if disabled or failed.
+ * Safe mail() wrapper — uses PHPMailer via SMTP if available, falls back to PHP mail().
+ * Never outputs to browser. Returns true on success, false on failure.
  */
-function app_mail(string $to, string $subject, string $message, string $headers = ''): bool
-{
+function app_mail($to, $subject, $message, $headers = '') {
+    // Try PHPMailer first (SMTP — bypasses server mail() restrictions)
+    $phpmailer_path = __DIR__ . '/../PHPMailer/src/PHPMailer.php';
+    if (file_exists($phpmailer_path)) {
+        require_once __DIR__ . '/../PHPMailer/src/Exception.php';
+        require_once $phpmailer_path;
+        require_once __DIR__ . '/../PHPMailer/src/SMTP.php';
+
+        $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+        try {
+            $mail->isSMTP();
+            $mail->Host       = 'mail.tsuniversity.edu.ng';
+            $mail->SMTPAuth   = true;
+            $mail->Username   = 'support@tsuniversity.edu.ng';
+            $mail->Password   = 'Password@321';
+            $mail->SMTPSecure = 'ssl';
+            $mail->Port       = 465;
+
+            $mail->setFrom('noreply@tsuniversity.edu.ng', 'TSU ICT Help Desk');
+            $mail->addAddress($to);
+            $mail->addReplyTo('support@tsuniversity.edu.ng', 'TSU Support');
+            $mail->isHTML(false);
+            $mail->Subject = $subject;
+            $mail->Body    = $message;
+            $mail->send();
+            return true;
+        } catch (Exception $e) {
+            @app_log('warning', 'PHPMailer failed, trying fallback', ['error' => $mail->ErrorInfo, 'to' => $to]);
+            // Fall through to PHP mail() below
+        }
+    }
+
+    // Fallback: PHP mail()
     if (!function_exists('mail')) {
-        app_log('warning', 'mail() is disabled on this server — email not sent', [
-            'to'      => $to,
-            'subject' => $subject,
-        ]);
+        @app_log('warning', 'mail() is disabled on this server — email not sent', ['to' => $to, 'subject' => $subject]);
         return false;
     }
     $result = @mail($to, $subject, $message, $headers);
     if (!$result) {
-        app_log('warning', 'mail() returned false — email may not have been sent', [
-            'to'      => $to,
-            'subject' => $subject,
-        ]);
+        @app_log('warning', 'mail() returned false — email may not have been sent', ['to' => $to, 'subject' => $subject]);
     }
     return (bool) $result;
 }
