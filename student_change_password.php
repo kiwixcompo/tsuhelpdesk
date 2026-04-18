@@ -105,8 +105,6 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
     }
 }
 
-// End output buffering and flush
-ob_end_flush();
 ?>
 
 <!DOCTYPE html>

@@ -113,8 +113,6 @@ if ($notif_count_result && $notif_row = mysqli_fetch_assoc($notif_count_result))
     $notification_count = (int) $notif_row['c'];
 }
 
-// End output buffering and flush
-ob_end_flush();
 ?>
 
 <!DOCTYPE html>

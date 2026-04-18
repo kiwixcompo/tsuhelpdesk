@@ -1287,5 +1287,4 @@ if(isset($_GET['show_previous']) && $_GET['show_previous'] == '1') {
 </html>
 <?php
 // End output buffering at the very bottom
-ob_end_flush();
 ?>

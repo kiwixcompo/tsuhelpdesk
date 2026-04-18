@@ -674,6 +674,4 @@ function getImagePath($path) {
 </html>
 
 <?php
-// End output buffering and flush
-ob_end_flush();
 ?>

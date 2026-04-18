@@ -927,6 +927,4 @@ $total_pages = ceil($total_students / $per_page);
 </html>
 
 <?php
-// End output buffering and flush
-ob_end_flush();
 ?>

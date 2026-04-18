@@ -150,8 +150,6 @@ foreach ($complaints as $complaint) {
     $complaints_by_dept[$dept_key]['complaints'][] = $complaint;
 }
 
-// End output buffering and flush
-ob_end_flush();
 ?>
 
 <!DOCTYPE html>

@@ -378,6 +378,4 @@ if($row = mysqli_fetch_assoc($result)){
 </html>
 
 <?php
-// End output buffering and flush
-ob_end_flush();
 ?>

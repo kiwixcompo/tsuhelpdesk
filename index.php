@@ -10,8 +10,6 @@ if(isset($_SESSION["loggedin"]) && $_SESSION["loggedin"] === true){
     exit;
 }
 
-// End output buffering and flush
-ob_end_flush();
 ?>
 
 <!DOCTYPE html>

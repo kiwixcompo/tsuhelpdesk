@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // Start output buffering to prevent header issues
 ob_start();
 
@@ -85,8 +85,6 @@ if(mysqli_num_rows($check_columns) == 0) {
     mysqli_query($conn, "ALTER TABLE students ADD COLUMN password_reset_expires DATETIME DEFAULT NULL");
 }
 
-// End output buffering and flush
-ob_end_flush();
 ?>
 
 <!DOCTYPE html>

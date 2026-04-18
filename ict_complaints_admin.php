@@ -225,7 +225,6 @@ if ($dept_res) {
     }
 }
 
-ob_end_flush();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -722,4 +721,3 @@ $(function() {
 </body>
 </html>
 
-<?php ob_end_flush(); ?>

@@ -231,8 +231,6 @@ $offset = ($page - 1) * $per_page;
 
 $paginated_students = array_slice($grouped_complaints, $offset, $per_page, true);
 
-// End output buffering and flush
-ob_end_flush();
 ?>
 
 <!DOCTYPE html>

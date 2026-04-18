@@ -10,8 +10,6 @@ if(isset($_SESSION["student_loggedin"]) && $_SESSION["student_loggedin"] === tru
     exit;
 }
 
-// End output buffering and flush
-ob_end_flush();
 ?>
 
 <!DOCTYPE html>

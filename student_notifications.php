@@ -45,7 +45,6 @@ if ($stmt = mysqli_prepare($conn, $sql)) {
 
 $unread_count = count(array_filter($notifications, function($n) { return !$n['is_read']; }));
 
-ob_end_flush();
 ?>
 <!DOCTYPE html>
 <html lang="en">

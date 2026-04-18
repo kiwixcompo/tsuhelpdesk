@@ -1,5 +1,6 @@
 # Configuration files with sensitive data
 config.php
+config.local.php
 
 # Log files
 logs/*

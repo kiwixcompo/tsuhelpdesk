@@ -724,6 +724,4 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
 </html>
 
 <?php
-// End output buffering and flush
-ob_end_flush();
 ?>
