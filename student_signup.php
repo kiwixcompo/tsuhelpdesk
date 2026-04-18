@@ -127,7 +127,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
     
     // Validate password
     if(empty(trim($_POST["password"]))){
-        $password_err = "Please enter a password.";     
+        $password_err = "Please enter a password.";    
     } elseif(strlen(trim($_POST["password"])) < 6){
         $password_err = "Password must have at least 6 characters.";
     } else{
@@ -136,7 +136,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
     
     // Validate confirm password
     if(empty(trim($_POST["confirm_password"]))){
-        $confirm_password_err = "Please confirm password.";     
+        $confirm_password_err = "Please confirm password.";    
     } else{
         $confirm_password = trim($_POST["confirm_password"]);
         if(empty($password_err) && ($password != $confirm_password)){
@@ -184,10 +184,10 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                                 $welcome_message .= "Programme: Registration numbers not applicable for this programme\n";
                                 $welcome_message .= "Email: " . $email . "\n\n";
                                 $welcome_message .= "You can now login to the student portal to:\n";
-                                $welcome_message .= "� Lodge result verification complaints\n";
-                                $welcome_message .= "� Track your complaint status\n";
-                                $welcome_message .= "� View admin responses\n";
-                                $welcome_message .= "� Change your password\n\n";
+                                $welcome_message .= "• Lodge result verification complaints\n";
+                                $welcome_message .= "• Track your complaint status\n";
+                                $welcome_message .= "• View admin responses\n";
+                                $welcome_message .= "• Change your password\n\n";
                                 $welcome_message .= "Login URL: https://helpdesk.tsuniversity.ng/student_login.php\n\n";
                                 $welcome_message .= "Best regards,\nTSU ICT Help Desk Team";
                                 
@@ -197,11 +197,12 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                                 $welcome_headers .= "MIME-Version: 1.0\r\n";
                                 $welcome_headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
                                 
-                                // Send welcome email (suppress errors to avoid blocking registration)
-                                app_mail($email, $welcome_subject, $welcome_message, $welcome_headers);
+                                // Send welcome email with @ to suppress errors
+                                @app_mail($email, $welcome_subject, $welcome_message, $welcome_headers);
                                 
                                 // Registration successful, redirect to login
-                                while (ob_get_level() > 0) ob_end_clean();                                header("location: student_login.php?registered=1");
+                                while (ob_get_level() > 0) ob_end_clean();                                
+                                header("location: student_login.php?registered=1");
                                 exit();
                             } else{
                                 $signup_err = "Something went wrong. Please try again.";
@@ -245,15 +246,15 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                                             $welcome_message .= "Registration Number: " . $registration_number . "\n";
                                             $welcome_message .= "Email: " . $email . "\n\n";
                                             $welcome_message .= "You can now login to the student portal to:\n";
-                                            $welcome_message .= "� Lodge result verification complaints\n";
-                                            $welcome_message .= "� Track your complaint status\n";
-                                            $welcome_message .= "� View admin responses\n";
-                                            $welcome_message .= "� Change your password\n\n";
+                                            $welcome_message .= "• Lodge result verification complaints\n";
+                                            $welcome_message .= "• Track your complaint status\n";
+                                            $welcome_message .= "• View admin responses\n";
+                                            $welcome_message .= "• Change your password\n\n";
                                             $welcome_message .= "Login URL: https://helpdesk.tsuniversity.ng/student_login.php\n\n";
                                             $welcome_message .= "IMPORTANT SECURITY TIPS:\n";
-                                            $welcome_message .= "� Keep your login credentials secure\n";
-                                            $welcome_message .= "� Change your password regularly\n";
-                                            $welcome_message .= "� Never share your account details with others\n\n";
+                                            $welcome_message .= "• Keep your login credentials secure\n";
+                                            $welcome_message .= "• Change your password regularly\n";
+                                            $welcome_message .= "• Never share your account details with others\n\n";
                                             $welcome_message .= "If you have any questions or need assistance, please don't hesitate to contact our support team.\n\n";
                                             $welcome_message .= "Best regards,\nTSU ICT Help Desk Team\n";
                                             $welcome_message .= "Taraba State University\n";
@@ -265,11 +266,12 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                                             $welcome_headers .= "MIME-Version: 1.0\r\n";
                                             $welcome_headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
                                             
-                                            // Send welcome email (suppress errors to avoid blocking registration)
-                                            app_mail($email, $welcome_subject, $welcome_message, $welcome_headers);
+                                            // Send welcome email with @ to suppress errors
+                                            @app_mail($email, $welcome_subject, $welcome_message, $welcome_headers);
                                             
                                             // Registration successful, redirect to login
-                                            while (ob_get_level() > 0) ob_end_clean();                                            header("location: student_login.php?registered=1");
+                                            while (ob_get_level() > 0) ob_end_clean();                                            
+                                            header("location: student_login.php?registered=1");
                                             exit();
                                         } else{
                                             $signup_err = "Something went wrong. Please try again.";
@@ -278,13 +280,13 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                                     }
                                 }
                             }
-                            mysqli_stmt_close($check_stmt);
                         }
+                        mysqli_stmt_close($check_stmt);
                     }
                 }
             }
-            mysqli_stmt_close($stmt);
         }
+        mysqli_stmt_close($stmt);
     }
 }
 
@@ -474,7 +476,6 @@ ob_end_flush();
                         ?>
 
                         <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post" id="signupForm">
-                            <!-- Personal Information -->
                             <h5 class="mb-3"><i class="fas fa-user mr-2"></i>Personal Information</h5>
                             
                             <div class="row">
@@ -515,7 +516,6 @@ ob_end_flush();
                                 <div class="invalid-feedback"><?php echo $email_err; ?></div>
                             </div>
                             
-                            <!-- Academic Information -->
                             <div class="mt-5 mb-4">
                                 <h5 class="mb-4"><i class="fas fa-graduation-cap mr-2"></i>Academic Information</h5>
                             </div>
@@ -553,7 +553,6 @@ ob_end_flush();
                                 <div class="invalid-feedback"><?php echo $programme_err; ?></div>
                             </div>
                             
-                            <!-- Registration Number -->
                             <h5 class="mb-3 mt-4"><i class="fas fa-id-card mr-2"></i>Registration Number</h5>
                             
                             <div class="row">
@@ -586,7 +585,6 @@ ob_end_flush();
                                 </div>
                             </div>
                             
-                            <!-- Password -->
                             <h5 class="mb-3 mt-4"><i class="fas fa-lock mr-2"></i>Account Security</h5>
                             
                             <div class="form-group">
