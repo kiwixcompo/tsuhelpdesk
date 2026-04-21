@@ -1,11 +1,10 @@
 <?php
 /**
- * TSU ICT Help Desk - Server-side Git Pull Trigger
- * Called by sync_and_deploy.bat after pushing to GitHub.
- * Runs git pull on the server repo, then copies files to web root.
+ * TSU ICT Help Desk - Server-side Deploy Script
+ * Copies files from the server's git repo to the live web root.
+ * The git pull is triggered separately via cPanel Git Version Control.
  *
  * Access: https://helpdesk.tsuniversity.ng/git_pull.php?key=DEPLOY_TSU_2026
- * DELETE this file if you ever set up SSH-based deployment instead.
  */
 
 define('DEPLOY_KEY', 'DEPLOY_TSU_2026');
@@ -15,73 +14,85 @@ define('DEST_PATH',  '/home/tsuniver/helpdesk.tsuniversity.ng');
 // ── Auth ─────────────────────────────────────────────────
 if (($_GET['key'] ?? '') !== DEPLOY_KEY) {
     http_response_code(403);
-    die('<h2>403 Forbidden</h2>');
+    die('403 Forbidden');
 }
 
 header('Content-Type: text/plain; charset=utf-8');
-// Give the script enough time to run git pull + copy files
 set_time_limit(120);
 
-// ── Step 1: git pull in the repo directory ───────────────
-echo "=== TSU ICT Help Desk — Git Pull + Deploy ===\n";
+echo "=== TSU ICT Help Desk — Deploy ===\n";
 echo "Time: " . date('Y-m-d H:i:s') . "\n\n";
 
+// ── Check repo exists ────────────────────────────────────
 if (!is_dir(REPO_PATH)) {
     echo "ERROR: Repo not found at " . REPO_PATH . "\n";
+    echo "Go to cPanel > Git Version Control and make sure the repo is cloned.\n";
     exit(1);
 }
 
-echo "[1/3] Running git pull in repo...\n";
-
-// Set HOME so git can find credentials/config
+// ── Attempt git pull (non-fatal if it fails) ─────────────
+echo "[1/3] Attempting git pull...\n";
 putenv('HOME=/home/tsuniver');
+putenv('GIT_TERMINAL_PROMPT=0'); // prevent git from hanging waiting for input
 
-$output = [];
-$return = 0;
-exec('cd ' . escapeshellarg(REPO_PATH) . ' && git pull origin main 2>&1', $output, $return);
+$pullOutput = [];
+$pullReturn = 0;
+exec('cd ' . escapeshellarg(REPO_PATH) . ' && git pull origin main 2>&1', $pullOutput, $pullReturn);
 
-foreach ($output as $line) {
+foreach ($pullOutput as $line) {
     echo "  " . $line . "\n";
 }
 
-if ($return !== 0) {
-    echo "\nERROR: git pull failed (exit code $return)\n";
-    echo "The files will not be copied. Fix the git issue and try again.\n";
-    exit(1);
+if ($pullReturn !== 0) {
+    echo "\n  [WARNING] git pull exited with code $pullReturn.\n";
+    echo "  This usually means the server repo needs SSH key auth set up.\n";
+    echo "  Continuing with file copy using whatever is currently in the repo...\n";
+    echo "  To fix: go to cPanel > Git Version Control > Update from Remote manually.\n\n";
+} else {
+    echo "[OK] git pull succeeded.\n\n";
 }
 
-echo "[OK] git pull succeeded.\n\n";
+// ── Show current repo HEAD ───────────────────────────────
+$headOutput = [];
+exec('cd ' . escapeshellarg(REPO_PATH) . ' && git log -1 --oneline 2>&1', $headOutput);
+echo "  Repo HEAD: " . ($headOutput[0] ?? 'unknown') . "\n\n";
 
-// ── Step 2: Copy files to web root ───────────────────────
+// ── Copy files to web root ───────────────────────────────
 echo "[2/3] Copying files to web root...\n";
 
 function copyDir(string $src, string $dst): int {
     $count = 0;
     if (!is_dir($dst)) mkdir($dst, 0755, true);
-    foreach (scandir($src) as $item) {
+    $items = scandir($src);
+    if (!$items) return 0;
+    foreach ($items as $item) {
         if ($item === '.' || $item === '..' || $item === '.git') continue;
         $s = $src . '/' . $item;
         $d = $dst . '/' . $item;
         if (is_dir($s)) {
             $count += copyDir($s, $d);
         } else {
-            copy($s, $d);
-            $count++;
+            if (copy($s, $d)) {
+                $count++;
+            } else {
+                echo "  [WARN] Could not copy: $item\n";
+            }
         }
     }
     return $count;
 }
 
-// Preserve live config.php — never overwrite it
+// Preserve live config.php — never overwrite server credentials
 $configBackup = null;
 $configPath   = DEST_PATH . '/config.php';
 if (file_exists($configPath)) {
     $configBackup = file_get_contents($configPath);
+    echo "  Preserving live config.php...\n";
 }
 
 $copied = copyDir(REPO_PATH, DEST_PATH);
 
-// Also copy .htaccess (scandir may skip dotfiles)
+// Copy .htaccess explicitly (scandir skips dotfiles on some systems)
 if (file_exists(REPO_PATH . '/.htaccess')) {
     copy(REPO_PATH . '/.htaccess', DEST_PATH . '/.htaccess');
 }
@@ -89,7 +100,7 @@ if (file_exists(REPO_PATH . '/.htaccess')) {
 // Restore config.php
 if ($configBackup !== null) {
     file_put_contents($configPath, $configBackup);
-    echo "  Preserved live config.php\n";
+    echo "  Restored live config.php\n";
 }
 
 // Ensure writable dirs exist
@@ -98,14 +109,21 @@ foreach (['uploads', 'logs'] as $dir) {
     if (!is_dir($path)) mkdir($path, 0755, true);
 }
 
-echo "[OK] Copied $copied files.\n\n";
+echo "[OK] Copied $copied files to web root.\n\n";
 
-// ── Step 3: Verify ───────────────────────────────────────
-echo "[3/3] Verifying...\n";
-$gitLog = [];
-exec('cd ' . escapeshellarg(REPO_PATH) . ' && git log -1 --oneline 2>&1', $gitLog);
-echo "  Latest commit: " . ($gitLog[0] ?? 'unknown') . "\n";
-echo "  Web root: " . DEST_PATH . "\n";
+// ── Summary ──────────────────────────────────────────────
+echo "[3/3] Summary\n";
+echo "  Source : " . REPO_PATH . "\n";
+echo "  Dest   : " . DEST_PATH . "\n";
+echo "  Files  : $copied copied\n";
+echo "  Config : preserved (not overwritten)\n";
+
+if ($pullReturn !== 0) {
+    echo "\n[ACTION NEEDED] git pull failed — the files copied are from the\n";
+    echo "  PREVIOUS repo state, not the latest GitHub push.\n";
+    echo "  Fix: cPanel > Git Version Control > Update from Remote\n";
+    echo "  Then run sync_and_deploy.bat again.\n";
+}
 
 echo "\n=== DONE ===\n";
 echo "Site: https://helpdesk.tsuniversity.ng\n";

@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 title TSU ICT Help Desk - Sync and Deploy
 color 0A
 echo.
