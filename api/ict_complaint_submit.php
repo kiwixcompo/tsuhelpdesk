@@ -87,8 +87,11 @@ $create_sql = "CREATE TABLE IF NOT EXISTS student_ict_complaints (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
 mysqli_query($conn, $create_sql); // silently create if missing
 
-// Also attempt to add attachment_path if the table already exists
-mysqli_query($conn, "ALTER TABLE student_ict_complaints ADD COLUMN attachment_path VARCHAR(255) NULL AFTER extra_fields");
+// Add attachment_path column if it doesn't already exist
+$col_check = mysqli_query($conn, "SHOW COLUMNS FROM student_ict_complaints LIKE 'attachment_path'");
+if ($col_check && mysqli_num_rows($col_check) === 0) {
+    mysqli_query($conn, "ALTER TABLE student_ict_complaints ADD COLUMN attachment_path VARCHAR(255) NULL AFTER extra_fields");
+}
 
 $sql = "INSERT INTO student_ict_complaints
         (student_id, node_id, node_label, category, path_summary, description,
