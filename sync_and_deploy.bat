@@ -19,7 +19,6 @@ REM ── Check git ───────────────────�
 git --version >nul 2>&1
 if errorlevel 1 (
     echo  [ERROR] Git is not installed or not in PATH.
-    echo  Download from: https://git-scm.com/download/win
     pause
     exit /b 1
 )
@@ -35,7 +34,7 @@ if errorlevel 1 (
 REM ════════════════════════════════════════════════════════
 REM  STEP 1: Commit local changes
 REM ════════════════════════════════════════════════════════
-echo  [1/3] Checking for local changes...
+echo  [1/4] Checking for local changes...
 git add .
 
 git diff --cached --quiet
@@ -58,13 +57,10 @@ echo.
 REM ════════════════════════════════════════════════════════
 REM  STEP 2: Push to GitHub
 REM ════════════════════════════════════════════════════════
-echo  [2/3] Pushing to GitHub...
+echo  [2/4] Pushing to GitHub...
 git push origin main
 if errorlevel 1 (
-    echo.
     echo  [ERROR] Push to GitHub failed.
-    echo  Check your internet connection or GitHub credentials.
-    echo.
     pause
     exit /b 1
 )
@@ -72,16 +68,62 @@ echo  [OK] Pushed to GitHub.
 echo.
 
 REM ════════════════════════════════════════════════════════
-REM  STEP 3: Tell the server to pull from GitHub and deploy
-REM  git_pull.php runs "git pull" on the server repo, then
-REM  copies all files to the live web root.
+REM  STEP 3: Tell cPanel to pull from GitHub
+REM  Uses cPanel UAPI with basic auth (username:password)
+REM  Set your cPanel password below.
 REM ════════════════════════════════════════════════════════
-echo  [3/3] Triggering server git pull and file deploy...
+echo  [3/4] Triggering cPanel "Update from Remote"...
+
+set "CPANEL_USER=tsuniver"
+set "CPANEL_PASS=YOUR_CPANEL_PASSWORD_HERE"
+set "REPO_ROOT=/home/tsuniver/repositories/tsuhelpdesk"
+
+curl -s -k -u "%CPANEL_USER%:%CPANEL_PASS%" ^
+     "https://helpdesk.tsuniversity.ng:2083/execute/VersionControl/update?repository_root=%REPO_ROOT%" ^
+     -o cpanel_pull.tmp
+
+findstr /i "\"errors\"\:\[\]" cpanel_pull.tmp >nul 2>&1
+if errorlevel 1 (
+    echo  [WARNING] cPanel pull response unexpected. Check cpanel_pull.tmp
+    echo  You may need to set your cPanel password in this bat file.
+    type cpanel_pull.tmp
+) else (
+    echo  [OK] cPanel pulled latest code from GitHub.
+    del cpanel_pull.tmp >nul 2>&1
+)
 echo.
 
-curl -s --max-time 120 "https://helpdesk.tsuniversity.ng/git_pull.php?key=DEPLOY_TSU_2026"
+REM Wait for pull to complete
+timeout /t 8 /nobreak >nul
 
-echo.
+REM ════════════════════════════════════════════════════════
+REM  STEP 4: Trigger cPanel "Deploy HEAD Commit"
+REM  This runs the .cpanel.yml tasks (cp -rf repo to webroot)
+REM ════════════════════════════════════════════════════════
+echo  [4/4] Triggering cPanel "Deploy HEAD Commit"...
+
+curl -s -k -u "%CPANEL_USER%:%CPANEL_PASS%" ^
+     "https://helpdesk.tsuniversity.ng:2083/execute/VersionControl/retrieve_repositories" ^
+     -o cpanel_repos.tmp >nul 2>&1
+
+REM Extract the repository clone_url to find the repo_id
+REM Then trigger deploy — cPanel deploy endpoint
+curl -s -k -u "%CPANEL_USER%:%CPANEL_PASS%" ^
+     "https://helpdesk.tsuniversity.ng:2083/execute/VersionControlDeployment/create?repository_root=%REPO_ROOT%" ^
+     -o cpanel_deploy.tmp
+
+findstr /i "\"errors\"\:\[\]" cpanel_deploy.tmp >nul 2>&1
+if errorlevel 1 (
+    echo  [WARNING] Deploy trigger response unexpected. Check cpanel_deploy.tmp
+    type cpanel_deploy.tmp
+    echo.
+    echo  If this keeps failing, open cPanel ^> Git Version Control ^> Deploy HEAD Commit manually.
+) else (
+    echo  [OK] Deployment triggered successfully.
+    del cpanel_deploy.tmp >nul 2>&1
+)
+del cpanel_repos.tmp >nul 2>&1
+
 echo.
 echo  ══════════════════════════════════════════════════════════════
 echo  Done! Live site: https://helpdesk.tsuniversity.ng

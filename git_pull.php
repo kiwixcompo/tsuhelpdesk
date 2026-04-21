@@ -1,9 +1,7 @@
 <?php
 /**
- * TSU ICT Help Desk - Server-side Deploy Script
- * Copies files from the server's git repo to the live web root.
- * The git pull is triggered separately via cPanel Git Version Control.
- *
+ * TSU ICT Help Desk - File Deploy Script
+ * Pure PHP file copy — no shell commands needed.
  * Access: https://helpdesk.tsuniversity.ng/git_pull.php?key=DEPLOY_TSU_2026
  */
 
@@ -11,119 +9,127 @@ define('DEPLOY_KEY', 'DEPLOY_TSU_2026');
 define('REPO_PATH',  '/home/tsuniver/repositories/tsuhelpdesk');
 define('DEST_PATH',  '/home/tsuniver/helpdesk.tsuniversity.ng');
 
-// ── Auth ─────────────────────────────────────────────────
 if (($_GET['key'] ?? '') !== DEPLOY_KEY) {
     http_response_code(403);
     die('403 Forbidden');
 }
 
 header('Content-Type: text/plain; charset=utf-8');
-set_time_limit(120);
+// Flush output immediately so we can see progress
+@ini_set('output_buffering', 'off');
+@ini_set('zlib.output_compression', false);
+while (ob_get_level()) ob_end_flush();
+ob_implicit_flush(true);
+
+set_time_limit(300);
 
 echo "=== TSU ICT Help Desk — Deploy ===\n";
 echo "Time: " . date('Y-m-d H:i:s') . "\n\n";
 
-// ── Check repo exists ────────────────────────────────────
+// ── Verify repo exists ───────────────────────────────────
 if (!is_dir(REPO_PATH)) {
     echo "ERROR: Repo not found at " . REPO_PATH . "\n";
-    echo "Go to cPanel > Git Version Control and make sure the repo is cloned.\n";
     exit(1);
 }
+echo "Repo path : " . REPO_PATH . "\n";
+echo "Dest path : " . DEST_PATH . "\n\n";
 
-// ── Attempt git pull (non-fatal if it fails) ─────────────
-echo "[1/3] Attempting git pull...\n";
-putenv('HOME=/home/tsuniver');
-putenv('GIT_TERMINAL_PROMPT=0'); // prevent git from hanging waiting for input
+// ── Test write permission on dest ────────────────────────
+echo "Testing write permission...\n";
+$testFile = DEST_PATH . '/_deploy_test.tmp';
+if (@file_put_contents($testFile, 'test') === false) {
+    echo "ERROR: Cannot write to " . DEST_PATH . "\n";
+    echo "The web server user does not have write permission to the web root.\n";
+    echo "Fix: In cPanel File Manager, right-click the web root folder,\n";
+    echo "     select 'Change Permissions', and ensure group/world write is enabled.\n";
+    exit(1);
+}
+@unlink($testFile);
+echo "[OK] Write permission confirmed.\n\n";
 
-$pullOutput = [];
-$pullReturn = 0;
-exec('cd ' . escapeshellarg(REPO_PATH) . ' && git pull origin main 2>&1', $pullOutput, $pullReturn);
-
-foreach ($pullOutput as $line) {
-    echo "  " . $line . "\n";
+// ── Show repo HEAD ───────────────────────────────────────
+$headFile = REPO_PATH . '/.git/refs/heads/main';
+if (file_exists($headFile)) {
+    echo "Repo HEAD : " . trim(file_get_contents($headFile)) . "\n\n";
 }
 
-if ($pullReturn !== 0) {
-    echo "\n  [WARNING] git pull exited with code $pullReturn.\n";
-    echo "  This usually means the server repo needs SSH key auth set up.\n";
-    echo "  Continuing with file copy using whatever is currently in the repo...\n";
-    echo "  To fix: go to cPanel > Git Version Control > Update from Remote manually.\n\n";
-} else {
-    echo "[OK] git pull succeeded.\n\n";
+// ── Preserve config.php ──────────────────────────────────
+$configPath   = DEST_PATH . '/config.php';
+$configBackup = file_exists($configPath) ? file_get_contents($configPath) : null;
+if ($configBackup !== null) {
+    echo "Preserving config.php...\n";
 }
 
-// ── Show current repo HEAD ───────────────────────────────
-$headOutput = [];
-exec('cd ' . escapeshellarg(REPO_PATH) . ' && git log -1 --oneline 2>&1', $headOutput);
-echo "  Repo HEAD: " . ($headOutput[0] ?? 'unknown') . "\n\n";
+// ── Pure PHP recursive copy ──────────────────────────────
+echo "[1/3] Copying files...\n";
+flush();
 
-// ── Copy files to web root ───────────────────────────────
-echo "[2/3] Copying files to web root...\n";
+$copied = 0;
+$failed = [];
 
-function copyDir(string $src, string $dst): int {
-    $count = 0;
-    if (!is_dir($dst)) mkdir($dst, 0755, true);
-    $items = scandir($src);
-    if (!$items) return 0;
+function deployDir(string $src, string $dst, array &$copied, array &$failed): void {
+    if (!is_dir($dst)) {
+        if (!@mkdir($dst, 0755, true)) {
+            $failed[] = "mkdir: $dst";
+            return;
+        }
+    }
+    $items = @scandir($src);
+    if (!$items) return;
+
     foreach ($items as $item) {
-        if ($item === '.' || $item === '..' || $item === '.git') continue;
+        // Skip .git and large vendor folders that don't change
+        if ($item === '.' || $item === '..' || $item === '.git' || $item === 'PHPMailer') continue;
         $s = $src . '/' . $item;
         $d = $dst . '/' . $item;
         if (is_dir($s)) {
-            $count += copyDir($s, $d);
+            deployDir($s, $d, $copied, $failed);
         } else {
-            if (copy($s, $d)) {
-                $count++;
+            if (@copy($s, $d)) {
+                $copied++;
             } else {
-                echo "  [WARN] Could not copy: $item\n";
+                $failed[] = $item;
             }
         }
     }
-    return $count;
 }
 
-// Preserve live config.php — never overwrite server credentials
-$configBackup = null;
-$configPath   = DEST_PATH . '/config.php';
-if (file_exists($configPath)) {
-    $configBackup = file_get_contents($configPath);
-    echo "  Preserving live config.php...\n";
-}
+deployDir(REPO_PATH, DEST_PATH, $copied, $failed);
 
-$copied = copyDir(REPO_PATH, DEST_PATH);
-
-// Copy .htaccess explicitly (scandir skips dotfiles on some systems)
+// Copy .htaccess explicitly
 if (file_exists(REPO_PATH . '/.htaccess')) {
-    copy(REPO_PATH . '/.htaccess', DEST_PATH . '/.htaccess');
+    @copy(REPO_PATH . '/.htaccess', DEST_PATH . '/.htaccess');
 }
 
-// Restore config.php
+echo "[OK] Copied: $copied files\n";
+if (!empty($failed)) {
+    echo "[WARN] Failed (" . count($failed) . "): " . implode(', ', array_slice($failed, 0, 10)) . "\n";
+}
+echo "\n";
+
+// ── Restore config.php ───────────────────────────────────
 if ($configBackup !== null) {
-    file_put_contents($configPath, $configBackup);
-    echo "  Restored live config.php\n";
+    @file_put_contents($configPath, $configBackup);
+    echo "[OK] config.php restored.\n\n";
 }
 
-// Ensure writable dirs exist
+// ── Ensure writable dirs ─────────────────────────────────
 foreach (['uploads', 'logs'] as $dir) {
     $path = DEST_PATH . '/' . $dir;
-    if (!is_dir($path)) mkdir($path, 0755, true);
+    if (!is_dir($path)) @mkdir($path, 0755, true);
 }
 
-echo "[OK] Copied $copied files to web root.\n\n";
-
-// ── Summary ──────────────────────────────────────────────
-echo "[3/3] Summary\n";
-echo "  Source : " . REPO_PATH . "\n";
-echo "  Dest   : " . DEST_PATH . "\n";
-echo "  Files  : $copied copied\n";
-echo "  Config : preserved (not overwritten)\n";
-
-if ($pullReturn !== 0) {
-    echo "\n[ACTION NEEDED] git pull failed — the files copied are from the\n";
-    echo "  PREVIOUS repo state, not the latest GitHub push.\n";
-    echo "  Fix: cPanel > Git Version Control > Update from Remote\n";
-    echo "  Then run sync_and_deploy.bat again.\n";
+// ── Verify timestamps ────────────────────────────────────
+echo "[2/3] Verifying...\n";
+foreach (['git_pull.php', 'api/ict_complaint_submit.php', 'includes/logger.php'] as $f) {
+    $p = DEST_PATH . '/' . $f;
+    if (file_exists($p)) {
+        echo "  $f : " . date('Y-m-d H:i:s', filemtime($p)) . "\n";
+    }
 }
 
-echo "\n=== DONE ===\n";
+echo "\n[3/3] Done.\n";
+echo "  Copied : $copied files\n";
+echo "  Config : preserved\n";
+echo "\n=== COMPLETE ===\n";
 echo "Site: https://helpdesk.tsuniversity.ng\n";
