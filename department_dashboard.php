@@ -12,7 +12,12 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true || $_SESSION[
 
 require_once "config.php";
 require_once "includes/notifications.php";
+require_once "includes/notification_prefs.php";
 require_once "calendar_helper.php";
+
+// Load this department's notification preferences
+ensureNotifPrefsTable($conn);
+$dept_notif_prefs = getUserNotifPrefs($conn, $_SESSION['user_id']);
 
 // Initialize notification count
 $notification_count = 0;
@@ -297,6 +302,76 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
                         <i class="fas fa-check-circle fa-2x text-success mb-3"></i>
                         <h3 class="text-success"><?php echo $treated_complaints; ?></h3>
                         <p class="text-muted">Resolved</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Email Notification Preferences -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header d-flex justify-content-between align-items-center"
+                         style="background:linear-gradient(135deg,#1e3c72,#2a5298);color:#fff;cursor:pointer"
+                         data-toggle="collapse" data-target="#notifPrefsBody">
+                        <h5 class="mb-0"><i class="fas fa-bell mr-2"></i>Email Notification Preferences</h5>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="collapse" id="notifPrefsBody">
+                        <div class="card-body">
+                            <p class="text-muted small mb-3">
+                                Choose which events trigger an email to your account.
+                                You will always see in-app notifications regardless of these settings.
+                            </p>
+                            <form id="notifPrefsForm">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="custom-control custom-switch mb-3">
+                                            <input type="checkbox" class="custom-control-input" id="pref_forwarded"
+                                                   name="on_forwarded"
+                                                   <?php echo $dept_notif_prefs['on_forwarded'] ? 'checked' : ''; ?>>
+                                            <label class="custom-control-label" for="pref_forwarded">
+                                                <strong>Complaint forwarded to me</strong><br>
+                                                <small class="text-muted">Email when ICT forwards a student complaint to your department</small>
+                                            </label>
+                                        </div>
+                                        <div class="custom-control custom-switch mb-3">
+                                            <input type="checkbox" class="custom-control-input" id="pref_ict_response"
+                                                   name="on_ict_response"
+                                                   <?php echo $dept_notif_prefs['on_ict_response'] ? 'checked' : ''; ?>>
+                                            <label class="custom-control-label" for="pref_ict_response">
+                                                <strong>ICT adds a response</strong><br>
+                                                <small class="text-muted">Email when ICT adds feedback or a response to a forwarded complaint</small>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="custom-control custom-switch mb-3">
+                                            <input type="checkbox" class="custom-control-input" id="pref_status_change"
+                                                   name="on_status_change"
+                                                   <?php echo $dept_notif_prefs['on_status_change'] ? 'checked' : ''; ?>>
+                                            <label class="custom-control-label" for="pref_status_change">
+                                                <strong>Status change on forwarded complaint</strong><br>
+                                                <small class="text-muted">Email when the status of a complaint forwarded to you is updated</small>
+                                            </label>
+                                        </div>
+                                        <div class="custom-control custom-switch mb-3">
+                                            <input type="checkbox" class="custom-control-input" id="pref_new_complaint"
+                                                   name="on_new_student_complaint"
+                                                   <?php echo $dept_notif_prefs['on_new_student_complaint'] ? 'checked' : ''; ?>>
+                                            <label class="custom-control-label" for="pref_new_complaint">
+                                                <strong>All new ICT complaints</strong><br>
+                                                <small class="text-muted">Email for every new student ICT complaint submitted (high volume — off by default)</small>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary btn-sm" id="savePrefsBtn">
+                                    <i class="fas fa-save mr-1"></i> Save Preferences
+                                </button>
+                                <span id="prefsSaveMsg" class="ml-2 small" style="display:none"></span>
+                            </form>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -718,6 +793,28 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
         
         // Auto-dismiss alerts
         $('.alert').delay(5000).fadeOut();
+
+        // ── Notification preferences form ────────────────────
+        $('#notifPrefsForm').submit(function(e) {
+            e.preventDefault();
+            const btn = $('#savePrefsBtn');
+            const msg = $('#prefsSaveMsg');
+            btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Saving...');
+            msg.hide();
+
+            $.post('api/save_notification_prefs.php', $(this).serialize(), function(res) {
+                if (res.success) {
+                    msg.text('✓ Saved').css('color','#28a745').show();
+                } else {
+                    msg.text('✗ ' + (res.message || 'Failed')).css('color','#dc3545').show();
+                }
+                btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i> Save Preferences');
+                setTimeout(() => msg.fadeOut(), 3000);
+            }, 'json').fail(function() {
+                msg.text('✗ Request failed').css('color','#dc3545').show();
+                btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i> Save Preferences');
+            });
+        });
     });
     </script>
 </body>

@@ -3,6 +3,7 @@ ob_start();
 session_start();
 require_once "config.php";
 require_once "includes/notifications.php";
+require_once "includes/notification_prefs.php";
 
 if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
     header("location: staff_login.php"); exit;
@@ -115,6 +116,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_feedback'])) {
                         }
                         mysqli_stmt_close($email_sql);
                     }
+
+                    // Also notify the forwarded-to department if applicable
+                    $fwd_stmt = mysqli_prepare($conn,
+                        "SELECT c.forwarded_to, u.user_id, u.email
+                         FROM student_ict_complaints c
+                         JOIN users u ON u.full_name = c.forwarded_to AND u.role_id IN (5,6,7)
+                         WHERE c.complaint_id = ? AND c.forwarded_to IS NOT NULL AND c.forwarded_to != ''
+                         LIMIT 1");
+                    if ($fwd_stmt) {
+                        mysqli_stmt_bind_param($fwd_stmt, 'i', $cid);
+                        mysqli_stmt_execute($fwd_stmt);
+                        $fwd_row = mysqli_fetch_assoc(mysqli_stmt_get_result($fwd_stmt));
+                        mysqli_stmt_close($fwd_stmt);
+
+                        if ($fwd_row && !empty($fwd_row['email'])) {
+                            $dept_name = $fwd_row['forwarded_to'];
+                            $pref_key  = $response ? 'on_ict_response' : 'on_status_change';
+                            $d_subject = "ICT Update on Forwarded Complaint #$cid — TSU ICT Help Desk";
+                            $d_body    = "Dear $dept_name,\n\n";
+                            $d_body   .= "ICT has updated a complaint forwarded to your department.\n\n";
+                            $d_body   .= "Complaint #: $cid\n";
+                            $d_body   .= "Issue      : $topic\n";
+                            $d_body   .= "New Status : $status\n";
+                            if ($response) {
+                                $d_body .= "\nICT Response:\n" . $response . "\n";
+                            }
+                            $d_body .= "\nLog in to view the full details:\n";
+                            $d_body .= "https://helpdesk.tsuniversity.ng/department_dashboard.php\n\n";
+                            $d_body .= "Best regards,\nTSU ICT Help Desk";
+
+                            sendDeptEmailIfAllowed($conn, (int)$fwd_row['user_id'],
+                                $pref_key, $fwd_row['email'], $d_subject, $d_body);
+                        }
+                    }
                 }
                 mysqli_stmt_close($get);
             }
@@ -171,6 +206,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['forward_complaint']))
         mysqli_stmt_bind_param($upd, 'si', $forward_to, $cid);
         if (mysqli_stmt_execute($upd)) {
             $success_msg = "Complaint #$cid forwarded to $forward_to.";
+
+            // Email the department user if they have on_forwarded enabled
+            $dept_user = mysqli_query($conn,
+                "SELECT user_id, email FROM users WHERE full_name = ? AND role_id IN (5,6,7) LIMIT 1",
+            );
+            // Use prepared statement for safety
+            $du_stmt = mysqli_prepare($conn,
+                "SELECT user_id, email FROM users WHERE full_name = ? AND role_id IN (5,6,7) LIMIT 1");
+            if ($du_stmt) {
+                mysqli_stmt_bind_param($du_stmt, 's', $forward_to);
+                mysqli_stmt_execute($du_stmt);
+                $du_row = mysqli_fetch_assoc(mysqli_stmt_get_result($du_stmt));
+                mysqli_stmt_close($du_stmt);
+
+                if ($du_row && !empty($du_row['email'])) {
+                    // Get complaint details for the email
+                    $comp_stmt = mysqli_prepare($conn,
+                        "SELECT c.node_label, c.category, c.path_summary,
+                                CONCAT(s.first_name,' ',s.last_name) as student_name,
+                                s.registration_number
+                         FROM student_ict_complaints c
+                         JOIN students s ON c.student_id = s.student_id
+                         WHERE c.complaint_id = ?");
+                    if ($comp_stmt) {
+                        mysqli_stmt_bind_param($comp_stmt, 'i', $cid);
+                        mysqli_stmt_execute($comp_stmt);
+                        $comp = mysqli_fetch_assoc(mysqli_stmt_get_result($comp_stmt));
+                        mysqli_stmt_close($comp_stmt);
+                    }
+
+                    if (!empty($comp)) {
+                        $subject = "ICT Complaint Forwarded to Your Department — TSU ICT Help Desk";
+                        $body    = "Dear $forward_to,\n\n";
+                        $body   .= "A student ICT complaint has been forwarded to your department for review.\n\n";
+                        $body   .= "Complaint #: $cid\n";
+                        $body   .= "Student    : {$comp['student_name']} ({$comp['registration_number']})\n";
+                        $body   .= "Category   : {$comp['category']}\n";
+                        $body   .= "Issue      : {$comp['node_label']}\n";
+                        $body   .= "Path       : {$comp['path_summary']}\n\n";
+                        $body   .= "Please log in to review and respond:\n";
+                        $body   .= "https://helpdesk.tsuniversity.ng/department_dashboard.php\n\n";
+                        $body   .= "Best regards,\nTSU ICT Help Desk";
+
+                        sendDeptEmailIfAllowed($conn, (int)$du_row['user_id'],
+                            'on_forwarded', $du_row['email'], $subject, $body);
+                    }
+                }
+            }
         } else {
             $error_msg = "Failed to forward complaint: " . mysqli_error($conn);
         }
