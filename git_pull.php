@@ -1,16 +1,25 @@
 <?php
 /**
- * TSU ICT Help Desk - File Deploy Script
- * Copies only application files (not PHPMailer or other large vendor dirs).
+ * TSU ICT Help Desk — GitHub Direct Deploy
+ *
+ * Fetches each changed file directly from GitHub raw content API
+ * and writes it to the web root. No shell access needed.
+ * No dependency on the server-side git repo.
+ *
  * Access: https://helpdesk.tsuniversity.ng/git_pull.php?key=DEPLOY_TSU_2026
  */
 
-define('DEPLOY_KEY', 'DEPLOY_TSU_2026');
-define('REPO_PATH',  '/home/tsuniver/repositories/tsuhelpdesk');
-define('DEST_PATH',  '/home/tsuniver/helpdesk.tsuniversity.ng');
+define('DEPLOY_KEY',  'DEPLOY_TSU_2026');
+define('DEST_PATH',   '/home/tsuniver/helpdesk.tsuniversity.ng');
+define('GITHUB_USER', 'kiwixcompo');
+define('GITHUB_REPO', 'tsuhelpdesk');
+define('GITHUB_BRANCH','main');
 
-// Directories to SKIP (already on server, never change)
-define('SKIP_DIRS', ['PHPMailer', '.git', 'uploads', 'logs']);
+// Files/dirs to NEVER overwrite on the server
+define('PRESERVE', ['config.php', 'config.local.php']);
+
+// Large vendor dirs to skip (already on server)
+define('SKIP_DIRS', ['PHPMailer', '.git', 'uploads', 'logs', 'node_modules']);
 
 if (($_GET['key'] ?? '') !== DEPLOY_KEY) {
     http_response_code(403);
@@ -20,109 +29,107 @@ if (($_GET['key'] ?? '') !== DEPLOY_KEY) {
 header('Content-Type: text/plain; charset=utf-8');
 set_time_limit(120);
 
-echo "=== TSU ICT Help Desk — Deploy ===\n";
-echo "Time: " . date('Y-m-d H:i:s') . "\n\n";
+echo "=== TSU ICT Help Desk — GitHub Direct Deploy ===\n";
+echo "Time   : " . date('Y-m-d H:i:s') . "\n";
+echo "Repo   : https://github.com/" . GITHUB_USER . "/" . GITHUB_REPO . "\n";
+echo "Branch : " . GITHUB_BRANCH . "\n\n";
 
-if (!is_dir(REPO_PATH)) {
-    echo "ERROR: Repo not found at " . REPO_PATH . "\n";
+// ── Fetch file list from GitHub API ─────────────────────
+// Uses the Git Trees API to get a flat list of all files recursively
+$apiUrl = "https://api.github.com/repos/" . GITHUB_USER . "/" . GITHUB_REPO
+        . "/git/trees/" . GITHUB_BRANCH . "?recursive=1";
+
+$ctx = stream_context_create(['http' => [
+    'method'  => 'GET',
+    'header'  => "User-Agent: TSU-Deploy/1.0\r\nAccept: application/vnd.github.v3+json\r\n",
+    'timeout' => 30,
+]]);
+
+echo "[1/3] Fetching file list from GitHub API...\n";
+$json = @file_get_contents($apiUrl, false, $ctx);
+if (!$json) {
+    echo "ERROR: Could not reach GitHub API.\n";
+    echo "Check that allow_url_fopen is enabled on the server.\n";
     exit(1);
 }
 
-// Show repo HEAD
-$headFile = REPO_PATH . '/.git/refs/heads/main';
-echo "Repo HEAD : " . (file_exists($headFile) ? trim(file_get_contents($headFile)) : 'unknown') . "\n\n";
+$data = json_decode($json, true);
+if (empty($data['tree'])) {
+    echo "ERROR: GitHub API returned unexpected response.\n";
+    echo substr($json, 0, 300) . "\n";
+    exit(1);
+}
 
-// Preserve config.php
-$configPath   = DEST_PATH . '/config.php';
-$configBackup = file_exists($configPath) ? file_get_contents($configPath) : null;
+// Filter to blobs (files) only, skip large dirs
+$files = array_filter($data['tree'], function($item) {
+    if ($item['type'] !== 'blob') return false;
+    foreach (SKIP_DIRS as $skip) {
+        if (strpos($item['path'], $skip . '/') === 0 || $item['path'] === $skip) return false;
+    }
+    return true;
+});
 
-// ── Copy only root-level PHP files + specific subdirs ────
-echo "[1/2] Copying files...\n";
-$copied = 0;
-$failed = [];
+echo "[OK] Found " . count($files) . " files to deploy.\n\n";
+
+// ── Download and write each file ─────────────────────────
+echo "[2/3] Downloading and writing files...\n";
+
+$copied  = 0;
 $skipped = 0;
+$failed  = [];
 
-// Copy all root-level files (*.php, *.yml, *.sql, etc.)
-$rootItems = scandir(REPO_PATH);
-foreach ($rootItems as $item) {
-    if ($item === '.' || $item === '..') continue;
-    $src = REPO_PATH . '/' . $item;
-    $dst = DEST_PATH . '/' . $item;
+$rawBase = "https://raw.githubusercontent.com/" . GITHUB_USER . "/"
+         . GITHUB_REPO . "/" . GITHUB_BRANCH . "/";
 
-    if (is_dir($src)) {
-        // Skip large/static vendor dirs
-        if (in_array($item, SKIP_DIRS)) {
-            $skipped++;
-            continue;
-        }
-        // Copy subdirectory recursively
-        $result = copyDirFlat($src, $dst);
-        $copied += $result[0];
-        $failed  = array_merge($failed, $result[1]);
+foreach ($files as $file) {
+    $path    = $file['path'];
+    $destFile = DEST_PATH . '/' . $path;
+
+    // Never overwrite preserved files
+    if (in_array($path, PRESERVE)) {
+        $skipped++;
+        continue;
+    }
+
+    // Ensure destination directory exists
+    $destDir = dirname($destFile);
+    if (!is_dir($destDir)) {
+        @mkdir($destDir, 0755, true);
+    }
+
+    // Fetch from GitHub raw
+    $rawUrl  = $rawBase . $path;
+    $content = @file_get_contents($rawUrl, false, $ctx);
+
+    if ($content === false) {
+        $failed[] = $path;
+        continue;
+    }
+
+    if (@file_put_contents($destFile, $content) !== false) {
+        $copied++;
     } else {
-        // Root-level file
-        if ($item === '.htaccess' || substr($item, 0, 1) !== '.') {
-            if (@copy($src, $dst)) {
-                $copied++;
-            } else {
-                $failed[] = $item;
-            }
-        }
+        $failed[] = $path;
     }
 }
 
-function copyDirFlat(string $src, string $dst): array {
-    $copied = 0;
-    $failed = [];
-    if (!is_dir($dst)) @mkdir($dst, 0755, true);
-    $items = @scandir($src);
-    if (!$items) return [$copied, $failed];
-    foreach ($items as $item) {
-        if ($item === '.' || $item === '..') continue;
-        $s = $src . '/' . $item;
-        $d = $dst . '/' . $item;
-        if (is_dir($s)) {
-            [$c, $f] = copyDirFlat($s, $d);
-            $copied += $c;
-            $failed  = array_merge($failed, $f);
-        } else {
-            if (@copy($s, $d)) {
-                $copied++;
-            } else {
-                $failed[] = $item;
-            }
-        }
-    }
-    return [$copied, $failed];
-}
-
-echo "  Copied  : $copied files\n";
-echo "  Skipped : $skipped dirs (PHPMailer etc — already on server)\n";
+echo "[OK] Copied  : $copied files\n";
+echo "[OK] Skipped : $skipped files (preserved)\n";
 if (!empty($failed)) {
-    echo "  Failed  : " . count($failed) . " — " . implode(', ', array_slice($failed, 0, 5)) . "\n";
+    echo "[WARN] Failed: " . count($failed) . "\n";
+    foreach (array_slice($failed, 0, 10) as $f) echo "  - $f\n";
 }
 
-// Restore config.php
-if ($configBackup !== null) {
-    @file_put_contents($configPath, $configBackup);
-    echo "  Config  : preserved\n";
-}
-
-// Ensure writable dirs
+// Ensure writable dirs exist
 foreach (['uploads', 'logs'] as $dir) {
-    $path = DEST_PATH . '/' . $dir;
-    if (!is_dir($path)) @mkdir($path, 0755, true);
+    $p = DEST_PATH . '/' . $dir;
+    if (!is_dir($p)) @mkdir($p, 0755, true);
 }
 
 // ── Verify key files ─────────────────────────────────────
-echo "\n[2/2] Verifying timestamps...\n";
-$checkFiles = [
-    'git_pull.php',
-    'api/ict_complaint_submit.php',
-    'includes/logger.php',
-    'student_signup.php',
-];
-foreach ($checkFiles as $f) {
+echo "\n[3/3] Verifying timestamps...\n";
+foreach (['student_dashboard.php', 'api/student_ict_complaint_manage.php',
+          'ict_complaints_admin.php', 'git_pull.php'] as $f) {
     $p = DEST_PATH . '/' . $f;
     if (file_exists($p)) {
         echo "  $f : " . date('Y-m-d H:i:s', filemtime($p)) . "\n";
