@@ -546,6 +546,23 @@ if ($notif_count_result && $notif_row = mysqli_fetch_assoc($notif_count_result))
                                             data-toggle="modal" data-target="#ictModal<?php echo $ic['complaint_id']; ?>">
                                         <i class="fas fa-eye"></i> View
                                     </button>
+                                    <?php if (in_array($ic['status'], ['Pending', 'Auto-Resolved'])): ?>
+                                    <button type="button" class="btn btn-sm btn-outline-warning ict-edit-btn"
+                                            data-id="<?php echo $ic['complaint_id']; ?>"
+                                            data-description="<?php
+                                                // Extract just the additional details part for editing
+                                                $desc = $ic['description'] ?? '';
+                                                $pos  = strpos($desc, "\n\nAdditional details: ");
+                                                echo htmlspecialchars($pos !== false ? substr($desc, $pos + 22) : '');
+                                            ?>">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger ict-delete-btn"
+                                            data-id="<?php echo $ic['complaint_id']; ?>"
+                                            data-label="<?php echo htmlspecialchars($ic['node_label']); ?>">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
 
@@ -560,15 +577,70 @@ if ($notif_count_result && $notif_row = mysqli_fetch_assoc($notif_count_result))
                                         <div class="modal-body">
                                             <p><strong>Category:</strong> <?php echo htmlspecialchars($ic['category']); ?></p>
                                             <p><strong>Issue:</strong> <?php echo htmlspecialchars($ic['node_label']); ?></p>
+                                            <?php if (!empty($ic['path_summary'])): ?>
+                                            <p><strong>Path:</strong> <small class="text-muted"><?php echo htmlspecialchars($ic['path_summary']); ?></small></p>
+                                            <?php endif; ?>
                                             <p><strong>Status:</strong>
                                                 <span class="badge badge-<?php echo $bc; ?>"><?php echo htmlspecialchars($ic['status']); ?></span>
                                             </p>
                                             <p><strong>Submitted:</strong> <?php echo date('M d, Y H:i', strtotime($ic['created_at'])); ?></p>
 
-                                            <?php if ($ic['description']): ?>
+                                            <?php
+                                            // Show extra fields (course codes, matric numbers, etc.)
+                                            $extra = [];
+                                            if (!empty($ic['extra_fields'])) {
+                                                $extra = json_decode($ic['extra_fields'], true) ?: [];
+                                            }
+                                            // Field label map for human-readable display
+                                            $fieldLabels = [
+                                                'student_id'          => 'Student ID',
+                                                'matric_number'       => 'Matric Number',
+                                                'registered_email'    => 'Registered Email',
+                                                'jamb_number'         => 'JAMB Number',
+                                                'jamb_login_email'    => 'JAMB Login Email',
+                                                'jamb_profile_code'   => 'JAMB Profile Code',
+                                                'course_code'         => 'Course Code',
+                                                'current_session'     => 'Current Session',
+                                                'target_session'      => 'Target Session',
+                                                'correct_level'       => 'Correct Level',
+                                                'total_units'         => 'Total Units',
+                                                'transaction_id'      => 'Transaction ID',
+                                                'rrr'                 => 'RRR',
+                                                'receipt'             => 'Receipt',
+                                                'expected_grade'      => 'Expected Grade',
+                                                'department'          => 'Department',
+                                                'nin'                 => 'NIN',
+                                                'complaint_description'=> 'Complaint Description',
+                                                'ai_category'         => 'AI Classification',
+                                            ];
+                                            // Filter out empty/internal fields
+                                            $displayExtra = array_filter($extra, function($v, $k) {
+                                                return !empty($v) && $k !== 'jamb_login_password';
+                                            }, ARRAY_FILTER_USE_BOTH);
+                                            if (!empty($displayExtra)): ?>
+                                            <hr>
+                                            <p><strong>Details Provided:</strong></p>
+                                            <table class="table table-sm table-bordered" style="font-size:0.88rem">
+                                                <?php foreach ($displayExtra as $key => $val): ?>
+                                                <tr>
+                                                    <td class="font-weight-bold" style="width:40%;background:#f8f9fa">
+                                                        <?php echo htmlspecialchars($fieldLabels[$key] ?? ucwords(str_replace('_', ' ', $key))); ?>
+                                                    </td>
+                                                    <td><?php echo htmlspecialchars($val); ?></td>
+                                                </tr>
+                                                <?php endforeach; ?>
+                                            </table>
+                                            <?php endif; ?>
+
+                                            <?php
+                                            // Show additional description (strip path_summary prefix)
+                                            $desc = $ic['description'] ?? '';
+                                            $pos  = strpos($desc, "\n\nAdditional details: ");
+                                            $additionalDesc = $pos !== false ? substr($desc, $pos + 22) : '';
+                                            if ($additionalDesc): ?>
                                                 <hr>
-                                                <p><strong>Your Description:</strong></p>
-                                                <p class="text-muted"><?php echo nl2br(htmlspecialchars($ic['description'])); ?></p>
+                                                <p><strong>Additional Details:</strong></p>
+                                                <p class="text-muted"><?php echo nl2br(htmlspecialchars($additionalDesc)); ?></p>
                                             <?php endif; ?>
 
                                             <?php if (!empty($ic['attachment_path'])): ?>
@@ -904,6 +976,91 @@ if ($notif_count_result && $notif_row = mysqli_fetch_assoc($notif_count_result))
             return div.innerHTML;
         }
         });
+    </script>
+
+    <!-- ICT Complaint Edit Modal -->
+    <div class="modal fade" id="ictEditModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-edit mr-2"></i>Edit ICT Complaint</h5>
+                    <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small">You can only edit the additional details of a pending complaint.</p>
+                    <input type="hidden" id="editComplaintId">
+                    <div class="form-group">
+                        <label for="editDescription">Additional Details</label>
+                        <textarea id="editDescription" class="form-control" rows="4"
+                                  placeholder="Update your additional details here..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-warning" id="saveEditBtn">
+                        <i class="fas fa-save mr-1"></i> Save Changes
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    $(document).ready(function() {
+        // Open edit modal
+        $(document).on('click', '.ict-edit-btn', function() {
+            const id   = $(this).data('id');
+            const desc = $(this).data('description');
+            $('#editComplaintId').val(id);
+            $('#editDescription').val(desc);
+            $('#ictEditModal').modal('show');
+        });
+
+        // Save edit
+        $('#saveEditBtn').click(function() {
+            const id   = $('#editComplaintId').val();
+            const desc = $('#editDescription').val().trim();
+            const btn  = $(this);
+            btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Saving...');
+
+            $.post('api/student_ict_complaint_manage.php', {
+                action: 'edit',
+                complaint_id: id,
+                description: desc
+            }, function(res) {
+                if (res.success) {
+                    $('#ictEditModal').modal('hide');
+                    location.reload();
+                } else {
+                    alert(res.message || 'Failed to update complaint.');
+                    btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i> Save Changes');
+                }
+            }, 'json').fail(function() {
+                alert('Request failed. Please try again.');
+                btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i> Save Changes');
+            });
+        });
+
+        // Delete complaint
+        $(document).on('click', '.ict-delete-btn', function() {
+            const id    = $(this).data('id');
+            const label = $(this).data('label');
+            if (!confirm('Delete complaint: "' + label + '"?\n\nThis cannot be undone.')) return;
+
+            $.post('api/student_ict_complaint_manage.php', {
+                action: 'delete',
+                complaint_id: id
+            }, function(res) {
+                if (res.success) {
+                    location.reload();
+                } else {
+                    alert(res.message || 'Failed to delete complaint.');
+                }
+            }, 'json').fail(function() {
+                alert('Request failed. Please try again.');
+            });
+        });
+    });
     </script>
 </body>
 </html>

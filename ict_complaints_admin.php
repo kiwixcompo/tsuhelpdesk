@@ -85,6 +85,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_feedback'])) {
                         mysqli_stmt_execute($notif);
                         mysqli_stmt_close($notif);
                     }
+
+                    // Send email to student
+                    $email_sql = mysqli_prepare($conn,
+                        "SELECT s.email, s.first_name, s.last_name
+                         FROM students s
+                         JOIN student_ict_complaints c ON s.student_id = c.student_id
+                         WHERE c.complaint_id = ?");
+                    if ($email_sql) {
+                        mysqli_stmt_bind_param($email_sql, 'i', $cid);
+                        mysqli_stmt_execute($email_sql);
+                        $er = mysqli_stmt_get_result($email_sql);
+                        if ($erow = mysqli_fetch_assoc($er)) {
+                            $to      = $erow['email'];
+                            $subject = "Update on Your ICT Complaint — TSU ICT Help Desk";
+                            $body    = "Dear " . $erow['first_name'] . " " . $erow['last_name'] . ",\n\n";
+                            $body   .= "Your ICT complaint regarding \"$topic\" has been updated.\n\n";
+                            $body   .= "Status: $status\n";
+                            if ($response) {
+                                $body .= "\nResponse from ICT:\n" . $response . "\n";
+                            }
+                            $body .= "\nYou can view the full details by logging into the student portal:\n";
+                            $body .= "https://helpdesk.tsuniversity.ng/student_login.php\n\n";
+                            $body .= "Best regards,\nTSU ICT Help Desk Team";
+
+                            $headers  = "From: TSU ICT Help Desk <noreply@tsuniversity.edu.ng>\r\n";
+                            $headers .= "Reply-To: support@tsuniversity.edu.ng\r\n";
+                            @app_mail($to, $subject, $body, $headers);
+                        }
+                        mysqli_stmt_close($email_sql);
+                    }
                 }
                 mysqli_stmt_close($get);
             }
@@ -607,7 +637,7 @@ $(function() {
         let extraHtml = '';
         try {
             const ef = JSON.parse(d.extra || '{}');
-            const filtered = Object.entries(ef).filter(([k,v]) => v !== '' && v !== null && k !== 'ai_category');
+            const filtered = Object.entries(ef).filter(([k,v]) => v !== '' && v !== null && k !== 'ai_category' && k !== 'jamb_login_password');
             if (filtered.length) {
                 extraHtml = '<h6 class="mt-3">Extra Information Provided</h6><table class="table table-sm table-bordered">';
                 filtered.forEach(([k,v]) => {

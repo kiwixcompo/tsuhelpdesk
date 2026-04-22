@@ -1,7 +1,7 @@
 <?php
 /**
  * TSU ICT Help Desk - File Deploy Script
- * Pure PHP file copy — no shell commands needed.
+ * Copies only application files (not PHPMailer or other large vendor dirs).
  * Access: https://helpdesk.tsuniversity.ng/git_pull.php?key=DEPLOY_TSU_2026
  */
 
@@ -9,83 +9,60 @@ define('DEPLOY_KEY', 'DEPLOY_TSU_2026');
 define('REPO_PATH',  '/home/tsuniver/repositories/tsuhelpdesk');
 define('DEST_PATH',  '/home/tsuniver/helpdesk.tsuniversity.ng');
 
+// Directories to SKIP (already on server, never change)
+define('SKIP_DIRS', ['PHPMailer', '.git', 'uploads', 'logs']);
+
 if (($_GET['key'] ?? '') !== DEPLOY_KEY) {
     http_response_code(403);
     die('403 Forbidden');
 }
 
 header('Content-Type: text/plain; charset=utf-8');
-// Flush output immediately so we can see progress
-@ini_set('output_buffering', 'off');
-@ini_set('zlib.output_compression', false);
-while (ob_get_level()) ob_end_flush();
-ob_implicit_flush(true);
-
-set_time_limit(300);
+set_time_limit(120);
 
 echo "=== TSU ICT Help Desk — Deploy ===\n";
 echo "Time: " . date('Y-m-d H:i:s') . "\n\n";
 
-// ── Verify repo exists ───────────────────────────────────
 if (!is_dir(REPO_PATH)) {
     echo "ERROR: Repo not found at " . REPO_PATH . "\n";
     exit(1);
 }
-echo "Repo path : " . REPO_PATH . "\n";
-echo "Dest path : " . DEST_PATH . "\n\n";
 
-// ── Test write permission on dest ────────────────────────
-echo "Testing write permission...\n";
-$testFile = DEST_PATH . '/_deploy_test.tmp';
-if (@file_put_contents($testFile, 'test') === false) {
-    echo "ERROR: Cannot write to " . DEST_PATH . "\n";
-    echo "The web server user does not have write permission to the web root.\n";
-    echo "Fix: In cPanel File Manager, right-click the web root folder,\n";
-    echo "     select 'Change Permissions', and ensure group/world write is enabled.\n";
-    exit(1);
-}
-@unlink($testFile);
-echo "[OK] Write permission confirmed.\n\n";
-
-// ── Show repo HEAD ───────────────────────────────────────
+// Show repo HEAD
 $headFile = REPO_PATH . '/.git/refs/heads/main';
-if (file_exists($headFile)) {
-    echo "Repo HEAD : " . trim(file_get_contents($headFile)) . "\n\n";
-}
+echo "Repo HEAD : " . (file_exists($headFile) ? trim(file_get_contents($headFile)) : 'unknown') . "\n\n";
 
-// ── Preserve config.php ──────────────────────────────────
+// Preserve config.php
 $configPath   = DEST_PATH . '/config.php';
 $configBackup = file_exists($configPath) ? file_get_contents($configPath) : null;
-if ($configBackup !== null) {
-    echo "Preserving config.php...\n";
-}
 
-// ── Pure PHP recursive copy ──────────────────────────────
-echo "[1/3] Copying files...\n";
-flush();
-
+// ── Copy only root-level PHP files + specific subdirs ────
+echo "[1/2] Copying files...\n";
 $copied = 0;
 $failed = [];
+$skipped = 0;
 
-function deployDir(string $src, string $dst, array &$copied, array &$failed): void {
-    if (!is_dir($dst)) {
-        if (!@mkdir($dst, 0755, true)) {
-            $failed[] = "mkdir: $dst";
-            return;
+// Copy all root-level files (*.php, *.yml, *.sql, etc.)
+$rootItems = scandir(REPO_PATH);
+foreach ($rootItems as $item) {
+    if ($item === '.' || $item === '..') continue;
+    $src = REPO_PATH . '/' . $item;
+    $dst = DEST_PATH . '/' . $item;
+
+    if (is_dir($src)) {
+        // Skip large/static vendor dirs
+        if (in_array($item, SKIP_DIRS)) {
+            $skipped++;
+            continue;
         }
-    }
-    $items = @scandir($src);
-    if (!$items) return;
-
-    foreach ($items as $item) {
-        // Skip .git and large vendor folders that don't change
-        if ($item === '.' || $item === '..' || $item === '.git' || $item === 'PHPMailer') continue;
-        $s = $src . '/' . $item;
-        $d = $dst . '/' . $item;
-        if (is_dir($s)) {
-            deployDir($s, $d, $copied, $failed);
-        } else {
-            if (@copy($s, $d)) {
+        // Copy subdirectory recursively
+        $result = copyDirFlat($src, $dst);
+        $copied += $result[0];
+        $failed  = array_merge($failed, $result[1]);
+    } else {
+        // Root-level file
+        if ($item === '.htaccess' || substr($item, 0, 1) !== '.') {
+            if (@copy($src, $dst)) {
                 $copied++;
             } else {
                 $failed[] = $item;
@@ -94,42 +71,63 @@ function deployDir(string $src, string $dst, array &$copied, array &$failed): vo
     }
 }
 
-deployDir(REPO_PATH, DEST_PATH, $copied, $failed);
-
-// Copy .htaccess explicitly
-if (file_exists(REPO_PATH . '/.htaccess')) {
-    @copy(REPO_PATH . '/.htaccess', DEST_PATH . '/.htaccess');
+function copyDirFlat(string $src, string $dst): array {
+    $copied = 0;
+    $failed = [];
+    if (!is_dir($dst)) @mkdir($dst, 0755, true);
+    $items = @scandir($src);
+    if (!$items) return [$copied, $failed];
+    foreach ($items as $item) {
+        if ($item === '.' || $item === '..') continue;
+        $s = $src . '/' . $item;
+        $d = $dst . '/' . $item;
+        if (is_dir($s)) {
+            [$c, $f] = copyDirFlat($s, $d);
+            $copied += $c;
+            $failed  = array_merge($failed, $f);
+        } else {
+            if (@copy($s, $d)) {
+                $copied++;
+            } else {
+                $failed[] = $item;
+            }
+        }
+    }
+    return [$copied, $failed];
 }
 
-echo "[OK] Copied: $copied files\n";
+echo "  Copied  : $copied files\n";
+echo "  Skipped : $skipped dirs (PHPMailer etc — already on server)\n";
 if (!empty($failed)) {
-    echo "[WARN] Failed (" . count($failed) . "): " . implode(', ', array_slice($failed, 0, 10)) . "\n";
+    echo "  Failed  : " . count($failed) . " — " . implode(', ', array_slice($failed, 0, 5)) . "\n";
 }
-echo "\n";
 
-// ── Restore config.php ───────────────────────────────────
+// Restore config.php
 if ($configBackup !== null) {
     @file_put_contents($configPath, $configBackup);
-    echo "[OK] config.php restored.\n\n";
+    echo "  Config  : preserved\n";
 }
 
-// ── Ensure writable dirs ─────────────────────────────────
+// Ensure writable dirs
 foreach (['uploads', 'logs'] as $dir) {
     $path = DEST_PATH . '/' . $dir;
     if (!is_dir($path)) @mkdir($path, 0755, true);
 }
 
-// ── Verify timestamps ────────────────────────────────────
-echo "[2/3] Verifying...\n";
-foreach (['git_pull.php', 'api/ict_complaint_submit.php', 'includes/logger.php'] as $f) {
+// ── Verify key files ─────────────────────────────────────
+echo "\n[2/2] Verifying timestamps...\n";
+$checkFiles = [
+    'git_pull.php',
+    'api/ict_complaint_submit.php',
+    'includes/logger.php',
+    'student_signup.php',
+];
+foreach ($checkFiles as $f) {
     $p = DEST_PATH . '/' . $f;
     if (file_exists($p)) {
         echo "  $f : " . date('Y-m-d H:i:s', filemtime($p)) . "\n";
     }
 }
 
-echo "\n[3/3] Done.\n";
-echo "  Copied : $copied files\n";
-echo "  Config : preserved\n";
-echo "\n=== COMPLETE ===\n";
+echo "\n=== DONE — " . date('Y-m-d H:i:s') . " ===\n";
 echo "Site: https://helpdesk.tsuniversity.ng\n";
