@@ -645,6 +645,7 @@ include 'includes/dashboard_header.php';
                             <option value="">— Do not forward —</option>
                             <?php
                             $rl = [5=>'i4Cus Staff', 6=>'Payment Admin', 7=>'Department'];
+                            $role_tags_fb = [5 => 'i4cus', 6 => 'payment'];
                             $cur_grp = null;
                             foreach ($departments_for_forward as $dept):
                                 $grp = $rl[$dept['role_id']] ?? 'Other';
@@ -653,8 +654,11 @@ include 'includes/dashboard_header.php';
                                     echo '<optgroup label="' . htmlspecialchars($grp) . '">';
                                     $cur_grp = $grp;
                                 endif;
+                                $fb_value = isset($role_tags_fb[$dept['role_id']])
+                                    ? $role_tags_fb[$dept['role_id']]
+                                    : $dept['full_name'];
                             ?>
-                                <option value="<?php echo htmlspecialchars($dept['full_name'], ENT_QUOTES); ?>">
+                                <option value="<?php echo htmlspecialchars($fb_value, ENT_QUOTES); ?>">
                                     <?php echo htmlspecialchars($dept['full_name']); ?>
                                 </option>
                             <?php endforeach; if ($cur_grp !== null) echo '</optgroup>'; ?>
@@ -697,6 +701,8 @@ include 'includes/dashboard_header.php';
                             <option value="">— Select recipient —</option>
                             <?php
                             $rl2 = [5=>'i4Cus Staff', 6=>'Payment Admin', 7=>'Department'];
+                            // Role tags used as forwarded_to values for role-based routing
+                            $role_tags = [5 => 'i4cus', 6 => 'payment'];
                             $cur_grp2 = null;
                             foreach ($departments_for_forward as $dept):
                                 $grp2 = $rl2[$dept['role_id']] ?? 'Other';
@@ -705,8 +711,13 @@ include 'includes/dashboard_header.php';
                                     echo '<optgroup label="' . htmlspecialchars($grp2) . '">';
                                     $cur_grp2 = $grp2;
                                 endif;
+                                // Roles 5 & 6: use role tag so ALL users with that role see it
+                                // Role 7 (departments): use full_name for specific routing
+                                $opt_value = isset($role_tags[$dept['role_id']])
+                                    ? $role_tags[$dept['role_id']]
+                                    : $dept['full_name'];
                             ?>
-                                <option value="<?php echo htmlspecialchars($dept['full_name'], ENT_QUOTES); ?>">
+                                <option value="<?php echo htmlspecialchars($opt_value, ENT_QUOTES); ?>">
                                     <?php echo htmlspecialchars($dept['full_name']); ?>
                                 </option>
                             <?php endforeach; if ($cur_grp2 !== null) echo '</optgroup>'; ?>

@@ -263,24 +263,18 @@ function getImagePath($path) {
 
         <!-- Forwarded ICT Complaints -->
         <?php
-        // Fetch ICT complaints forwarded to Payment Admin
-        $payment_admin_name = $_SESSION['full_name'] ?? '';
+        // Fetch ICT complaints forwarded to Payment Admin role (role-based, not user-specific)
         $fwd_ict = [];
         $fwd_col = mysqli_query($conn, "SHOW COLUMNS FROM student_ict_complaints LIKE 'forwarded_to'");
-        if ($fwd_col && mysqli_num_rows($fwd_col) > 0 && !empty($payment_admin_name)) {
+        if ($fwd_col && mysqli_num_rows($fwd_col) > 0) {
             $fwd_sql = "SELECT c.*, CONCAT(s.first_name,' ',s.last_name) AS student_name,
                                s.registration_number, s.email
                         FROM student_ict_complaints c
                         JOIN students s ON c.student_id = s.student_id
-                        WHERE c.forwarded_to = ?
+                        WHERE c.forwarded_to = 'payment'
                         ORDER BY c.created_at DESC";
-            if ($fs = mysqli_prepare($conn, $fwd_sql)) {
-                mysqli_stmt_bind_param($fs, 's', $payment_admin_name);
-                mysqli_stmt_execute($fs);
-                $fr = mysqli_stmt_get_result($fs);
-                $fwd_ict = mysqli_fetch_all($fr, MYSQLI_ASSOC);
-                mysqli_stmt_close($fs);
-            }
+            $fr = mysqli_query($conn, $fwd_sql);
+            if ($fr) $fwd_ict = mysqli_fetch_all($fr, MYSQLI_ASSOC);
         }
         ?>
         <?php if (!empty($fwd_ict)): ?>
@@ -341,19 +335,16 @@ function getImagePath($path) {
         $fwd_student = [];
         $fwd_sc_col = mysqli_query($conn, "SHOW COLUMNS FROM student_complaints LIKE 'forwarded_to'");
         if ($fwd_sc_col && mysqli_num_rows($fwd_sc_col) > 0) {
-            $my_uid = (int)$_SESSION['user_id'];
+            // student_complaints.forwarded_to is INT (user_id FK)
+            // Show all complaints forwarded to any Payment Admin (role_id=6)
             $fwd_sc_sql = "SELECT sc.*, CONCAT(s.first_name,' ',s.last_name) AS student_name,
                                   s.registration_number, s.email
                            FROM student_complaints sc
                            JOIN students s ON sc.student_id = s.student_id
-                           WHERE sc.forwarded_to = ?
+                           JOIN users u ON u.user_id = sc.forwarded_to AND u.role_id = 6
                            ORDER BY sc.created_at DESC";
-            if ($fsc = mysqli_prepare($conn, $fwd_sc_sql)) {
-                mysqli_stmt_bind_param($fsc, 'i', $my_uid);
-                mysqli_stmt_execute($fsc);
-                $fwd_student = mysqli_fetch_all(mysqli_stmt_get_result($fsc), MYSQLI_ASSOC);
-                mysqli_stmt_close($fsc);
-            }
+            $fsc_r = mysqli_query($conn, $fwd_sc_sql);
+            if ($fsc_r) $fwd_student = mysqli_fetch_all($fsc_r, MYSQLI_ASSOC);
         }
         ?>
         <?php if (!empty($fwd_student)): ?>

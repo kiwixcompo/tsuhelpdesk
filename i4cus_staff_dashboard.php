@@ -106,36 +106,18 @@ while($row = mysqli_fetch_assoc($result_archived)){
     $archived_complaints[] = $row;
 }
 
-// ── Fetch ICT complaints forwarded to this i4Cus staff member ──
-// ict_complaints_admin.php stores forwarded_to as the user's full_name (VARCHAR)
-// Match by full_name OR by any name variant for this user_id
+// ── Fetch ICT complaints forwarded to i4Cus Staff (role-based, not user-specific) ──
 $fwd_ict_i4 = [];
-$i4_name = $_SESSION['full_name'] ?? '';
-$i4_uid  = (int)($_SESSION['user_id'] ?? 0);
-if (!empty($i4_name) || $i4_uid > 0) {
-    $fwd_ict_col = mysqli_query($conn, "SHOW COLUMNS FROM student_ict_complaints LIKE 'forwarded_to'");
-    if ($fwd_ict_col && mysqli_num_rows($fwd_ict_col) > 0) {
-        // Get all possible name values for this user from the users table
-        $name_row = mysqli_query($conn, "SELECT full_name FROM users WHERE user_id = $i4_uid LIMIT 1");
-        $db_name  = ($nr = mysqli_fetch_assoc($name_row)) ? $nr['full_name'] : $i4_name;
-
-        // Match by db full_name, session full_name, OR by user_id via join
-        $fwd_ict_sql = "SELECT c.*, CONCAT(s.first_name,' ',s.last_name) AS student_name,
-                               s.registration_number, s.email
-                        FROM student_ict_complaints c
-                        JOIN students s ON c.student_id = s.student_id
-                        LEFT JOIN users u ON u.full_name = c.forwarded_to AND u.role_id = 5
-                        WHERE c.forwarded_to = ?
-                           OR c.forwarded_to = ?
-                           OR (u.user_id = ?)
-                        ORDER BY c.created_at DESC";
-        if ($fi = mysqli_prepare($conn, $fwd_ict_sql)) {
-            mysqli_stmt_bind_param($fi, 'ssi', $db_name, $i4_name, $i4_uid);
-            mysqli_stmt_execute($fi);
-            $fwd_ict_i4 = mysqli_fetch_all(mysqli_stmt_get_result($fi), MYSQLI_ASSOC);
-            mysqli_stmt_close($fi);
-        }
-    }
+$fwd_ict_col = mysqli_query($conn, "SHOW COLUMNS FROM student_ict_complaints LIKE 'forwarded_to'");
+if ($fwd_ict_col && mysqli_num_rows($fwd_ict_col) > 0) {
+    $fwd_ict_sql = "SELECT c.*, CONCAT(s.first_name,' ',s.last_name) AS student_name,
+                           s.registration_number, s.email
+                    FROM student_ict_complaints c
+                    JOIN students s ON c.student_id = s.student_id
+                    WHERE c.forwarded_to = 'i4cus'
+                    ORDER BY c.created_at DESC";
+    $fi = mysqli_query($conn, $fwd_ict_sql);
+    if ($fi) $fwd_ict_i4 = mysqli_fetch_all($fi, MYSQLI_ASSOC);
 }
 
 // Helper function to normalize image paths
@@ -312,19 +294,15 @@ function getImagePath($image) {
         $fwd_student_i4 = [];
         $fwd_sc_col_i4 = mysqli_query($conn, "SHOW COLUMNS FROM student_complaints LIKE 'forwarded_to'");
         if ($fwd_sc_col_i4 && mysqli_num_rows($fwd_sc_col_i4) > 0) {
-            $my_uid_i4 = (int)$_SESSION['user_id'];
+            // Show all complaints forwarded to any i4Cus Staff (role_id=5)
             $fwd_sc_sql_i4 = "SELECT sc.*, CONCAT(s.first_name,' ',s.last_name) AS student_name,
                                      s.registration_number, s.email
                               FROM student_complaints sc
                               JOIN students s ON sc.student_id = s.student_id
-                              WHERE sc.forwarded_to = ?
+                              JOIN users u ON u.user_id = sc.forwarded_to AND u.role_id = 5
                               ORDER BY sc.created_at DESC";
-            if ($fsc_i4 = mysqli_prepare($conn, $fwd_sc_sql_i4)) {
-                mysqli_stmt_bind_param($fsc_i4, 'i', $my_uid_i4);
-                mysqli_stmt_execute($fsc_i4);
-                $fwd_student_i4 = mysqli_fetch_all(mysqli_stmt_get_result($fsc_i4), MYSQLI_ASSOC);
-                mysqli_stmt_close($fsc_i4);
-            }
+            $fsc_i4_r = mysqli_query($conn, $fwd_sc_sql_i4);
+            if ($fsc_i4_r) $fwd_student_i4 = mysqli_fetch_all($fsc_i4_r, MYSQLI_ASSOC);
         }
         ?>
         <?php if (!empty($fwd_student_i4)): ?>
