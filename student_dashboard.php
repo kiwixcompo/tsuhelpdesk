@@ -78,22 +78,28 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_complaint'])){
     }
 }
 
-// Fetch student's result verification complaints
-$complaints = [];
+// Fetch student's result verification complaints — split active vs archived
+$complaints_active = [];
+$complaints_archived = [];
 $sql = "SELECT * FROM student_complaints WHERE student_id = ? ORDER BY created_at DESC";
 if($stmt = mysqli_prepare($conn, $sql)){
     mysqli_stmt_bind_param($stmt, "i", $_SESSION["student_id"]);
     if(mysqli_stmt_execute($stmt)){
         $result = mysqli_stmt_get_result($stmt);
         while($row = mysqli_fetch_assoc($result)){
-            $complaints[] = $row;
+            if (in_array($row['status'], ['Resolved', 'Rejected'])) {
+                $complaints_archived[] = $row;
+            } else {
+                $complaints_active[] = $row;
+            }
         }
     }
     mysqli_stmt_close($stmt);
 }
 
-// Fetch student's ICT complaints
-$ict_complaints = [];
+// Fetch student's ICT complaints — split active vs archived
+$ict_active = [];
+$ict_archived = [];
 $ict_table_check = mysqli_query($conn, "SHOW TABLES LIKE 'student_ict_complaints'");
 if (mysqli_num_rows($ict_table_check) > 0) {
     $ict_sql = "SELECT * FROM student_ict_complaints WHERE student_id = ? ORDER BY created_at DESC";
@@ -101,11 +107,21 @@ if (mysqli_num_rows($ict_table_check) > 0) {
         mysqli_stmt_bind_param($ict_stmt, "i", $_SESSION["student_id"]);
         if (mysqli_stmt_execute($ict_stmt)) {
             $ict_result = mysqli_stmt_get_result($ict_stmt);
-            while ($row = mysqli_fetch_assoc($ict_result)) $ict_complaints[] = $row;
+            while ($row = mysqli_fetch_assoc($ict_result)) {
+                if (in_array($row['status'], ['Resolved', 'Rejected', 'Auto-Resolved'])) {
+                    $ict_archived[] = $row;
+                } else {
+                    $ict_active[] = $row;
+                }
+            }
         }
         mysqli_stmt_close($ict_stmt);
     }
 }
+
+// Keep $complaints and $ict_complaints for backward compat (used elsewhere)
+$complaints     = array_merge($complaints_active, $complaints_archived);
+$ict_complaints = array_merge($ict_active, $ict_archived);
 
 // Generate academic sessions (current year back to 2021/2022)
 function generateAcademicSessions() {
@@ -427,16 +443,21 @@ if ($notif_count_result && $notif_row = mysqli_fetch_assoc($notif_count_result))
         </div>
         </div><!-- /resultSection -->
 
-        <!-- My Complaints -->
+        <!-- My Active Complaints -->
         <div class="card dashboard-card">
-            <div class="card-header">
-                <h4 class="mb-0"><i class="fas fa-list mr-2"></i>My Complaints</h4>
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="mb-0"><i class="fas fa-list mr-2"></i>My Active Complaints</h4>
+                <?php if (!empty($complaints_archived)): ?>
+                <button class="btn btn-sm btn-outline-light" data-toggle="collapse" data-target="#resultArchiveSection">
+                    <i class="fas fa-archive mr-1"></i>View Archived (<?php echo count($complaints_archived); ?>)
+                </button>
+                <?php endif; ?>
             </div>
             <div class="card-body">
-                <?php if(empty($complaints)): ?>
+                <?php if(empty($complaints_active)): ?>
                     <div class="text-center py-4">
-                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-                        <p class="text-muted">No complaints submitted yet.</p>
+                        <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                        <p class="text-muted">No active complaints. All issues have been resolved.</p>
                     </div>
                 <?php else: ?>
                     <div class="table-responsive">
@@ -453,20 +474,12 @@ if ($notif_count_result && $notif_row = mysqli_fetch_assoc($notif_count_result))
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach($complaints as $complaint): ?>
+                                <?php foreach($complaints_active as $complaint): ?>
                                     <tr>
                                         <td><strong><?php echo htmlspecialchars($complaint['course_code']); ?></strong></td>
                                         <td><?php echo htmlspecialchars($complaint['course_title']); ?></td>
-                                        <td>
-                                            <span class="badge badge-info">
-                                                <?php echo htmlspecialchars($complaint['complaint_type']); ?>
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <span class="badge badge-secondary">
-                                                <?php echo htmlspecialchars($complaint['academic_session'] ?? 'N/A'); ?>
-                                            </span>
-                                        </td>
+                                        <td><span class="badge badge-info"><?php echo htmlspecialchars($complaint['complaint_type']); ?></span></td>
+                                        <td><span class="badge badge-secondary"><?php echo htmlspecialchars($complaint['academic_session'] ?? 'N/A'); ?></span></td>
                                         <td>
                                             <span class="status-badge status-<?php echo strtolower(str_replace(' ', '-', $complaint['status'])); ?>">
                                                 <?php echo htmlspecialchars($complaint['status']); ?>
@@ -474,50 +487,38 @@ if ($notif_count_result && $notif_row = mysqli_fetch_assoc($notif_count_result))
                                         </td>
                                         <td><?php echo date('M d, Y', strtotime($complaint['created_at'])); ?></td>
                                         <td>
-                                            <button type="button" class="btn btn-sm btn-outline-primary" 
+                                            <button type="button" class="btn btn-sm btn-outline-primary"
                                                     data-toggle="modal" data-target="#complaintModal<?php echo $complaint['complaint_id']; ?>">
                                                 <i class="fas fa-eye"></i> View
                                             </button>
                                         </td>
                                     </tr>
-                                    
-                                    <!-- Complaint Details Modal -->
                                     <div class="modal fade" id="complaintModal<?php echo $complaint['complaint_id']; ?>" tabindex="-1">
-                                        <div class="modal-dialog">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    <h5 class="modal-title">Complaint Details</h5>
-                                                    <button type="button" class="close" data-dismiss="modal">
-                                                        <span>&times;</span>
-                                                    </button>
-                                                </div>
-                                                <div class="modal-body">
-                                                    <p><strong>Course:</strong> <?php echo htmlspecialchars($complaint['course_code'] . ' - ' . $complaint['course_title']); ?></p>
-                                                    <p><strong>Type:</strong> <?php echo htmlspecialchars($complaint['complaint_type']); ?></p>
-                                                    <p><strong>Academic Session:</strong> <?php echo htmlspecialchars($complaint['academic_session'] ?? 'N/A'); ?></p>
-                                                    <p><strong>Status:</strong> 
-                                                        <span class="status-badge status-<?php echo strtolower(str_replace(' ', '-', $complaint['status'])); ?>">
-                                                            <?php echo htmlspecialchars($complaint['status']); ?>
-                                                        </span>
-                                                    </p>
-                                                    <p><strong>Submitted:</strong> <?php echo date('M d, Y h:i A', strtotime($complaint['created_at'])); ?></p>
-                                                    
-                                                    <?php if(!empty($complaint['description'])): ?>
-                                                        <p><strong>Description:</strong></p>
-                                                        <p class="text-muted"><?php echo nl2br(htmlspecialchars($complaint['description'])); ?></p>
-                                                    <?php endif; ?>
-                                                    
-                                                    <?php if(!empty($complaint['admin_response'])): ?>
-                                                        <hr>
-                                                        <p><strong>Admin Response:</strong></p>
-                                                        <p class="text-info"><?php echo nl2br(htmlspecialchars($complaint['admin_response'])); ?></p>
-                                                    <?php endif; ?>
-                                                </div>
-                                                <div class="modal-footer">
-                                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                                                </div>
+                                        <div class="modal-dialog"><div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">Complaint Details</h5>
+                                                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
                                             </div>
-                                        </div>
+                                            <div class="modal-body">
+                                                <p><strong>Course:</strong> <?php echo htmlspecialchars($complaint['course_code'] . ' - ' . $complaint['course_title']); ?></p>
+                                                <p><strong>Type:</strong> <?php echo htmlspecialchars($complaint['complaint_type']); ?></p>
+                                                <p><strong>Academic Session:</strong> <?php echo htmlspecialchars($complaint['academic_session'] ?? 'N/A'); ?></p>
+                                                <p><strong>Status:</strong> <span class="status-badge status-<?php echo strtolower(str_replace(' ', '-', $complaint['status'])); ?>"><?php echo htmlspecialchars($complaint['status']); ?></span></p>
+                                                <p><strong>Submitted:</strong> <?php echo date('M d, Y h:i A', strtotime($complaint['created_at'])); ?></p>
+                                                <?php if(!empty($complaint['description'])): ?>
+                                                    <p><strong>Description:</strong></p>
+                                                    <p class="text-muted"><?php echo nl2br(htmlspecialchars($complaint['description'])); ?></p>
+                                                <?php endif; ?>
+                                                <?php if(!empty($complaint['admin_response'])): ?>
+                                                    <hr>
+                                                    <p><strong>Admin Response:</strong></p>
+                                                    <p class="text-info"><?php echo nl2br(htmlspecialchars($complaint['admin_response'])); ?></p>
+                                                <?php endif; ?>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                            </div>
+                                        </div></div>
                                     </div>
                                 <?php endforeach; ?>
                             </tbody>
@@ -527,11 +528,95 @@ if ($notif_count_result && $notif_row = mysqli_fetch_assoc($notif_count_result))
             </div>
         </div>
 
-        <!-- My ICT Complaints -->
-        <?php if (!empty($ict_complaints)): ?>
+        <!-- Archived Result Verification Complaints (collapsed by default) -->
+        <?php if (!empty($complaints_archived)): ?>
+        <div class="collapse" id="resultArchiveSection">
+        <div class="card dashboard-card" style="border-left:4px solid #6c757d">
+            <div class="card-header" style="background:linear-gradient(135deg,#495057,#6c757d)">
+                <h4 class="mb-0"><i class="fas fa-archive mr-2"></i>Archived Complaints <small class="font-weight-normal">(Resolved / Rejected)</small></h4>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Course Code</th>
+                                <th>Course Title</th>
+                                <th>Type</th>
+                                <th>Session</th>
+                                <th>Status</th>
+                                <th>Resolved</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach($complaints_archived as $complaint): ?>
+                                <tr class="text-muted">
+                                    <td><strong><?php echo htmlspecialchars($complaint['course_code']); ?></strong></td>
+                                    <td><?php echo htmlspecialchars($complaint['course_title']); ?></td>
+                                    <td><span class="badge badge-secondary"><?php echo htmlspecialchars($complaint['complaint_type']); ?></span></td>
+                                    <td><span class="badge badge-light"><?php echo htmlspecialchars($complaint['academic_session'] ?? 'N/A'); ?></span></td>
+                                    <td>
+                                        <span class="status-badge status-<?php echo strtolower(str_replace(' ', '-', $complaint['status'])); ?>">
+                                            <?php echo htmlspecialchars($complaint['status']); ?>
+                                        </span>
+                                    </td>
+                                    <td><?php echo date('M d, Y', strtotime($complaint['updated_at'] ?? $complaint['created_at'])); ?></td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                                data-toggle="modal" data-target="#archiveModal<?php echo $complaint['complaint_id']; ?>">
+                                            <i class="fas fa-eye"></i> View
+                                        </button>
+                                    </td>
+                                </tr>
+                                <div class="modal fade" id="archiveModal<?php echo $complaint['complaint_id']; ?>" tabindex="-1">
+                                    <div class="modal-dialog"><div class="modal-content">
+                                        <div class="modal-header" style="background:#6c757d;color:#fff">
+                                            <h5 class="modal-title"><i class="fas fa-archive mr-2"></i>Archived Complaint</h5>
+                                            <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <p><strong>Course:</strong> <?php echo htmlspecialchars($complaint['course_code'] . ' - ' . $complaint['course_title']); ?></p>
+                                            <p><strong>Type:</strong> <?php echo htmlspecialchars($complaint['complaint_type']); ?></p>
+                                            <p><strong>Academic Session:</strong> <?php echo htmlspecialchars($complaint['academic_session'] ?? 'N/A'); ?></p>
+                                            <p><strong>Status:</strong> <span class="status-badge status-<?php echo strtolower(str_replace(' ', '-', $complaint['status'])); ?>"><?php echo htmlspecialchars($complaint['status']); ?></span></p>
+                                            <p><strong>Submitted:</strong> <?php echo date('M d, Y h:i A', strtotime($complaint['created_at'])); ?></p>
+                                            <?php if(!empty($complaint['description'])): ?>
+                                                <p><strong>Description:</strong></p>
+                                                <p class="text-muted"><?php echo nl2br(htmlspecialchars($complaint['description'])); ?></p>
+                                            <?php endif; ?>
+                                            <?php if(!empty($complaint['admin_response'])): ?>
+                                                <hr>
+                                                <div class="alert alert-success">
+                                                    <strong><i class="fas fa-check-circle mr-1"></i>Admin Response:</strong><br>
+                                                    <?php echo nl2br(htmlspecialchars($complaint['admin_response'])); ?>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                        </div>
+                                    </div></div>
+                                </div>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        </div>
+        <?php endif; ?>
+
+        <!-- My Active ICT Complaints -->
+        <?php if (!empty($ict_active)): ?>
         <div class="card dashboard-card">
-            <div class="card-header" style="background:linear-gradient(135deg,#1a6b3c,#27ae60)">
+            <div class="card-header d-flex justify-content-between align-items-center" style="background:linear-gradient(135deg,#1a6b3c,#27ae60)">
                 <h4 class="mb-0"><i class="fas fa-headset mr-2"></i>My ICT / Portal Complaints</h4>
+                <?php if (!empty($ict_archived)): ?>
+                <button class="btn btn-sm btn-outline-light" data-toggle="collapse" data-target="#ictArchiveSection">
+                    <i class="fas fa-archive mr-1"></i>View Archived (<?php echo count($ict_archived); ?>)
+                </button>
+                <?php endif; ?>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
@@ -542,6 +627,179 @@ if ($notif_count_result && $notif_row = mysqli_fetch_assoc($notif_count_result))
                                 <th>Issue</th>
                                 <th>Status</th>
                                 <th>Submitted</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($ict_active as $ic):
+                                $sc = ['Pending'=>'warning','Under Review'=>'info','Resolved'=>'success','Rejected'=>'danger','Auto-Resolved'=>'secondary'];
+                                $bc = $sc[$ic['status']] ?? 'secondary';
+                            ?>
+                            <tr>
+                                <td><small><?php echo htmlspecialchars($ic['category']); ?></small></td>
+                                <td><?php echo htmlspecialchars($ic['node_label']); ?></td>
+                                <td><span class="badge badge-<?php echo $bc; ?>"><?php echo htmlspecialchars($ic['status']); ?></span></td>
+                                <td><?php echo date('M d, Y', strtotime($ic['created_at'])); ?></td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-outline-primary"
+                                            data-toggle="modal" data-target="#ictModal<?php echo $ic['complaint_id']; ?>">
+                                        <i class="fas fa-eye"></i> View
+                                    </button>
+                                    <?php if (in_array($ic['status'], ['Pending', 'Auto-Resolved'])): ?>
+                                    <button type="button" class="btn btn-sm btn-outline-warning ict-edit-btn"
+                                            data-id="<?php echo $ic['complaint_id']; ?>"
+                                            data-description="<?php
+                                                $desc = $ic['description'] ?? '';
+                                                $pos  = strpos($desc, "\n\nAdditional details: ");
+                                                echo htmlspecialchars($pos !== false ? substr($desc, $pos + 22) : '');
+                                            ?>">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger ict-delete-btn"
+                                            data-id="<?php echo $ic['complaint_id']; ?>"
+                                            data-label="<?php echo htmlspecialchars($ic['node_label']); ?>">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                            <!-- ICT Complaint Modal -->
+                            <div class="modal fade" id="ictModal<?php echo $ic['complaint_id']; ?>" tabindex="-1">
+                                <div class="modal-dialog modal-lg">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">ICT Complaint Details</h5>
+                                            <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                                        </div>
+                                        <?php include_once(''); // modal body rendered inline below ?>
+                                        <div class="modal-body">
+                                            <?php
+                                            $extra = [];
+                                            if (!empty($ic['extra_fields'])) $extra = json_decode($ic['extra_fields'], true) ?: [];
+                                            $fieldLabels = ['student_id'=>'Student ID','matric_number'=>'Matric Number','registered_email'=>'Registered Email','jamb_number'=>'JAMB Number','jamb_login_email'=>'JAMB Login Email','jamb_profile_code'=>'JAMB Profile Code','course_code'=>'Course Code','current_session'=>'Current Session','target_session'=>'Target Session','correct_level'=>'Correct Level','total_units'=>'Total Units','transaction_id'=>'Transaction ID','rrr'=>'RRR','receipt'=>'Receipt','expected_grade'=>'Expected Grade','department'=>'Department','nin'=>'NIN','complaint_description'=>'Complaint Description','ai_category'=>'AI Classification'];
+                                            $displayExtra = array_filter($extra, fn($v,$k) => !empty($v) && $k !== 'jamb_login_password', ARRAY_FILTER_USE_BOTH);
+                                            ?>
+                                            <p><strong>Category:</strong> <?php echo htmlspecialchars($ic['category']); ?></p>
+                                            <p><strong>Issue:</strong> <?php echo htmlspecialchars($ic['node_label']); ?></p>
+                                            <?php if (!empty($ic['path_summary'])): ?><p><strong>Path:</strong> <small class="text-muted"><?php echo htmlspecialchars($ic['path_summary']); ?></small></p><?php endif; ?>
+                                            <p><strong>Status:</strong> <span class="badge badge-<?php echo $bc; ?>"><?php echo htmlspecialchars($ic['status']); ?></span></p>
+                                            <p><strong>Submitted:</strong> <?php echo date('M d, Y H:i', strtotime($ic['created_at'])); ?></p>
+                                            <?php if (!empty($displayExtra)): ?>
+                                            <hr><p><strong>Details Provided:</strong></p>
+                                            <table class="table table-sm table-bordered" style="font-size:0.88rem">
+                                                <?php foreach ($displayExtra as $key => $val): ?>
+                                                <tr><td class="font-weight-bold" style="width:40%;background:#f8f9fa"><?php echo htmlspecialchars($fieldLabels[$key] ?? ucwords(str_replace('_',' ',$key))); ?></td><td><?php echo htmlspecialchars($val); ?></td></tr>
+                                                <?php endforeach; ?>
+                                            </table>
+                                            <?php endif; ?>
+                                            <?php $desc=$ic['description']??''; $pos=strpos($desc,"\n\nAdditional details: "); $addDesc=$pos!==false?substr($desc,$pos+22):''; if($addDesc): ?><hr><p><strong>Additional Details:</strong></p><p class="text-muted"><?php echo nl2br(htmlspecialchars($addDesc)); ?></p><?php endif; ?>
+                                            <?php if (!empty($ic['attachment_path'])): ?><hr><p><strong>Attachment:</strong></p><p><a href="<?php echo htmlspecialchars($ic['attachment_path']); ?>" target="_blank" class="btn btn-sm btn-info"><i class="fas fa-file-download mr-1"></i> View File</a></p><?php endif; ?>
+                                            <?php if ($ic['auto_response'] && !$ic['escalated']): ?><hr><div class="alert alert-info"><strong><i class="fas fa-info-circle mr-1"></i>Suggested Resolution:</strong><br><?php echo nl2br(htmlspecialchars($ic['auto_response'])); ?></div><?php endif; ?>
+                                            <?php if ($ic['admin_response']): ?><hr><div class="alert alert-success"><strong><i class="fas fa-reply mr-1"></i>Response from ICT:</strong><br><?php echo nl2br(htmlspecialchars($ic['admin_response'])); ?></div><small class="text-muted">Responded by TSU ICT Help Desk</small><?php endif; ?>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <?php elseif (empty($ict_active) && !empty($ict_archived)): ?>
+        <!-- No active ICT complaints but there are archived ones — show header with archive button -->
+        <div class="card dashboard-card">
+            <div class="card-header d-flex justify-content-between align-items-center" style="background:linear-gradient(135deg,#1a6b3c,#27ae60)">
+                <h4 class="mb-0"><i class="fas fa-headset mr-2"></i>My ICT / Portal Complaints</h4>
+                <button class="btn btn-sm btn-outline-light" data-toggle="collapse" data-target="#ictArchiveSection">
+                    <i class="fas fa-archive mr-1"></i>View Archived (<?php echo count($ict_archived); ?>)
+                </button>
+            </div>
+            <div class="card-body text-center py-4">
+                <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                <p class="text-muted">No active ICT complaints. All issues have been resolved.</p>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <!-- Archived ICT Complaints (collapsed by default) -->
+        <?php if (!empty($ict_archived)): ?>
+        <div class="collapse" id="ictArchiveSection">
+        <div class="card dashboard-card" style="border-left:4px solid #6c757d">
+            <div class="card-header" style="background:linear-gradient(135deg,#495057,#6c757d)">
+                <h4 class="mb-0"><i class="fas fa-archive mr-2"></i>Archived ICT Complaints <small class="font-weight-normal">(Resolved / Rejected / Auto-Resolved)</small></h4>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th>Issue</th>
+                                <th>Status</th>
+                                <th>Resolved</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($ict_archived as $ic):
+                                $sc = ['Pending'=>'warning','Under Review'=>'info','Resolved'=>'success','Rejected'=>'danger','Auto-Resolved'=>'secondary'];
+                                $bc = $sc[$ic['status']] ?? 'secondary';
+                            ?>
+                            <tr class="text-muted">
+                                <td><small><?php echo htmlspecialchars($ic['category']); ?></small></td>
+                                <td><?php echo htmlspecialchars($ic['node_label']); ?></td>
+                                <td><span class="badge badge-<?php echo $bc; ?>"><?php echo htmlspecialchars($ic['status']); ?></span></td>
+                                <td><?php echo date('M d, Y', strtotime($ic['updated_at'] ?? $ic['created_at'])); ?></td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary"
+                                            data-toggle="modal" data-target="#ictArchiveModal<?php echo $ic['complaint_id']; ?>">
+                                        <i class="fas fa-eye"></i> View
+                                    </button>
+                                </td>
+                            </tr>
+                            <div class="modal fade" id="ictArchiveModal<?php echo $ic['complaint_id']; ?>" tabindex="-1">
+                                <div class="modal-dialog modal-lg"><div class="modal-content">
+                                    <div class="modal-header" style="background:#6c757d;color:#fff">
+                                        <h5 class="modal-title"><i class="fas fa-archive mr-2"></i>Archived ICT Complaint</h5>
+                                        <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <?php
+                                        $extra = [];
+                                        if (!empty($ic['extra_fields'])) $extra = json_decode($ic['extra_fields'], true) ?: [];
+                                        $displayExtra = array_filter($extra, fn($v,$k) => !empty($v) && $k !== 'jamb_login_password', ARRAY_FILTER_USE_BOTH);
+                                        ?>
+                                        <p><strong>Category:</strong> <?php echo htmlspecialchars($ic['category']); ?></p>
+                                        <p><strong>Issue:</strong> <?php echo htmlspecialchars($ic['node_label']); ?></p>
+                                        <p><strong>Status:</strong> <span class="badge badge-<?php echo $bc; ?>"><?php echo htmlspecialchars($ic['status']); ?></span></p>
+                                        <p><strong>Submitted:</strong> <?php echo date('M d, Y H:i', strtotime($ic['created_at'])); ?></p>
+                                        <?php if (!empty($displayExtra)): ?>
+                                        <hr><p><strong>Details Provided:</strong></p>
+                                        <table class="table table-sm table-bordered" style="font-size:0.88rem">
+                                            <?php foreach ($displayExtra as $key => $val): ?>
+                                            <tr><td class="font-weight-bold" style="width:40%;background:#f8f9fa"><?php echo htmlspecialchars($fieldLabels[$key] ?? ucwords(str_replace('_',' ',$key))); ?></td><td><?php echo htmlspecialchars($val); ?></td></tr>
+                                            <?php endforeach; ?>
+                                        </table>
+                                        <?php endif; ?>
+                                        <?php if ($ic['admin_response']): ?><hr><div class="alert alert-success"><strong><i class="fas fa-check-circle mr-1"></i>Response from ICT:</strong><br><?php echo nl2br(htmlspecialchars($ic['admin_response'])); ?></div><?php endif; ?>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                    </div>
+                                </div></div>
+                            </div>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        </div>
+        <?php endif; ?>
                                 <th>Action</th>
                             </tr>
                         </thead>
