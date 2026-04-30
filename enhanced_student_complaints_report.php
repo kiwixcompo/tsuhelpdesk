@@ -231,6 +231,15 @@ $offset = ($page - 1) * $per_page;
 
 $paginated_students = array_slice($grouped_complaints, $offset, $per_page, true);
 
+// Load users who can receive forwarded complaints (Payment Admin=6, i4Cus=5, Departments=7)
+$forward_recipients = [];
+$fwd_users = mysqli_query($conn,
+    "SELECT user_id, full_name, role_id FROM users
+     WHERE role_id IN (5, 6, 7) ORDER BY role_id, full_name");
+if ($fwd_users) {
+    while ($r = mysqli_fetch_assoc($fwd_users)) $forward_recipients[] = $r;
+}
+
 ?>
 
 <!DOCTYPE html>
@@ -533,6 +542,13 @@ $paginated_students = array_slice($grouped_complaints, $offset, $per_page, true)
                                                             data-toggle="modal" data-target="#updateModal<?php echo $complaint['complaint_id']; ?>">
                                                         <i class="fas fa-edit"></i>
                                                     </button>
+                                                    <button type="button" class="btn btn-sm btn-outline-info btn-action btn-forward-sc"
+                                                            data-id="<?php echo $complaint['complaint_id']; ?>"
+                                                            data-course="<?php echo htmlspecialchars($complaint['course_code'] . ' — ' . $complaint['course_title'], ENT_QUOTES); ?>"
+                                                            data-student="<?php echo htmlspecialchars($complaint['full_name'], ENT_QUOTES); ?>"
+                                                            title="Forward to department/unit">
+                                                        <i class="fas fa-share-square"></i>
+                                                    </button>
                                                     <button type="button" class="btn btn-sm btn-outline-danger btn-action" 
                                                             onclick="confirmDelete(<?php echo $complaint['complaint_id']; ?>)">
                                                         <i class="fas fa-trash"></i>
@@ -768,6 +784,90 @@ $paginated_students = array_slice($grouped_complaints, $offset, $per_page, true)
         
         // Auto-dismiss alerts
         $('.alert').delay(5000).fadeOut();
+
+        // ── Forward complaint ─────────────────────────────
+        $(document).on('click', '.btn-forward-sc', function() {
+            const id      = $(this).data('id');
+            const course  = $(this).data('course');
+            const student = $(this).data('student');
+            $('#fwScComplaintId').val(id);
+            $('#fwScComplaintInfo').html(
+                '<strong>Student:</strong> ' + $('<div>').text(student).html() + '<br>' +
+                '<strong>Course:</strong> '  + $('<div>').text(course).html()
+            );
+            $('#fwScRecipient').val('');
+            $('#forwardScModal').modal('show');
+        });
+
+        $('#forwardScForm').submit(function(e) {
+            e.preventDefault();
+            const btn = $(this).find('button[type=submit]');
+            btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i>Forwarding…');
+
+            $.post('api/manage_student_complaints.php', {
+                action:         'forward_complaint',
+                complaint_id:   $('#fwScComplaintId').val(),
+                forward_to_id:  $('#fwScRecipient').val()
+            }, function(res) {
+                if (res.success) {
+                    $('#forwardScModal').modal('hide');
+                    alert(res.message);
+                    location.reload();
+                } else {
+                    alert('Error: ' + (res.message || 'Failed to forward'));
+                    btn.prop('disabled', false).html('<i class="fas fa-share-square mr-1"></i>Forward');
+                }
+            }, 'json').fail(function() {
+                alert('Request failed. Please try again.');
+                btn.prop('disabled', false).html('<i class="fas fa-share-square mr-1"></i>Forward');
+            });
+        });
     </script>
+
+    <!-- Forward Student Complaint Modal -->
+    <div class="modal fade" id="forwardScModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title"><i class="fas fa-share-square mr-2"></i>Forward Complaint</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+                </div>
+                <form id="forwardScForm">
+                    <div class="modal-body">
+                        <input type="hidden" id="fwScComplaintId">
+                        <div class="alert alert-light border mb-3" id="fwScComplaintInfo"></div>
+                        <div class="form-group">
+                            <label class="font-weight-bold">Forward to</label>
+                            <select id="fwScRecipient" class="form-control" required>
+                                <option value="">— Select recipient —</option>
+                                <?php
+                                $role_labels = [5 => 'i4Cus Staff', 6 => 'Payment Admin', 7 => 'Department'];
+                                $cur_grp = null;
+                                foreach ($forward_recipients as $r):
+                                    $grp = $role_labels[$r['role_id']] ?? 'Other';
+                                    if ($grp !== $cur_grp):
+                                        if ($cur_grp !== null) echo '</optgroup>';
+                                        echo '<optgroup label="' . htmlspecialchars($grp) . '">';
+                                        $cur_grp = $grp;
+                                    endif;
+                                ?>
+                                    <option value="<?php echo $r['user_id']; ?>">
+                                        <?php echo htmlspecialchars($r['full_name']); ?>
+                                    </option>
+                                <?php endforeach; if ($cur_grp !== null) echo '</optgroup>'; ?>
+                            </select>
+                            <small class="text-muted">The recipient will be notified by email and can view the complaint on their dashboard.</small>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-info">
+                            <i class="fas fa-share-square mr-1"></i>Forward
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

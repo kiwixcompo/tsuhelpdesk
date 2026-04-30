@@ -162,7 +162,110 @@ function getImagePath($image) {
     include 'includes/dashboard_header.php';
     ?>
     <div class="container main-content">
-        
+
+        <!-- Forwarded Student Result Verification Complaints -->
+        <?php
+        $fwd_student_i4 = [];
+        $fwd_sc_col_i4 = mysqli_query($conn, "SHOW COLUMNS FROM student_complaints LIKE 'forwarded_to'");
+        if ($fwd_sc_col_i4 && mysqli_num_rows($fwd_sc_col_i4) > 0) {
+            $my_uid_i4 = (int)$_SESSION['user_id'];
+            $fwd_sc_sql_i4 = "SELECT sc.*, CONCAT(s.first_name,' ',s.last_name) AS student_name,
+                                     s.registration_number, s.email
+                              FROM student_complaints sc
+                              JOIN students s ON sc.student_id = s.student_id
+                              WHERE sc.forwarded_to = ?
+                              ORDER BY sc.created_at DESC";
+            if ($fsc_i4 = mysqli_prepare($conn, $fwd_sc_sql_i4)) {
+                mysqli_stmt_bind_param($fsc_i4, 'i', $my_uid_i4);
+                mysqli_stmt_execute($fsc_i4);
+                $fwd_student_i4 = mysqli_fetch_all(mysqli_stmt_get_result($fsc_i4), MYSQLI_ASSOC);
+                mysqli_stmt_close($fsc_i4);
+            }
+        }
+        ?>
+        <?php if (!empty($fwd_student_i4)): ?>
+        <div class="card mb-4 border-info">
+            <div class="card-header" style="background:#d1ecf1;color:#0c5460">
+                <h5 class="mb-0">
+                    <i class="fas fa-graduation-cap mr-2"></i>
+                    Student Complaints Forwarded to You
+                    <span class="badge badge-info ml-2"><?php echo count($fwd_student_i4); ?></span>
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Student</th>
+                                <th>Course</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        <?php foreach ($fwd_student_i4 as $fsc_row):
+                            $sc_colors = ['Pending'=>'warning','Under Review'=>'info','Resolved'=>'success','Rejected'=>'danger'];
+                            $sc_bc = $sc_colors[$fsc_row['status']] ?? 'secondary';
+                        ?>
+                            <tr>
+                                <td><?php echo $fsc_row['complaint_id']; ?></td>
+                                <td>
+                                    <strong><?php echo htmlspecialchars($fsc_row['student_name']); ?></strong><br>
+                                    <small class="text-muted"><?php echo htmlspecialchars($fsc_row['registration_number']); ?></small>
+                                </td>
+                                <td>
+                                    <strong><?php echo htmlspecialchars($fsc_row['course_code']); ?></strong><br>
+                                    <small><?php echo htmlspecialchars($fsc_row['course_title']); ?></small>
+                                </td>
+                                <td><span class="badge badge-secondary"><?php echo htmlspecialchars($fsc_row['complaint_type']); ?></span></td>
+                                <td><span class="badge badge-<?php echo $sc_bc; ?>"><?php echo htmlspecialchars($fsc_row['status']); ?></span></td>
+                                <td><?php echo date('M d, Y', strtotime($fsc_row['created_at'])); ?></td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-info"
+                                            data-toggle="modal"
+                                            data-target="#fwdScI4Modal<?php echo $fsc_row['complaint_id']; ?>">
+                                        <i class="fas fa-eye"></i> View
+                                    </button>
+                                </td>
+                            </tr>
+                            <div class="modal fade" id="fwdScI4Modal<?php echo $fsc_row['complaint_id']; ?>" tabindex="-1">
+                                <div class="modal-dialog"><div class="modal-content">
+                                    <div class="modal-header" style="background:#d1ecf1;color:#0c5460">
+                                        <h5 class="modal-title"><i class="fas fa-graduation-cap mr-2"></i>Student Complaint #<?php echo $fsc_row['complaint_id']; ?></h5>
+                                        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <p><strong>Student:</strong> <?php echo htmlspecialchars($fsc_row['student_name']); ?> (<?php echo htmlspecialchars($fsc_row['registration_number']); ?>)</p>
+                                        <p><strong>Email:</strong> <?php echo htmlspecialchars($fsc_row['email']); ?></p>
+                                        <p><strong>Course:</strong> <?php echo htmlspecialchars($fsc_row['course_code'] . ' — ' . $fsc_row['course_title']); ?></p>
+                                        <p><strong>Type:</strong> <?php echo htmlspecialchars($fsc_row['complaint_type']); ?></p>
+                                        <p><strong>Status:</strong> <span class="badge badge-<?php echo $sc_bc; ?>"><?php echo htmlspecialchars($fsc_row['status']); ?></span></p>
+                                        <p><strong>Submitted:</strong> <?php echo date('M d, Y H:i', strtotime($fsc_row['created_at'])); ?></p>
+                                        <?php if (!empty($fsc_row['description'])): ?>
+                                            <hr><p><strong>Description:</strong></p>
+                                            <p class="text-muted"><?php echo nl2br(htmlspecialchars($fsc_row['description'])); ?></p>
+                                        <?php endif; ?>
+                                        <?php if (!empty($fsc_row['admin_response'])): ?>
+                                            <hr><div class="alert alert-success"><strong>Admin Response:</strong><br><?php echo nl2br(htmlspecialchars($fsc_row['admin_response'])); ?></div>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                    </div>
+                                </div></div>
+                            </div>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <div class="card mb-4">
             <div class="card-header bg-primary text-white">
                 <h4 class="mb-0">Search & Filter i4Cus Complaints</h4>
