@@ -108,19 +108,29 @@ while($row = mysqli_fetch_assoc($result_archived)){
 
 // ── Fetch ICT complaints forwarded to this i4Cus staff member ──
 // ict_complaints_admin.php stores forwarded_to as the user's full_name (VARCHAR)
+// Match by full_name OR by any name variant for this user_id
 $fwd_ict_i4 = [];
 $i4_name = $_SESSION['full_name'] ?? '';
-if (!empty($i4_name)) {
+$i4_uid  = (int)($_SESSION['user_id'] ?? 0);
+if (!empty($i4_name) || $i4_uid > 0) {
     $fwd_ict_col = mysqli_query($conn, "SHOW COLUMNS FROM student_ict_complaints LIKE 'forwarded_to'");
     if ($fwd_ict_col && mysqli_num_rows($fwd_ict_col) > 0) {
+        // Get all possible name values for this user from the users table
+        $name_row = mysqli_query($conn, "SELECT full_name FROM users WHERE user_id = $i4_uid LIMIT 1");
+        $db_name  = ($nr = mysqli_fetch_assoc($name_row)) ? $nr['full_name'] : $i4_name;
+
+        // Match by db full_name, session full_name, OR by user_id via join
         $fwd_ict_sql = "SELECT c.*, CONCAT(s.first_name,' ',s.last_name) AS student_name,
                                s.registration_number, s.email
                         FROM student_ict_complaints c
                         JOIN students s ON c.student_id = s.student_id
+                        LEFT JOIN users u ON u.full_name = c.forwarded_to AND u.role_id = 5
                         WHERE c.forwarded_to = ?
+                           OR c.forwarded_to = ?
+                           OR (u.user_id = ?)
                         ORDER BY c.created_at DESC";
         if ($fi = mysqli_prepare($conn, $fwd_ict_sql)) {
-            mysqli_stmt_bind_param($fi, 's', $i4_name);
+            mysqli_stmt_bind_param($fi, 'ssi', $db_name, $i4_name, $i4_uid);
             mysqli_stmt_execute($fi);
             $fwd_ict_i4 = mysqli_fetch_all(mysqli_stmt_get_result($fi), MYSQLI_ASSOC);
             mysqli_stmt_close($fi);
