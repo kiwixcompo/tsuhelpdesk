@@ -35,6 +35,24 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_complaint'])){
             if($academic_sessions[$i] === 'other' && !empty($custom_sessions[$i])) {
                 $session_to_use = $custom_sessions[$i];
             }
+
+            // Duplicate check: same student, course, type, session, still open
+            $dup_sql = "SELECT complaint_id FROM student_complaints
+                        WHERE student_id = ? AND course_code = ? AND complaint_type = ?
+                          AND academic_session = ? AND status NOT IN ('Resolved','Rejected')
+                        LIMIT 1";
+            if ($dup_stmt = mysqli_prepare($conn, $dup_sql)) {
+                mysqli_stmt_bind_param($dup_stmt, 'isss',
+                    $_SESSION["student_id"], $course_codes[$i], $complaint_types[$i], $session_to_use);
+                mysqli_stmt_execute($dup_stmt);
+                $dup_res = mysqli_stmt_get_result($dup_stmt);
+                $is_dup = mysqli_num_rows($dup_res) > 0;
+                mysqli_stmt_close($dup_stmt);
+                if ($is_dup) {
+                    $errors[] = "A complaint for " . htmlspecialchars($course_codes[$i]) . " (" . htmlspecialchars($complaint_types[$i]) . ", " . htmlspecialchars($session_to_use) . ") is already pending. Please await a response.";
+                    continue;
+                }
+            }
             
             $sql = "INSERT INTO student_complaints (student_id, course_code, course_title, complaint_type, academic_session, description) VALUES (?, ?, ?, ?, ?, ?)";
             

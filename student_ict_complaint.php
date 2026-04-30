@@ -375,6 +375,22 @@ async function submitComplaint(escalated, node, btn) {
 
         if (data.success) {
             showSuccess(data, escalated, node);
+        } else if (data.duplicate) {
+            // Show duplicate warning inline instead of alert
+            const c = document.getElementById('wizardContent');
+            document.getElementById('trail').innerHTML = '';
+            document.getElementById('progressBar').style.width = '100%';
+            document.getElementById('stepLabel').textContent = 'Already Submitted';
+            c.innerHTML = `<div class="success-screen">
+                <div class="success-icon" style="color:#e67e22"><i class="fas fa-exclamation-circle"></i></div>
+                <h5 style="color:#e67e22">Complaint Already Submitted</h5>
+                <p class="text-muted">${esc(data.message)}</p>
+                <div class="action-row justify-content-center mt-3">
+                    <a href="student_dashboard.php" class="btn-primary-custom" style="text-decoration:none">
+                        <i class="fas fa-eye mr-1"></i>View My Complaints
+                    </a>
+                </div>
+            </div>`;
         } else {
             alert('Error: ' + (data.message || 'Could not submit complaint'));
             if (btn) { btn.disabled = false; btn.innerHTML = originalLabel; }

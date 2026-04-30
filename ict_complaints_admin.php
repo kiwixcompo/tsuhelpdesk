@@ -212,9 +212,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['forward_complaint']))
             $success_msg = "Complaint #$cid forwarded to $forward_to.";
 
             // Email the department user if they have on_forwarded enabled
-            $dept_user = mysqli_query($conn,
-                "SELECT user_id, email FROM users WHERE full_name = ? AND role_id IN (5,6,7) LIMIT 1",
-            );
             // Use prepared statement for safety
             $du_stmt = mysqli_prepare($conn,
                 "SELECT user_id, email FROM users WHERE full_name = ? AND role_id IN (5,6,7) LIMIT 1");

@@ -98,6 +98,29 @@ if ($fw_check && mysqli_num_rows($fw_check) === 0) {
     mysqli_query($conn, "ALTER TABLE student_ict_complaints ADD COLUMN forwarded_to VARCHAR(255) NULL DEFAULT NULL");
 }
 
+// ── Duplicate check: same student, same node, still open ─
+$dup_stmt = mysqli_prepare($conn,
+    "SELECT complaint_id, status, created_at
+     FROM student_ict_complaints
+     WHERE student_id = ? AND node_id = ?
+       AND status NOT IN ('Resolved', 'Rejected')
+     ORDER BY created_at DESC LIMIT 1");
+if ($dup_stmt) {
+    mysqli_stmt_bind_param($dup_stmt, 'is', $student_id, $node_id);
+    mysqli_stmt_execute($dup_stmt);
+    $dup_row = mysqli_fetch_assoc(mysqli_stmt_get_result($dup_stmt));
+    mysqli_stmt_close($dup_stmt);
+    if ($dup_row) {
+        echo json_encode([
+            'success'   => false,
+            'duplicate' => true,
+            'message'   => 'You have already submitted this complaint (Complaint #' . $dup_row['complaint_id'] . ', Status: ' . $dup_row['status'] . '). Please await a response before submitting again.',
+            'complaint_id' => $dup_row['complaint_id'],
+        ]);
+        exit;
+    }
+}
+
 $sql = "INSERT INTO student_ict_complaints
         (student_id, node_id, node_label, category, path_summary, description,
          action_type, auto_response, escalated, extra_fields, attachment_path, status, admin_response, created_at)

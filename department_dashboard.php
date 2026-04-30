@@ -41,6 +41,23 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["submit_complaint"])){
     $is_payment_related = 0; // Departments don't handle payment issues
     
     if(!empty($complaint_text)){
+        // ── Duplicate check: same department, same text, within 24 hours, still open ──
+        $dup_check = mysqli_prepare($conn,
+            "SELECT complaint_id, status FROM complaints
+             WHERE lodged_by = ? AND complaint_text = ?
+               AND status NOT IN ('Treated')
+               AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+             LIMIT 1");
+        if ($dup_check) {
+            mysqli_stmt_bind_param($dup_check, 'is', $_SESSION['user_id'], $complaint_text);
+            mysqli_stmt_execute($dup_check);
+            $dup_row = mysqli_fetch_assoc(mysqli_stmt_get_result($dup_check));
+            mysqli_stmt_close($dup_check);
+            if ($dup_row) {
+                $error_message = "You have already submitted this complaint (ID: #" . $dup_row['complaint_id'] . ", Status: " . $dup_row['status'] . "). Please await a response before submitting again.";
+                goto skip_complaint_insert;
+            }
+        }
         // Handle image uploads
         $image_paths = array();
         if(isset($_FILES["images"]) && !empty($_FILES["images"]["name"][0])){
@@ -131,6 +148,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["submit_complaint"])){
     } else {
         $error_message = "Please enter complaint details.";
     }
+    skip_complaint_insert:
 }
 
 // Get department's complaints
