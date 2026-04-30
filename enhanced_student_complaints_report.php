@@ -40,12 +40,20 @@ $faculty_filter = $_GET['faculty_id'] ?? '';
 $department_filter = $_GET['department_id'] ?? '';
 $session_filter = $_GET['academic_session'] ?? '';
 $status_filter = $_GET['status'] ?? '';
+$show_archive  = isset($_GET['archive']) && $_GET['archive'] === '1';
 $complaint_type_filter = $_GET['complaint_type'] ?? '';
 
 // Build query conditions
 $where_conditions = ["1=1"];
 $params = [];
 $param_types = "";
+
+// Default: hide resolved/rejected unless explicitly filtered or archive view
+if (empty($status_filter) && !$show_archive) {
+    $where_conditions[] = "sc.status NOT IN ('Resolved', 'Rejected')";
+} elseif ($show_archive && empty($status_filter)) {
+    $where_conditions[] = "sc.status IN ('Resolved', 'Rejected')";
+}
 
 if (!empty($date_from)) {
     $where_conditions[] = "sc.created_at >= ?";
@@ -460,6 +468,32 @@ if ($fwd_users) {
                     </div>
                 </div>
             </form>
+        </div>
+
+        <!-- Active / Archive toggle -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <?php if (!$show_archive): ?>
+                    <span class="badge badge-primary" style="font-size:.9rem;padding:.5rem 1rem">
+                        <i class="fas fa-list mr-1"></i>Active Queue
+                    </span>
+                    <a href="?<?php echo http_build_query(array_merge($_GET, ['archive'=>'1'])); ?>"
+                       class="btn btn-sm btn-outline-secondary ml-2">
+                        <i class="fas fa-archive mr-1"></i>View Archive (Resolved/Rejected)
+                    </a>
+                <?php else: ?>
+                    <span class="badge badge-secondary" style="font-size:.9rem;padding:.5rem 1rem">
+                        <i class="fas fa-archive mr-1"></i>Archive View
+                    </span>
+                    <a href="enhanced_student_complaints_report.php"
+                       class="btn btn-sm btn-outline-primary ml-2">
+                        <i class="fas fa-list mr-1"></i>Back to Active Queue
+                    </a>
+                <?php endif; ?>
+            </div>
+            <a href="api/export_student_complaints.php?<?php echo http_build_query($_GET); ?>" class="btn btn-sm btn-success">
+                <i class="fas fa-download mr-1"></i>Export
+            </a>
         </div>
 
         <!-- Complaints Grouped Accordion -->

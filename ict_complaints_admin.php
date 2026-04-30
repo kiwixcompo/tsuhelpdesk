@@ -272,9 +272,17 @@ $f_status   = $_GET['status']   ?? '';
 $f_category = $_GET['category'] ?? '';
 $f_from     = $_GET['date_from'] ?? '';
 $f_to       = $_GET['date_to']   ?? '';
+$show_archive = isset($_GET['archive']) && $_GET['archive'] === '1';
 
 $where = ['1=1'];
 $params = []; $types = '';
+
+// Default: show only active (non-resolved) unless archive view or explicit status filter
+if (empty($f_status) && !$show_archive) {
+    $where[] = "c.status NOT IN ('Resolved', 'Rejected', 'Auto-Resolved')";
+} elseif ($show_archive && empty($f_status)) {
+    $where[] = "c.status IN ('Resolved', 'Rejected', 'Auto-Resolved')";
+}
 
 if ($f_status)   { $where[] = 'c.status=?';   $params[] = $f_status;   $types .= 's'; }
 if ($f_category) { $where[] = 'c.category=?'; $params[] = $f_category; $types .= 's'; }
@@ -457,7 +465,23 @@ include 'includes/dashboard_header.php';
 <!-- Table -->
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0"><i class="fas fa-headset mr-2"></i>ICT Complaints (<?php echo count($complaints); ?>)</h5>
+        <h5 class="mb-0"><i class="fas fa-headset mr-2"></i>
+            <?php echo $show_archive ? 'Archived ICT Complaints' : 'Active ICT Complaints Queue'; ?>
+            (<?php echo count($complaints); ?>)
+        </h5>
+        <div>
+            <?php if (!$show_archive): ?>
+                <a href="?<?php echo http_build_query(array_merge($_GET, ['archive'=>'1'])); ?>"
+                   class="btn btn-sm btn-outline-secondary">
+                    <i class="fas fa-archive mr-1"></i>View Archive
+                </a>
+            <?php else: ?>
+                <a href="ict_complaints_admin.php"
+                   class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-list mr-1"></i>Back to Active Queue
+                </a>
+            <?php endif; ?>
+        </div>
     </div>
     <div class="table-responsive">
         <table class="table table-hover mb-0">
