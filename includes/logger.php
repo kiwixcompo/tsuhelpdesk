@@ -65,8 +65,8 @@ function app_mail($to, $subject, $message, $headers = '') {
             $mail->SMTPAuth   = true;
             $mail->Username   = 'support@tsuniversity.edu.ng';
             $mail->Password   = 'Password@321';
-            $mail->SMTPSecure = 'ssl';
-            $mail->Port       = 465;
+            $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+            $mail->Port       = 587;
 
             $mail->setFrom('noreply@tsuniversity.edu.ng', 'TSU ICT Help Desk');
             $mail->addAddress($to);

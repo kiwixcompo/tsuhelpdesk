@@ -87,10 +87,15 @@ $create_sql = "CREATE TABLE IF NOT EXISTS student_ict_complaints (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
 mysqli_query($conn, $create_sql); // silently create if missing
 
-// Add attachment_path column if it doesn't already exist
+// Add attachment_path column if it doesn't already exist — suppress duplicate column error
 $col_check = mysqli_query($conn, "SHOW COLUMNS FROM student_ict_complaints LIKE 'attachment_path'");
 if ($col_check && mysqli_num_rows($col_check) === 0) {
     mysqli_query($conn, "ALTER TABLE student_ict_complaints ADD COLUMN attachment_path VARCHAR(255) NULL AFTER extra_fields");
+}
+// Also add forwarded_to if missing
+$fw_check = mysqli_query($conn, "SHOW COLUMNS FROM student_ict_complaints LIKE 'forwarded_to'");
+if ($fw_check && mysqli_num_rows($fw_check) === 0) {
+    mysqli_query($conn, "ALTER TABLE student_ict_complaints ADD COLUMN forwarded_to VARCHAR(255) NULL DEFAULT NULL");
 }
 
 $sql = "INSERT INTO student_ict_complaints

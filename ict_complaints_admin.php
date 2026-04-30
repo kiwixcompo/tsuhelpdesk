@@ -66,21 +66,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_feedback'])) {
                     $msg   = "Your ICT complaint regarding \"$topic\" has been updated. Status: $status.";
                     if ($response) $msg .= " Response from ICT: " . substr($response, 0, 150);
 
-                    // Ensure notifications table exists
+                    // Ensure notifications table exists (complaint_type column optional)
                     mysqli_query($conn, "CREATE TABLE IF NOT EXISTS student_notifications (
                         notification_id INT AUTO_INCREMENT PRIMARY KEY,
                         student_id INT NOT NULL, complaint_id INT NULL,
-                        complaint_type VARCHAR(20) NOT NULL DEFAULT 'ict',
                         title VARCHAR(255) NOT NULL, message TEXT NOT NULL,
                         is_read TINYINT(1) DEFAULT 0,
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         INDEX idx_s (student_id)
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+                    // Add complaint_type column if it doesn't exist yet
+                    $ct_check = mysqli_query($conn, "SHOW COLUMNS FROM student_notifications LIKE 'complaint_type'");
+                    if ($ct_check && mysqli_num_rows($ct_check) === 0) {
+                        mysqli_query($conn, "ALTER TABLE student_notifications ADD COLUMN complaint_type VARCHAR(20) NOT NULL DEFAULT 'ict' AFTER complaint_id");
+                    }
 
                     $notif = mysqli_prepare($conn,
                         "INSERT INTO student_notifications
-                         (student_id, complaint_id, complaint_type, title, message, created_at)
-                         VALUES (?, ?, 'ict', ?, ?, NOW())");
+                         (student_id, complaint_id, title, message, created_at)
+                         VALUES (?, ?, ?, ?, NOW())");
                     if ($notif) {
                         mysqli_stmt_bind_param($notif, 'iiss', $sid, $cid, $title, $msg);
                         mysqli_stmt_execute($notif);

@@ -39,8 +39,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                     mysqli_stmt_bind_result($stmt, $id, $username, $hashed_password, $role_id, $full_name);
                     if(mysqli_stmt_fetch($stmt)){
                         if(md5($password) === $hashed_password){
-                            session_start();
-                            
+                            // session already started at top of file
                             $_SESSION["loggedin"] = true;
                             $_SESSION["user_id"] = $id;
                             $_SESSION["username"] = $username;

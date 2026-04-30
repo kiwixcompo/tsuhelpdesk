@@ -23,14 +23,14 @@ if(isset($_GET['registered']) && $_GET['registered'] == '1'){
 
 if($_SERVER["REQUEST_METHOD"] == "POST"){
     // Validate registration number
-    if(empty(trim($_POST["registration_number"]))){
+    if(empty(trim($_POST["registration_number"] ?? ''))){
         $registration_number_err = "Please enter your registration number.";
     } else{
         $registration_number = trim($_POST["registration_number"]);
     }
     
     // Validate password
-    if(empty(trim($_POST["password"]))){
+    if(empty(trim($_POST["password"] ?? ''))){
         $password_err = "Please enter your password.";
     } else{
         $password = trim($_POST["password"]);
