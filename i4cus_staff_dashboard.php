@@ -160,6 +160,9 @@ function getImagePath($image) {
             margin-right: 10px;
             object-fit: contain;
         }
+        /* Prevent modal flicker */
+        body.modal-open { overflow: auto !important; padding-right: 0 !important; }
+        .modal-dialog { margin: 5vh auto; }
     </style>
 </head>
 <body>
@@ -179,12 +182,12 @@ function getImagePath($image) {
 
         <!-- ICT Complaints Forwarded to This Staff Member -->
         <?php if (!empty($fwd_ict_i4)): ?>
-        <div class="card mb-4 border-warning">
-            <div class="card-header" style="background:#fff3cd;color:#856404">
+        <div class="card mb-4" style="border-left:4px solid #1e3c72">
+            <div class="card-header" style="background:linear-gradient(135deg,#1e3c72,#2a5298);color:#fff">
                 <h5 class="mb-0">
                     <i class="fas fa-share-square mr-2"></i>
                     ICT Complaints Forwarded to You
-                    <span class="badge badge-warning ml-2"><?php echo count($fwd_ict_i4); ?></span>
+                    <span class="badge badge-light text-primary ml-2"><?php echo count($fwd_ict_i4); ?></span>
                 </h5>
             </div>
             <div class="card-body p-0">
@@ -218,69 +221,13 @@ function getImagePath($image) {
                                 <td><span class="badge badge-<?php echo $fi_bc; ?>"><?php echo htmlspecialchars($fi_row['status']); ?></span></td>
                                 <td><?php echo date('M d, Y', strtotime($fi_row['created_at'])); ?></td>
                                 <td>
-                                    <button class="btn btn-sm btn-outline-warning"
+                                    <button class="btn btn-sm btn-outline-primary"
                                             data-toggle="modal"
                                             data-target="#fwdIctI4Modal<?php echo $fi_row['complaint_id']; ?>">
                                         <i class="fas fa-eye"></i> View
                                     </button>
                                 </td>
                             </tr>
-                            <!-- View modal -->
-                            <div class="modal fade" id="fwdIctI4Modal<?php echo $fi_row['complaint_id']; ?>" tabindex="-1">
-                                <div class="modal-dialog modal-lg"><div class="modal-content">
-                                    <div class="modal-header" style="background:#fff3cd;color:#856404">
-                                        <h5 class="modal-title"><i class="fas fa-headset mr-2"></i>ICT Complaint #<?php echo $fi_row['complaint_id']; ?></h5>
-                                        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
-                                    </div>
-                                    <div class="modal-body">
-                                        <div class="row">
-                                            <div class="col-md-6">
-                                                <p><strong>Student:</strong> <?php echo htmlspecialchars($fi_row['student_name']); ?></p>
-                                                <p><strong>Reg No:</strong> <?php echo htmlspecialchars($fi_row['registration_number']); ?></p>
-                                                <p><strong>Email:</strong> <?php echo htmlspecialchars($fi_row['email']); ?></p>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <p><strong>Category:</strong> <?php echo htmlspecialchars($fi_row['category']); ?></p>
-                                                <p><strong>Issue:</strong> <?php echo htmlspecialchars($fi_row['node_label']); ?></p>
-                                                <p><strong>Status:</strong> <span class="badge badge-<?php echo $fi_bc; ?>"><?php echo htmlspecialchars($fi_row['status']); ?></span></p>
-                                                <p><strong>Submitted:</strong> <?php echo date('M d, Y H:i', strtotime($fi_row['created_at'])); ?></p>
-                                            </div>
-                                        </div>
-                                        <?php if (!empty($fi_row['path_summary'])): ?>
-                                            <hr><p><strong>Path:</strong> <small class="text-muted"><?php echo htmlspecialchars($fi_row['path_summary']); ?></small></p>
-                                        <?php endif; ?>
-                                        <?php
-                                        $fi_desc = $fi_row['description'] ?? '';
-                                        $fi_pos  = strpos($fi_desc, "\n\nAdditional details: ");
-                                        $fi_add  = $fi_pos !== false ? substr($fi_desc, $fi_pos + 22) : '';
-                                        if ($fi_add): ?>
-                                            <hr><p><strong>Additional Details:</strong></p>
-                                            <p class="text-muted"><?php echo nl2br(htmlspecialchars($fi_add)); ?></p>
-                                        <?php endif; ?>
-                                        <?php
-                                        $fi_extra = [];
-                                        if (!empty($fi_row['extra_fields'])) $fi_extra = json_decode($fi_row['extra_fields'], true) ?: [];
-                                        $fi_display = array_filter($fi_extra, fn($v,$k) => !empty($v) && $k !== 'jamb_login_password', ARRAY_FILTER_USE_BOTH);
-                                        if (!empty($fi_display)): ?>
-                                            <hr><p><strong>Details Provided:</strong></p>
-                                            <table class="table table-sm table-bordered" style="font-size:.88rem">
-                                                <?php foreach ($fi_display as $k => $v): ?>
-                                                <tr><td class="font-weight-bold" style="width:40%;background:#f8f9fa"><?php echo htmlspecialchars(ucwords(str_replace('_',' ',$k))); ?></td><td><?php echo htmlspecialchars($v); ?></td></tr>
-                                                <?php endforeach; ?>
-                                            </table>
-                                        <?php endif; ?>
-                                        <?php if (!empty($fi_row['attachment_path'])): ?>
-                                            <hr><p><strong>Attachment:</strong> <a href="<?php echo htmlspecialchars($fi_row['attachment_path']); ?>" target="_blank" class="btn btn-sm btn-info"><i class="fas fa-file-download mr-1"></i>View File</a></p>
-                                        <?php endif; ?>
-                                        <?php if ($fi_row['admin_response']): ?>
-                                            <hr><div class="alert alert-success"><strong>ICT Response:</strong><br><?php echo nl2br(htmlspecialchars($fi_row['admin_response'])); ?></div>
-                                        <?php endif; ?>
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                                    </div>
-                                </div></div>
-                            </div>
                         <?php endforeach; ?>
                         </tbody>
                     </table>
@@ -288,6 +235,68 @@ function getImagePath($image) {
             </div>
         </div>
         <?php endif; ?>
+
+        <!-- ICT forwarded modals — outside the table to prevent flicker -->
+        <?php foreach ($fwd_ict_i4 as $fi_row):
+            $fi_colors = ['Pending'=>'warning','Under Review'=>'info','Resolved'=>'success','Rejected'=>'danger','Auto-Resolved'=>'secondary'];
+            $fi_bc = $fi_colors[$fi_row['status']] ?? 'secondary';
+        ?>
+        <div class="modal fade" id="fwdIctI4Modal<?php echo $fi_row['complaint_id']; ?>" tabindex="-1">
+            <div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content">
+                <div class="modal-header" style="background:linear-gradient(135deg,#1e3c72,#2a5298);color:#fff">
+                    <h5 class="modal-title"><i class="fas fa-headset mr-2"></i>ICT Complaint #<?php echo $fi_row['complaint_id']; ?></h5>
+                    <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Student:</strong> <?php echo htmlspecialchars($fi_row['student_name']); ?></p>
+                            <p><strong>Reg No:</strong> <?php echo htmlspecialchars($fi_row['registration_number']); ?></p>
+                            <p><strong>Email:</strong> <?php echo htmlspecialchars($fi_row['email']); ?></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Category:</strong> <?php echo htmlspecialchars($fi_row['category']); ?></p>
+                            <p><strong>Issue:</strong> <?php echo htmlspecialchars($fi_row['node_label']); ?></p>
+                            <p><strong>Status:</strong> <span class="badge badge-<?php echo $fi_bc; ?>"><?php echo htmlspecialchars($fi_row['status']); ?></span></p>
+                            <p><strong>Submitted:</strong> <?php echo date('M d, Y H:i', strtotime($fi_row['created_at'])); ?></p>
+                        </div>
+                    </div>
+                    <?php if (!empty($fi_row['path_summary'])): ?>
+                        <hr><p><strong>Path:</strong> <small class="text-muted"><?php echo htmlspecialchars($fi_row['path_summary']); ?></small></p>
+                    <?php endif; ?>
+                    <?php
+                    $fi_desc = $fi_row['description'] ?? '';
+                    $fi_pos  = strpos($fi_desc, "\n\nAdditional details: ");
+                    $fi_add  = $fi_pos !== false ? substr($fi_desc, $fi_pos + 22) : '';
+                    if ($fi_add): ?>
+                        <hr><p><strong>Additional Details:</strong></p>
+                        <p class="text-muted"><?php echo nl2br(htmlspecialchars($fi_add)); ?></p>
+                    <?php endif; ?>
+                    <?php
+                    $fi_extra = [];
+                    if (!empty($fi_row['extra_fields'])) $fi_extra = json_decode($fi_row['extra_fields'], true) ?: [];
+                    $fi_display = array_filter($fi_extra, fn($v,$k) => !empty($v) && $k !== 'jamb_login_password', ARRAY_FILTER_USE_BOTH);
+                    if (!empty($fi_display)): ?>
+                        <hr><p><strong>Details Provided:</strong></p>
+                        <table class="table table-sm table-bordered" style="font-size:.88rem">
+                            <?php foreach ($fi_display as $k => $v): ?>
+                            <tr><td class="font-weight-bold" style="width:40%;background:#f8f9fa"><?php echo htmlspecialchars(ucwords(str_replace('_',' ',$k))); ?></td><td><?php echo htmlspecialchars($v); ?></td></tr>
+                            <?php endforeach; ?>
+                        </table>
+                    <?php endif; ?>
+                    <?php if (!empty($fi_row['attachment_path'])): ?>
+                        <hr><p><strong>Attachment:</strong> <a href="<?php echo htmlspecialchars($fi_row['attachment_path']); ?>" target="_blank" class="btn btn-sm btn-info"><i class="fas fa-file-download mr-1"></i>View File</a></p>
+                    <?php endif; ?>
+                    <?php if ($fi_row['admin_response']): ?>
+                        <hr><div class="alert alert-success"><strong>ICT Response:</strong><br><?php echo nl2br(htmlspecialchars($fi_row['admin_response'])); ?></div>
+                    <?php endif; ?>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </div>
+            </div></div>
+        </div>
+        <?php endforeach; ?>
 
         <div class="card mb-4">
         <?php
