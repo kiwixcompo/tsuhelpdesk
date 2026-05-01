@@ -612,7 +612,7 @@ include 'includes/dashboard_header.php';
                 <h5 class="modal-title" id="feedbackModalTitle">Respond to Complaint</h5>
                 <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
             </div>
-            <form method="POST" id="feedbackForm">
+            <form method="POST" id="feedbackForm" enctype="multipart/form-data">
                 <div class="modal-body">
                     <input type="hidden" name="complaint_id" id="feedbackComplaintId">
                     <p class="text-muted small" id="feedbackMeta"></p>
@@ -627,12 +627,19 @@ include 'includes/dashboard_header.php';
                     </div>
                     <div class="form-group">
                         <label class="font-weight-bold">Response to Student</label>
-                        <textarea name="admin_response" id="feedbackResponse" class="form-control" rows="5"
+                        <textarea name="admin_response" id="feedbackResponse" class="form-control manual-clipboard-init" rows="5"
                                   placeholder="Your response will be shown to the student. Your identity will not be revealed."></textarea>
                         <small class="text-muted">
                             <i class="fas fa-shield-alt mr-1"></i>
                             Your name will not be shown to the student.
                         </small>
+                    </div>
+                    <div class="form-group">
+                        <label class="font-weight-bold">Attach Images <span class="text-muted font-weight-normal">(optional)</span></label>
+                        <input type="file" id="feedbackImages" name="response_images[]"
+                               class="form-control-file" accept="image/*" multiple>
+                        <small class="text-muted"><i class="fas fa-info-circle mr-1"></i>Tip: You can also paste screenshots with Ctrl+V in the response box above</small>
+                        <div id="feedbackImgPreview" class="d-flex flex-wrap mt-2"></div>
                     </div>
                     <div class="form-group">
                         <label class="font-weight-bold">
@@ -739,6 +746,7 @@ include 'includes/dashboard_header.php';
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script src="js/clipboard-paste.js"></script>
 <script>
 $(function() {
     // Auto-dismiss alerts
@@ -822,7 +830,31 @@ $(function() {
         $('#forwardSearch').val('');
         // Reset forward dropdown to show all options
         $('#feedbackForwardTo option').show();
+        $('#feedbackImages').val('');
+        $('#feedbackImgPreview').empty();
         $('#sharedFeedbackModal').modal('show');
+
+        // Init clipboard paste after modal opens
+        $('#sharedFeedbackModal').one('shown.bs.modal', function() {
+            const ta = document.getElementById('feedbackResponse');
+            const fi = document.getElementById('feedbackImages');
+            if (ta && fi && typeof initializeClipboardPaste === 'function') {
+                initializeClipboardPaste(ta, fi);
+            }
+        });
+    });
+
+    // Image preview for feedback form
+    $('#feedbackImages').on('change', function() {
+        const preview = $('#feedbackImgPreview');
+        preview.empty();
+        Array.from(this.files).forEach(file => {
+            const reader = new FileReader();
+            reader.onload = e => {
+                preview.append(`<div class="mr-2 mb-2"><img src="${e.target.result}" style="max-height:80px;max-width:100px;border-radius:4px;border:1px solid #dee2e6"></div>`);
+            };
+            reader.readAsDataURL(file);
+        });
     });
 
     // Live search for forward dropdown

@@ -320,6 +320,11 @@ function getImagePath($path) {
                                     <a href="ict_complaints_admin.php" class="btn btn-sm btn-outline-primary">
                                         <i class="fas fa-external-link-alt mr-1"></i>View in ICT
                                     </a>
+                                    <button class="btn btn-sm btn-outline-success btn-respond-ict-pay"
+                                            data-id="<?php echo $fi['complaint_id']; ?>"
+                                            data-label="<?php echo htmlspecialchars($fi['node_label'], ENT_QUOTES); ?>">
+                                        <i class="fas fa-reply"></i> Respond
+                                    </button>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -635,6 +640,7 @@ function getImagePath($path) {
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="js/clipboard-paste.js"></script>
     
     <!-- Gallery Modal -->
     <div class="modal fade" id="galleryModal" tabindex="-1" role="dialog" aria-hidden="true">
@@ -768,6 +774,121 @@ function getImagePath($path) {
     </script>
     
     <!-- End of page scripts -->
+
+    <!-- Respond to Forwarded ICT Complaint Modal -->
+    <div class="modal fade" id="respondIctModalPay" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="fas fa-reply mr-2"></i>Respond to Complaint</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-3" id="respondIctMetaPay"></p>
+                    <input type="hidden" id="respondIctIdPay">
+                    <div class="form-group">
+                        <label class="font-weight-bold">Status</label>
+                        <select id="respondIctStatusPay" class="form-control">
+                            <option value="Under Review">Under Review</option>
+                            <option value="Resolved">Resolved</option>
+                            <option value="Rejected">Rejected</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="font-weight-bold">Response / Feedback</label>
+                        <textarea id="respondIctTextPay" class="form-control manual-clipboard-init" rows="4"
+                                  placeholder="Type your response here. You can also paste screenshots with Ctrl+V."></textarea>
+                        <small class="text-muted"><i class="fas fa-info-circle mr-1"></i>Tip: Paste screenshots directly with Ctrl+V while typing</small>
+                    </div>
+                    <div class="form-group">
+                        <label class="font-weight-bold">Attach Images <span class="text-muted font-weight-normal">(optional)</span></label>
+                        <input type="file" id="respondIctImagesPay" name="response_images[]"
+                               class="form-control-file" accept="image/*" multiple>
+                        <small class="text-muted">JPG, PNG, GIF — max 5MB each</small>
+                    </div>
+                    <div id="respondIctPreviewPay" class="d-flex flex-wrap mt-2"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="respondIctSubmitPay">
+                        <i class="fas fa-paper-plane mr-1"></i>Send Response
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    $(document).on('click', '.btn-respond-ict-pay', function() {
+        const id    = $(this).data('id');
+        const label = $(this).data('label');
+        $('#respondIctIdPay').val(id);
+        $('#respondIctMetaPay').html('<strong>Complaint #' + id + ':</strong> ' + $('<div>').text(label).html());
+        $('#respondIctTextPay').val('');
+        $('#respondIctStatusPay').val('Under Review');
+        $('#respondIctPreviewPay').empty();
+        $('#respondIctImagesPay').val('');
+        $('#respondIctModalPay').modal('show');
+
+        $('#respondIctModalPay').one('shown.bs.modal', function() {
+            const ta = document.getElementById('respondIctTextPay');
+            const fi = document.getElementById('respondIctImagesPay');
+            if (ta && fi && typeof initializeClipboardPaste === 'function') {
+                initializeClipboardPaste(ta, fi);
+            }
+        });
+    });
+
+    $('#respondIctImagesPay').on('change', function() {
+        const preview = $('#respondIctPreviewPay');
+        preview.empty();
+        Array.from(this.files).forEach(file => {
+            const reader = new FileReader();
+            reader.onload = e => {
+                preview.append(`<div class="mr-2 mb-2"><img src="${e.target.result}" style="max-height:80px;max-width:100px;border-radius:4px;border:1px solid #dee2e6"></div>`);
+            };
+            reader.readAsDataURL(file);
+        });
+    });
+
+    $('#respondIctSubmitPay').click(function() {
+        const id       = $('#respondIctIdPay').val();
+        const response = $('#respondIctTextPay').val().trim();
+        const status   = $('#respondIctStatusPay').val();
+        const btn      = $(this);
+
+        if (!response) { alert('Please enter a response.'); return; }
+
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i>Sending…');
+
+        const fd = new FormData();
+        fd.append('complaint_id', id);
+        fd.append('response', response);
+        fd.append('status', status);
+        Array.from(document.getElementById('respondIctImagesPay').files).forEach(f => fd.append('response_images[]', f));
+
+        $.ajax({
+            url: 'api/ict_complaint_respond.php',
+            type: 'POST',
+            data: fd,
+            processData: false,
+            contentType: false,
+            success: function(res) {
+                if (res.success) {
+                    $('#respondIctModalPay').modal('hide');
+                    location.reload();
+                } else {
+                    alert('Error: ' + (res.message || 'Failed'));
+                    btn.prop('disabled', false).html('<i class="fas fa-paper-plane mr-1"></i>Send Response');
+                }
+            },
+            error: function() {
+                alert('Request failed.');
+                btn.prop('disabled', false).html('<i class="fas fa-paper-plane mr-1"></i>Send Response');
+            }
+        });
+    });
+    </script>
 </body>
 </html>
 
