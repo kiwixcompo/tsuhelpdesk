@@ -11,6 +11,61 @@ require_once "config.php";
 require_once "includes/notifications.php";
 require_once "calendar_helper.php";
 
+// ── Handle bulk complaint submission ─────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_bulk_complaint'])) {
+    $complaint_text = trim($_POST['complaint_text'] ?? '');
+    $student_ids_raw = trim($_POST['student_ids'] ?? '');
+    $department_name = trim($_POST['department_name'] ?? '');
+    $is_urgent = isset($_POST['is_urgent']) ? 1 : 0;
+
+    if (!empty($complaint_text) && !empty($student_ids_raw)) {
+        // Parse student IDs — one per line
+        $student_ids = array_filter(array_map('trim', explode("\n", $student_ids_raw)));
+
+        // Handle image uploads
+        $image_paths = [];
+        if (!empty($_FILES['images']['name'][0])) {
+            $upload_dir = 'uploads/';
+            if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
+            $allowed_ext = ['jpg','jpeg','png','gif'];
+            foreach ($_FILES['images']['tmp_name'] as $k => $tmp) {
+                if ($_FILES['images']['error'][$k] !== UPLOAD_ERR_OK) continue;
+                $ext = strtolower(pathinfo($_FILES['images']['name'][$k], PATHINFO_EXTENSION));
+                if (!in_array($ext, $allowed_ext)) continue;
+                if ($_FILES['images']['size'][$k] > 5 * 1024 * 1024) continue;
+                $fname = uniqid() . '.' . $ext;
+                if (move_uploaded_file($tmp, $upload_dir . $fname)) {
+                    $image_paths[] = $fname;
+                }
+            }
+        }
+        $images_str = !empty($image_paths) ? implode(',', $image_paths) : null;
+
+        // Build the full complaint text including all student IDs
+        $full_text = $complaint_text . "\n\nAffected Students:\n" . implode("\n", $student_ids);
+
+        $inserted = 0;
+        $sql = "INSERT INTO complaints (student_id, complaint_text, image_path, lodged_by, is_urgent, is_i4cus, department_name, staff_name, created_at)
+                VALUES (?, ?, ?, ?, ?, 1, ?, ?, NOW())";
+        if ($stmt = mysqli_prepare($conn, $sql)) {
+            $staff_name = $_SESSION['full_name'] ?? 'i4Cus Staff';
+            // Lodge one complaint entry containing all student IDs
+            $combined_id = implode(', ', $student_ids);
+            mysqli_stmt_bind_param($stmt, 'sssiiiss',
+                $combined_id, $full_text, $images_str,
+                $_SESSION['user_id'], $is_urgent,
+                $department_name, $staff_name);
+            if (mysqli_stmt_execute($stmt)) $inserted = 1;
+            mysqli_stmt_close($stmt);
+        }
+
+        if ($inserted) {
+            header("Location: i4cus_staff_dashboard.php?bulk_lodged=1");
+            exit;
+        }
+    }
+}
+
 // Initialize notification count
 $notification_count = 0;
 if (function_exists('getUnreadNotificationCount')) {
@@ -180,7 +235,20 @@ function getImagePath($image) {
     ?>
     <div class="container main-content">
 
-        <!-- ICT Complaints Forwarded to This Staff Member -->
+        <?php if (isset($_GET['treated'])): ?>
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle mr-2"></i>
+            <strong>Complaint marked as Treated.</strong> It has been moved to the Archive tab below.
+            <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+        </div>
+        <?php endif; ?>
+        <?php if (isset($_GET['bulk_lodged'])): ?>
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-users mr-2"></i>
+            <strong>Bulk complaint lodged successfully.</strong>
+            <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+        </div>
+        <?php endif; ?>
         <?php if (!empty($fwd_ict_i4)): ?>
         <div class="card mb-4" style="border-left:4px solid #1e3c72">
             <div class="card-header" style="background:linear-gradient(135deg,#1e3c72,#2a5298);color:#fff">
@@ -402,25 +470,118 @@ function getImagePath($image) {
         </div>
         <?php endif; ?>
 
+        <!-- Bulk Complaint Lodging -->
+        <div class="card mb-4">
+            <div class="card-header bg-success text-white d-flex justify-content-between align-items-center"
+                 style="cursor:pointer" data-toggle="collapse" data-target="#bulkComplaintBody">
+                <h5 class="mb-0"><i class="fas fa-users mr-2"></i>Lodge Bulk Complaint (Multiple Students)</h5>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+            <div class="collapse" id="bulkComplaintBody">
+                <div class="card-body">
+                    <p class="text-muted small mb-3">
+                        Use this form to lodge the same type of complaint for multiple students at once.
+                        Enter each student's Matric Number or JAMB Number on a separate line.
+                    </p>
+                    <form method="post" action="i4cus_staff_dashboard.php" enctype="multipart/form-data" id="bulkComplaintForm">
+                        <input type="hidden" name="submit_bulk_complaint" value="1">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="font-weight-bold">Issue / Complaint Description *</label>
+                                    <textarea name="complaint_text" class="form-control" rows="4" required
+                                              placeholder="Describe the common issue affecting all listed students..."></textarea>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="font-weight-bold">
+                                        Student Matric / JAMB Numbers *
+                                        <button type="button" class="btn btn-xs btn-outline-secondary ml-2 copy-bulk-ids-btn"
+                                                style="font-size:.7rem;padding:.1rem .4rem">
+                                            <i class="fas fa-copy mr-1"></i>Copy All
+                                        </button>
+                                    </label>
+                                    <textarea name="student_ids" id="bulkStudentIds" class="form-control" rows="4" required
+                                              placeholder="Enter one ID per line:&#10;TSU/FAG/CSC/22/0001&#10;12345678901&#10;TSU/FAG/CSC/22/0002"></textarea>
+                                    <small class="text-muted">One Matric Number or JAMB Number per line</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label class="font-weight-bold">Department</label>
+                                    <input type="text" name="department_name" class="form-control"
+                                           placeholder="e.g., Computer Science">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label class="font-weight-bold">Attach Supporting Image (optional)</label>
+                                    <input type="file" name="images[]" class="form-control-file" accept="image/*" multiple>
+                                </div>
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end">
+                                <div class="form-group w-100">
+                                    <div class="custom-control custom-checkbox mb-2">
+                                        <input type="checkbox" class="custom-control-input" id="bulkUrgent" name="is_urgent">
+                                        <label class="custom-control-label" for="bulkUrgent">
+                                            <i class="fas fa-exclamation-triangle text-danger mr-1"></i>Mark as Urgent
+                                        </label>
+                                    </div>
+                                    <button type="submit" class="btn btn-success btn-block">
+                                        <i class="fas fa-paper-plane mr-2"></i>Lodge Bulk Complaint
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
         <div class="card mb-4">
             <div class="card-header bg-primary text-white">
-                <h4 class="mb-0">Search & Filter i4Cus Complaints</h4>
+                <h4 class="mb-0"><i class="fas fa-filter mr-2"></i>Search & Filter i4Cus Complaints</h4>
             </div>
             <div class="card-body">
-                <form method="get" class="form-inline mb-3">
-                    <div class="form-group mr-2">
-                        <input type="text" name="search_id" class="form-control" placeholder="Student ID" value="<?php echo htmlspecialchars($search_id ?? ''); ?>">
+                <form method="get">
+                    <div class="form-row align-items-end">
+                        <div class="col-md-3 mb-2">
+                            <label class="small font-weight-bold">Student ID</label>
+                            <input type="text" name="search_id" class="form-control" placeholder="Search by Student ID" value="<?php echo htmlspecialchars($search_id ?? ''); ?>">
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <label class="small font-weight-bold">Status</label>
+                            <select name="filter_status" class="form-control">
+                                <option value="">All Statuses</option>
+                                <option value="Pending" <?php if($filter_status=='Pending') echo 'selected'; ?>>Pending</option>
+                                <option value="Treated" <?php if($filter_status=='Treated') echo 'selected'; ?>>Treated</option>
+                                <option value="Needs More Info" <?php if($filter_status=='Needs More Info') echo 'selected'; ?>>Needs More Info</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <label class="small font-weight-bold">Date</label>
+                            <input type="date" name="filter_date" class="form-control" value="<?php echo htmlspecialchars($filter_date ?? ''); ?>">
+                        </div>
+                        <div class="col-md-3 mb-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary mr-2">
+                                <i class="fas fa-search mr-1"></i>Search
+                            </button>
+                            <a href="i4cus_staff_dashboard.php" class="btn btn-secondary">
+                                <i class="fas fa-times mr-1"></i>Clear
+                            </a>
+                        </div>
                     </div>
-                    <div class="form-group mr-2">
-                        <select name="filter_status" class="form-control">
-                            <option value="">All Statuses</option>
-                            <option value="Pending" <?php if($filter_status=='Pending') echo 'selected'; ?>>Pending</option>
-                            <option value="Treated" <?php if($filter_status=='Treated') echo 'selected'; ?>>Treated</option>
-                            <option value="Needs More Info" <?php if($filter_status=='Needs More Info') echo 'selected'; ?>>Needs More Info</option>
-                        </select>
-                    </div>
-                    <button type="submit" class="btn btn-info">Search/Filter</button>
                 </form>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="fas fa-filter mr-2"></i>Search & Filter i4Cus Complaints</h4>
+            </div>
                 <ul class="nav nav-tabs mb-3" id="complaintTabs" role="tablist">
                     <li class="nav-item">
                         <a class="nav-link active" id="active-tab" data-toggle="tab" href="#active" role="tab">Active Complaints</a>
@@ -458,6 +619,27 @@ function getImagePath($image) {
                                             <td><?php echo htmlspecialchars($row['staff_name'] ?? ''); ?></td>
                                             <td><?php echo htmlspecialchars($row['lodged_by_name'] ?? ''); ?></td>
                                             <td style="width: 30%;"><?php echo htmlspecialchars($row['complaint_text'] ?? ''); ?>
+<?php
+// Extract matric/JAMB numbers from complaint text for bulk copy
+$complaint_text = $row['complaint_text'] ?? '';
+// Look for lines that appear to be ID numbers (matric or JAMB patterns)
+preg_match_all('/\b(?:TSU\/[A-Z]{2,}\/[A-Z]{2,}\/\d{2}\/\d{3,}|\d{8,11}|[A-Z]{2,}\/\d{4}\/\d{3,})\b/i', $complaint_text, $id_matches);
+$found_ids = array_unique($id_matches[0] ?? []);
+if (!empty($found_ids)):
+?>
+<div class="mt-2">
+    <div class="d-flex align-items-center flex-wrap" id="ids-container-<?php echo $row['complaint_id']; ?>">
+        <?php foreach ($found_ids as $fid): ?>
+        <span class="badge badge-light border mr-1 mb-1" style="font-family:monospace;font-size:.8rem"><?php echo htmlspecialchars($fid); ?></span>
+        <?php endforeach; ?>
+    </div>
+    <button type="button" class="btn btn-xs btn-outline-secondary mt-1 copy-ids-btn"
+            data-ids="<?php echo htmlspecialchars(implode("\n", $found_ids), ENT_QUOTES); ?>"
+            style="font-size:.75rem;padding:.15rem .5rem">
+        <i class="fas fa-copy mr-1"></i>Copy All IDs
+    </button>
+</div>
+<?php endif; ?>
 <?php if (!empty($row['image_path'])): ?>
     <div class="mt-2 d-flex flex-wrap">
         <?php foreach(explode(",", $row['image_path']) as $img): ?>
@@ -660,6 +842,38 @@ function getImagePath($image) {
     </div>
 
     <script>
+    // ── Copy all IDs button (complaint rows) ─────────────
+    $(document).on('click', '.copy-ids-btn', function() {
+        const ids = $(this).data('ids');
+        copyToClipboard(ids, $(this));
+    });
+
+    // ── Copy all IDs from bulk form textarea ─────────────
+    $(document).on('click', '.copy-bulk-ids-btn', function() {
+        const ids = $('#bulkStudentIds').val().trim();
+        if (!ids) { alert('No IDs to copy — enter some IDs first.'); return; }
+        copyToClipboard(ids, $(this));
+    });
+
+    function copyToClipboard(text, btn) {
+        const orig = btn.html();
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(text).then(() => {
+                btn.html('<i class="fas fa-check mr-1"></i>Copied!').addClass('btn-success').removeClass('btn-outline-secondary');
+                setTimeout(() => btn.html(orig).removeClass('btn-success').addClass('btn-outline-secondary'), 2000);
+            });
+        } else {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            btn.html('<i class="fas fa-check mr-1"></i>Copied!').addClass('btn-success').removeClass('btn-outline-secondary');
+            setTimeout(() => btn.html(orig).removeClass('btn-success').addClass('btn-outline-secondary'), 2000);
+        }
+    }
+
     // Respond to forwarded ICT complaint
     $(document).on('click', '.btn-respond-ict', function() {
         const id    = $(this).data('id');

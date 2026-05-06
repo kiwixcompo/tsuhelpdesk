@@ -275,7 +275,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['treat_complaint']) &&
         mysqli_stmt_bind_param($stmt, "sssii", $status, $feedback, $feedback_images_str, $handler_id, $complaint_id);
         if (mysqli_stmt_execute($stmt)) {
             mysqli_stmt_close($stmt);
-            header("Location: view_complaint.php?id=$complaint_id&success=feedback_given&i4cus=1");
+            // If treated, go back to dashboard to see remaining complaints
+            if ($status === 'Treated') {
+                header("Location: i4cus_staff_dashboard.php?treated=1");
+            } else {
+                header("Location: view_complaint.php?id=$complaint_id&success=feedback_given&i4cus=1");
+            }
             exit;
         } else {
             $error_message = "Failed to update complaint. Please try again.";
