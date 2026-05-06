@@ -100,7 +100,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["bulk_delete"])){
 if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["update_complaint"])){
     $complaint_id = $_POST["complaint_id"];
     $status = $_POST["status"];
-    $feedback = trim($_POST["feedback"]);
+    $feedback = trim(is_array($_POST["feedback"] ?? '') ? implode("\n", $_POST["feedback"]) : ($_POST["feedback"] ?? ''));
     $feedback_type = !empty($_POST["feedback_type"]) ? $_POST["feedback_type"] : NULL;
     $is_urgent = isset($_POST["is_urgent"]) ? 1 : 0;
     $is_payment_related = isset($_POST["is_payment_related"]) ? 1 : 0;

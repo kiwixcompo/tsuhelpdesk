@@ -132,7 +132,9 @@ $where_clause_active = $where_active ? 'WHERE ' . implode(' AND ', $where_active
 $where_clause_archived = $where_archived ? 'WHERE ' . implode(' AND ', $where_archived) : '';
 
 // Fetch paginated active complaints with lodger name
-$sql_active = "SELECT c.*, u.full_name as lodged_by_name 
+$sql_active = "SELECT c.*, u.full_name as lodged_by_name,
+               COALESCE(c.department_name, '') as department_name,
+               COALESCE(c.staff_name, '') as staff_name
                FROM complaints c 
                LEFT JOIN users u ON c.lodged_by = u.user_id 
                $where_clause_active 
@@ -150,7 +152,9 @@ $total_active = ($row = mysqli_fetch_assoc($result_count)) ? $row['total'] : 0;
 $total_pages = ceil($total_active / $per_page);
 
 // Fetch archived complaints (all treated) with lodger name
-$sql_archived = "SELECT c.*, u.full_name as lodged_by_name 
+$sql_archived = "SELECT c.*, u.full_name as lodged_by_name,
+                COALESCE(c.department_name, '') as department_name,
+                COALESCE(c.staff_name, '') as staff_name
                 FROM complaints c 
                 LEFT JOIN users u ON c.lodged_by = u.user_id 
                 $where_clause_archived 
