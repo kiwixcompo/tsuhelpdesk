@@ -509,6 +509,26 @@ if(isset($_GET['show_previous']) && $_GET['show_previous'] == '1') {
         mysqli_stmt_close($stmt);
     }
 }
+
+// ── Fetch treated complaints (i4cus/payment handled) for admin archive view ──
+$treated_complaints = [];
+if ($_SESSION["role_id"] == 1) { // Admin only
+    $treated_sql = "SELECT c.*, 
+                    u1.full_name as handler_name, u1.role_id as handler_role,
+                    u2.full_name as lodger_name
+                    FROM complaints c
+                    LEFT JOIN users u1 ON c.handled_by = u1.user_id
+                    LEFT JOIN users u2 ON c.lodged_by = u2.user_id
+                    WHERE c.status = 'Treated'
+                    ORDER BY c.updated_at DESC
+                    LIMIT 100";
+    $treated_result = mysqli_query($conn, $treated_sql);
+    if ($treated_result) {
+        while ($row = mysqli_fetch_assoc($treated_result)) {
+            $treated_complaints[] = $row;
+        }
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -736,6 +756,107 @@ if(isset($_GET['show_previous']) && $_GET['show_previous'] == '1') {
         <div class="alert alert-success alert-dismissible fade show">
             <i class="fas fa-users mr-2"></i><strong>Bulk complaint lodged successfully.</strong>
             <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+        </div>
+        <?php endif; ?>
+
+        <?php if ($_SESSION["role_id"] == 1 && !empty($treated_complaints)): ?>
+        <!-- Treated Complaints Archive (i4Cus / Payment Admin handled) -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center"
+                 style="background:linear-gradient(135deg,#495057,#6c757d);color:#fff;cursor:pointer"
+                 data-toggle="collapse" data-target="#treatedArchiveBody">
+                <h5 class="mb-0">
+                    <i class="fas fa-archive mr-2"></i>
+                    Treated Complaints Archive
+                    <span class="badge badge-light text-dark ml-2"><?php echo count($treated_complaints); ?></span>
+                </h5>
+                <small class="opacity-75">Handled by i4Cus Staff &amp; Payment Admin — click to expand</small>
+            </div>
+            <div class="collapse" id="treatedArchiveBody">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Student ID</th>
+                                <th>Complaint</th>
+                                <th>Handled By</th>
+                                <th>Feedback</th>
+                                <th>Treated On</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        <?php foreach ($treated_complaints as $tc):
+                            $role_labels = [5=>'i4Cus Staff', 6=>'Payment Admin', 1=>'Admin', 3=>'Director', 8=>'Deputy Director'];
+                            $handler_role_label = $role_labels[$tc['handler_role'] ?? 0] ?? 'Staff';
+                        ?>
+                            <tr>
+                                <td><?php echo $tc['complaint_id']; ?></td>
+                                <td>
+                                    <strong><?php echo htmlspecialchars($tc['student_id'] ?? ''); ?></strong>
+                                    <?php if (!empty($tc['department_name'])): ?>
+                                    <br><small class="text-muted"><?php echo htmlspecialchars($tc['department_name']); ?></small>
+                                    <?php endif; ?>
+                                </td>
+                                <td style="max-width:250px">
+                                    <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:250px"
+                                         title="<?php echo htmlspecialchars($tc['complaint_text'] ?? ''); ?>">
+                                        <?php echo htmlspecialchars(substr($tc['complaint_text'] ?? '', 0, 80)); ?>
+                                        <?php if (strlen($tc['complaint_text'] ?? '') > 80) echo '…'; ?>
+                                    </div>
+                                    <?php if ($tc['is_i4cus']): ?>
+                                        <span class="badge badge-info" style="font-size:.7rem">i4Cus</span>
+                                    <?php endif; ?>
+                                    <?php if ($tc['is_payment_related']): ?>
+                                        <span class="badge badge-warning" style="font-size:.7rem">Payment</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <strong><?php echo htmlspecialchars($tc['handler_name'] ?? 'Unknown'); ?></strong><br>
+                                    <small class="badge badge-secondary"><?php echo $handler_role_label; ?></small>
+                                </td>
+                                <td style="max-width:200px">
+                                    <?php if (!empty($tc['feedback'])): ?>
+                                        <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px"
+                                             title="<?php echo htmlspecialchars($tc['feedback']); ?>">
+                                            <?php echo htmlspecialchars(substr($tc['feedback'], 0, 60)); ?>
+                                            <?php if (strlen($tc['feedback']) > 60) echo '…'; ?>
+                                        </div>
+                                    <?php else: ?>
+                                        <span class="text-muted small">No feedback text</span>
+                                    <?php endif; ?>
+                                    <?php if (!empty($tc['feedback_images'])): ?>
+                                        <?php $fb_imgs = array_filter(explode(',', $tc['feedback_images'])); ?>
+                                        <div class="mt-1">
+                                            <?php foreach (array_slice($fb_imgs, 0, 3) as $fimg): ?>
+                                            <a href="public_image.php?img=<?php echo urlencode(basename($fimg)); ?>" target="_blank">
+                                                <img src="public_image.php?img=<?php echo urlencode(basename($fimg)); ?>"
+                                                     style="height:32px;width:32px;object-fit:cover;border-radius:3px;border:1px solid #dee2e6;margin-right:2px"
+                                                     alt="feedback image">
+                                            </a>
+                                            <?php endforeach; ?>
+                                            <?php if (count($fb_imgs) > 3): ?>
+                                                <small class="text-muted">+<?php echo count($fb_imgs) - 3; ?> more</small>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <small><?php echo date('M d, Y H:i', strtotime($tc['updated_at'] ?? $tc['created_at'])); ?></small>
+                                </td>
+                                <td>
+                                    <a href="view_complaint.php?id=<?php echo $tc['complaint_id']; ?>"
+                                       class="btn btn-sm btn-outline-secondary">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
         <?php endif; ?>
         
