@@ -105,6 +105,46 @@ if (!isset($_SESSION['email']) || !isset($_SESSION['phone']) || empty($_SESSION[
     }
 }
 
+// Process bulk complaint submission (admin/ICT staff only)
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["submit_bulk_complaint"]) && in_array($_SESSION["role_id"], [1, 3, 8])) {
+    $complaint_text = trim($_POST['complaint_text'] ?? '');
+    $student_ids_raw = trim($_POST['student_ids'] ?? '');
+    $department_name = trim($_POST['department_name'] ?? '');
+    $is_urgent = isset($_POST['is_urgent']) ? 1 : 0;
+    $is_i4cus = isset($_POST['is_i4cus_bulk']) ? 1 : 0;
+
+    if (!empty($complaint_text) && !empty($student_ids_raw)) {
+        $student_ids = array_filter(array_map('trim', explode("\n", $student_ids_raw)));
+        $image_paths = [];
+        if (!empty($_FILES['bulk_images']['name'][0])) {
+            $upload_dir = 'uploads/';
+            if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
+            foreach ($_FILES['bulk_images']['tmp_name'] as $k => $tmp) {
+                if ($_FILES['bulk_images']['error'][$k] !== UPLOAD_ERR_OK) continue;
+                $ext = strtolower(pathinfo($_FILES['bulk_images']['name'][$k], PATHINFO_EXTENSION));
+                if (!in_array($ext, ['jpg','jpeg','png','gif'])) continue;
+                if ($_FILES['bulk_images']['size'][$k] > 5 * 1024 * 1024) continue;
+                $fname = uniqid() . '.' . $ext;
+                if (move_uploaded_file($tmp, $upload_dir . $fname)) $image_paths[] = $fname;
+            }
+        }
+        $images_str = !empty($image_paths) ? implode(',', $image_paths) : null;
+        $full_text = $complaint_text . "\n\nAffected Students:\n" . implode("\n", $student_ids);
+        $combined_id = implode(', ', $student_ids);
+        $staff_name = $_SESSION['full_name'] ?? 'Admin';
+
+        $sql = "INSERT INTO complaints (student_id, complaint_text, image_path, lodged_by, is_urgent, is_i4cus, department_name, staff_name, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+        if ($stmt = mysqli_prepare($conn, $sql)) {
+            mysqli_stmt_bind_param($stmt, 'sssiiiss', $combined_id, $full_text, $images_str, $_SESSION['user_id'], $is_urgent, $is_i4cus, $department_name, $staff_name);
+            if (mysqli_stmt_execute($stmt)) {
+                header("Location: dashboard.php?bulk_lodged=1");
+                exit;
+            }
+            mysqli_stmt_close($stmt);
+        }
+    }
+}
+
 // Process complaint submission
 if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["submit_complaint"])){
     $student_id = isset($_POST["student_id"]) ? trim($_POST["student_id"]) : null;
@@ -691,6 +731,13 @@ if(isset($_GET['show_previous']) && $_GET['show_previous'] == '1') {
                 </button>
             </div>
         <?php endif; ?>
+
+        <?php if (isset($_GET['bulk_lodged'])): ?>
+        <div class="alert alert-success alert-dismissible fade show">
+            <i class="fas fa-users mr-2"></i><strong>Bulk complaint lodged successfully.</strong>
+            <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+        </div>
+        <?php endif; ?>
         
 
         
@@ -769,6 +816,69 @@ if(isset($_GET['show_previous']) && $_GET['show_previous'] == '1') {
                             </div>
                             <button type="submit" name="submit_complaint" class="btn btn-primary">Submit Complaint</button>
                         </form>
+
+                        <?php if (in_array($_SESSION["role_id"], [1, 3, 8])): ?>
+                        <hr>
+                        <div class="mt-3">
+                            <button class="btn btn-outline-success btn-sm" type="button" data-toggle="collapse" data-target="#bulkComplaintSection">
+                                <i class="fas fa-users mr-1"></i>Lodge Bulk Complaint (Multiple Students)
+                            </button>
+                            <div class="collapse mt-3" id="bulkComplaintSection">
+                                <div class="card card-body bg-light">
+                                    <p class="text-muted small mb-3">Lodge the same complaint for multiple students at once. Enter one Matric/JAMB number per line.</p>
+                                    <form method="post" action="dashboard.php" enctype="multipart/form-data">
+                                        <input type="hidden" name="submit_bulk_complaint" value="1">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label class="font-weight-bold small">Issue Description *</label>
+                                                    <textarea name="complaint_text" class="form-control form-control-sm" rows="3" required placeholder="Describe the common issue..."></textarea>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label class="font-weight-bold small">
+                                                        Student Matric / JAMB Numbers *
+                                                        <button type="button" class="btn btn-xs btn-outline-secondary ml-1 copy-bulk-ids-btn-dash" style="font-size:.65rem;padding:.1rem .35rem">
+                                                            <i class="fas fa-copy"></i> Copy All
+                                                        </button>
+                                                    </label>
+                                                    <textarea name="student_ids" id="bulkStudentIdsDash" class="form-control form-control-sm" rows="3" required placeholder="One ID per line..."></textarea>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <div class="form-group">
+                                                    <label class="font-weight-bold small">Department</label>
+                                                    <input type="text" name="department_name" class="form-control form-control-sm" placeholder="e.g., Computer Science">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="form-group">
+                                                    <label class="font-weight-bold small">Attach Image (optional)</label>
+                                                    <input type="file" name="bulk_images[]" class="form-control-file" accept="image/*" multiple>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="form-check mb-2 mt-4">
+                                                    <input type="checkbox" class="form-check-input" id="bulkI4cus" name="is_i4cus_bulk">
+                                                    <label class="form-check-label small" for="bulkI4cus">Requires i4Cus handling</label>
+                                                </div>
+                                                <div class="form-check mb-2">
+                                                    <input type="checkbox" class="form-check-input" id="bulkUrgentDash" name="is_urgent">
+                                                    <label class="form-check-label small" for="bulkUrgentDash">Mark as Urgent</label>
+                                                </div>
+                                                <button type="submit" class="btn btn-success btn-sm btn-block">
+                                                    <i class="fas fa-paper-plane mr-1"></i>Lodge Bulk Complaint
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endif; ?>
 
                         <script>
                         function toggleComplaintType(checkbox) {

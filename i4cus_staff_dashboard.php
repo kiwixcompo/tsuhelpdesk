@@ -474,76 +474,7 @@ function getImagePath($image) {
         </div>
         <?php endif; ?>
 
-        <!-- Bulk Complaint Lodging -->
-        <div class="card mb-4">
-            <div class="card-header bg-success text-white d-flex justify-content-between align-items-center"
-                 style="cursor:pointer" data-toggle="collapse" data-target="#bulkComplaintBody">
-                <h5 class="mb-0"><i class="fas fa-users mr-2"></i>Lodge Bulk Complaint (Multiple Students)</h5>
-                <i class="fas fa-chevron-down"></i>
-            </div>
-            <div class="collapse" id="bulkComplaintBody">
-                <div class="card-body">
-                    <p class="text-muted small mb-3">
-                        Use this form to lodge the same type of complaint for multiple students at once.
-                        Enter each student's Matric Number or JAMB Number on a separate line.
-                    </p>
-                    <form method="post" action="i4cus_staff_dashboard.php" enctype="multipart/form-data" id="bulkComplaintForm">
-                        <input type="hidden" name="submit_bulk_complaint" value="1">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label class="font-weight-bold">Issue / Complaint Description *</label>
-                                    <textarea name="complaint_text" class="form-control" rows="4" required
-                                              placeholder="Describe the common issue affecting all listed students..."></textarea>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label class="font-weight-bold">
-                                        Student Matric / JAMB Numbers *
-                                        <button type="button" class="btn btn-xs btn-outline-secondary ml-2 copy-bulk-ids-btn"
-                                                style="font-size:.7rem;padding:.1rem .4rem">
-                                            <i class="fas fa-copy mr-1"></i>Copy All
-                                        </button>
-                                    </label>
-                                    <textarea name="student_ids" id="bulkStudentIds" class="form-control" rows="4" required
-                                              placeholder="Enter one ID per line:&#10;TSU/FAG/CSC/22/0001&#10;12345678901&#10;TSU/FAG/CSC/22/0002"></textarea>
-                                    <small class="text-muted">One Matric Number or JAMB Number per line</small>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label class="font-weight-bold">Department</label>
-                                    <input type="text" name="department_name" class="form-control"
-                                           placeholder="e.g., Computer Science">
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label class="font-weight-bold">Attach Supporting Image (optional)</label>
-                                    <input type="file" name="images[]" class="form-control-file" accept="image/*" multiple>
-                                </div>
-                            </div>
-                            <div class="col-md-4 d-flex align-items-end">
-                                <div class="form-group w-100">
-                                    <div class="custom-control custom-checkbox mb-2">
-                                        <input type="checkbox" class="custom-control-input" id="bulkUrgent" name="is_urgent">
-                                        <label class="custom-control-label" for="bulkUrgent">
-                                            <i class="fas fa-exclamation-triangle text-danger mr-1"></i>Mark as Urgent
-                                        </label>
-                                    </div>
-                                    <button type="submit" class="btn btn-success btn-block">
-                                        <i class="fas fa-paper-plane mr-2"></i>Lodge Bulk Complaint
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
+        <!-- Bulk Complaint Lodging removed — available on admin dashboard only -->
 
         <div class="card mb-4">
             <div class="card-header bg-primary text-white">
@@ -588,14 +519,24 @@ function getImagePath($image) {
             </div>
                 <ul class="nav nav-tabs mb-3" id="complaintTabs" role="tablist">
                     <li class="nav-item">
-                        <a class="nav-link active" id="active-tab" data-toggle="tab" href="#active" role="tab">Active Complaints</a>
+                        <a class="nav-link <?php echo !isset($_GET['treated']) ? 'active' : ''; ?>" id="active-tab" data-toggle="tab" href="#active" role="tab">
+                            Active Complaints
+                            <?php if ($total_active > 0): ?>
+                            <span class="badge badge-primary ml-1"><?php echo $total_active; ?></span>
+                            <?php endif; ?>
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" id="archive-tab" data-toggle="tab" href="#archive" role="tab">Archive</a>
+                        <a class="nav-link <?php echo isset($_GET['treated']) ? 'active' : ''; ?>" id="archive-tab" data-toggle="tab" href="#archive" role="tab">
+                            Archive
+                            <?php if (!empty($archived_complaints)): ?>
+                            <span class="badge badge-secondary ml-1"><?php echo count($archived_complaints); ?></span>
+                            <?php endif; ?>
+                        </a>
                     </li>
                 </ul>
                 <div class="tab-content" id="complaintTabsContent">
-                    <div class="tab-pane fade show active" id="active" role="tabpanel">
+                    <div class="tab-pane fade <?php echo !isset($_GET['treated']) ? 'show active' : ''; ?>" id="active" role="tabpanel">
                         <?php if (empty($active_complaints)): ?>
                             <div class="alert alert-info">
                                 No active i4Cus complaints found.
@@ -680,7 +621,7 @@ if (!empty($found_ids)):
                             <?php endif; ?>
                         <?php endif; ?>
                     </div>
-                    <div class="tab-pane fade" id="archive" role="tabpanel">
+                    <div class="tab-pane fade <?php echo isset($_GET['treated']) ? 'show active' : ''; ?>" id="archive" role="tabpanel">
                         <?php if (empty($archived_complaints)): ?>
                             <div class="alert alert-info">
                                 No archived i4Cus complaints found.
