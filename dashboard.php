@@ -366,7 +366,9 @@ if (!empty($filter_date)) {
     }
     
     // Only restrict to today or future if no date filters are applied and not searching
-    if (!$is_searching && empty($start_date) && empty($end_date) && $feedback_filter == 'all') {
+    // Admins see ALL active complaints regardless of date
+    if (!$is_searching && empty($start_date) && empty($end_date) && $feedback_filter == 'all'
+        && $_SESSION["role_id"] != 1) {
         $where_conditions[] = "DATE(c.created_at) >= ?";
         $params[] = $today;
         $param_types .= "s";
@@ -710,7 +712,7 @@ if ($_SESSION["role_id"] == 1) { // Admin only
     $pending_complaints = 0;
     $treated_complaints = 0;
     
-    // Count total complaints
+    // Count total complaints — always from DB, not filtered array
     $sql = "SELECT COUNT(*) as total FROM complaints";
     $result = mysqli_query($conn, $sql);
     if($row = mysqli_fetch_assoc($result)){
@@ -728,14 +730,14 @@ if ($_SESSION["role_id"] == 1) { // Admin only
     $sql = "SELECT COUNT(*) as total FROM complaints WHERE status = 'Treated'";
     $result = mysqli_query($conn, $sql);
     if($row = mysqli_fetch_assoc($result)){
-        $treated_complaints = $row['total'];
+        $treated_complaints_count = $row['total'];
     }
     
     // Set up quick stats
     $quick_stats = [
         ['number' => $total_complaints, 'label' => 'Total Complaints'],
         ['number' => $pending_complaints, 'label' => 'Pending'],
-        ['number' => $treated_complaints, 'label' => 'Resolved']
+        ['number' => $treated_complaints_count, 'label' => 'Resolved']
     ];
     
     include 'includes/dashboard_header.php';
