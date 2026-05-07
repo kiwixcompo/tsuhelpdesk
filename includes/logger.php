@@ -64,7 +64,7 @@ function app_mail($to, $subject, $message, $headers = '') {
             $mail->Host       = env('MAIL_HOST',     'smtp.gmail.com');
             $mail->SMTPAuth   = true;
             $mail->Username   = env('MAIL_USERNAME', 'complaints@tsuniversity.edu.ng');
-            $mail->Password   = env('MAIL_PASSWORD', '');
+            $mail->Password   = env('MAIL_PASSWORD', 'nkmmaojurbpkgsyo');
             $mail->SMTPSecure = (strtolower(env('MAIL_ENCRYPTION', 'tls')) === 'ssl')
                                 ? PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS
                                 : PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;

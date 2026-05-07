@@ -710,7 +710,7 @@ if ($_SESSION["role_id"] == 1) { // Admin only
     // Get quick stats for header
     $total_complaints = 0;
     $pending_complaints = 0;
-    $treated_complaints = 0;
+    $treated_complaints_header = 0;
     
     // Count total complaints — always from DB, not filtered array
     $sql = "SELECT COUNT(*) as total FROM complaints";
