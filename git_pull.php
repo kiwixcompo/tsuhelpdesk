@@ -16,7 +16,7 @@ define('GITHUB_REPO', 'tsuhelpdesk');
 define('GITHUB_BRANCH','main');
 
 // Files/dirs to NEVER overwrite on the server
-define('PRESERVE', ['config.php', 'config.local.php']);
+define('PRESERVE', ['config.php', 'config.local.php', '.env']);
 
 // Large vendor dirs to skip (already on server)
 define('SKIP_DIRS', ['PHPMailer', '.git', 'uploads', 'logs', 'node_modules']);

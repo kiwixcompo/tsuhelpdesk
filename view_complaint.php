@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 
 // Check if user is logged in
@@ -376,7 +376,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['treat_payment_complain
                     $message .= "Please login to the system to view the details.\n\n";
                     $message .= "Regards,\nTSU ICT Help Desk";
                     
-                    $headers = "From: noreply@tsuictcomplaint.com\r\n";
+                    $headers = "From: complaints@tsuniversity.edu.ng\r\n";
                     
                     app_mail($user_email, $subject, $message, $headers);
                 }

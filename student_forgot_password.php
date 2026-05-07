@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // Start output buffering to prevent header issues
 ob_start();
 
@@ -51,8 +51,8 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                             $message .= "For security reasons, please do not share this link with anyone.\n\n";
                             $message .= "Best regards,\nTSU ICT Help Desk Team\nTaraba State University";
                             
-                            $headers = "From: TSU ICT Help Desk <noreply@tsuniversity.edu.ng>\r\n";
-                            $headers .= "Reply-To: support@tsuniversity.edu.ng\r\n";
+                            $headers = "From: TSU ICT Help Desk <complaints@tsuniversity.edu.ng>\r\n";
+                            $headers .= "Reply-To: complaints@tsuniversity.edu.ng\r\n";
                             $headers .= "X-Mailer: PHP/" . phpversion() . "\r\n";
                             $headers .= "MIME-Version: 1.0\r\n";
                             $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";

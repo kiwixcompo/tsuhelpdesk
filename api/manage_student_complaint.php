@@ -61,8 +61,8 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                                 $message .= "Login URL: https://helpdesk.tsuniversity.ng/student_login.php\n\n";
                                 $message .= "Best regards,\nTSU ICT Help Desk Team";
                                 
-                                $headers = "From: TSU ICT Help Desk <noreply@tsuniversity.edu.ng>\r\n";
-                                $headers .= "Reply-To: support@tsuniversity.edu.ng\r\n";
+                                $headers = "From: TSU ICT Help Desk <complaints@tsuniversity.edu.ng>\r\n";
+                                $headers .= "Reply-To: complaints@tsuniversity.edu.ng\r\n";
                                 
                                 app_mail($to, $subject, $message, $headers);
                             }

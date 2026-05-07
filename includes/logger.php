@@ -61,16 +61,20 @@ function app_mail($to, $subject, $message, $headers = '') {
         $mail = new PHPMailer\PHPMailer\PHPMailer(true);
         try {
             $mail->isSMTP();
-            $mail->Host       = 'mail.tsuniversity.edu.ng';
+            $mail->Host       = env('MAIL_HOST',     'smtp.gmail.com');
             $mail->SMTPAuth   = true;
-            $mail->Username   = 'support@tsuniversity.edu.ng';
-            $mail->Password   = 'Password@321';
-            $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
-            $mail->Port       = 587;
+            $mail->Username   = env('MAIL_USERNAME', 'complaints@tsuniversity.edu.ng');
+            $mail->Password   = env('MAIL_PASSWORD', '');
+            $mail->SMTPSecure = (strtolower(env('MAIL_ENCRYPTION', 'tls')) === 'ssl')
+                                ? PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS
+                                : PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+            $mail->Port       = (int) env('MAIL_PORT', 587);
 
-            $mail->setFrom('noreply@tsuniversity.edu.ng', 'TSU ICT Help Desk');
+            $fromAddr = env('MAIL_FROM_ADDRESS', 'complaints@tsuniversity.edu.ng');
+            $fromName = env('MAIL_FROM_NAME',    'TSU ICT Help Desk');
+            $mail->setFrom($fromAddr, $fromName);
             $mail->addAddress($to);
-            $mail->addReplyTo('support@tsuniversity.edu.ng', 'TSU Support');
+            $mail->addReplyTo($fromAddr, $fromName);
             $mail->isHTML(false);
             $mail->Subject = $subject;
             $mail->Body    = $message;

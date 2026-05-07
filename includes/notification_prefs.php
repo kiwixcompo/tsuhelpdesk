@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * Notification Preferences Helper
  * Provides functions to check user email preferences and send conditional emails.
@@ -66,7 +66,7 @@ function sendDeptEmailIfAllowed($conn, int $user_id, string $pref_key,
     $prefs = getUserNotifPrefs($conn, $user_id);
     if (empty($prefs[$pref_key])) return; // preference is off
 
-    $headers  = "From: TSU ICT Help Desk <noreply@tsuniversity.edu.ng>\r\n";
-    $headers .= "Reply-To: support@tsuniversity.edu.ng\r\n";
+    $headers  = "From: TSU ICT Help Desk <complaints@tsuniversity.edu.ng>\r\n";
+    $headers .= "Reply-To: complaints@tsuniversity.edu.ng\r\n";
     @app_mail($to, $subject, $body, $headers);
 }

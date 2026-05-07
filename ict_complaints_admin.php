@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 ob_start();
 session_start();
 require_once "config.php";
@@ -114,8 +114,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_feedback'])) {
                             $body .= "https://helpdesk.tsuniversity.ng/student_login.php\n\n";
                             $body .= "Best regards,\nTSU ICT Help Desk Team";
 
-                            $headers  = "From: TSU ICT Help Desk <noreply@tsuniversity.edu.ng>\r\n";
-                            $headers .= "Reply-To: support@tsuniversity.edu.ng\r\n";
+                            $headers  = "From: TSU ICT Help Desk <complaints@tsuniversity.edu.ng>\r\n";
+                            $headers .= "Reply-To: complaints@tsuniversity.edu.ng\r\n";
                             @app_mail($to, $subject, $body, $headers);
                         }
                         mysqli_stmt_close($email_sql);

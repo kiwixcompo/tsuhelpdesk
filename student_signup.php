@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 ob_start();
 session_start();
 require_once "config.php";
@@ -190,8 +190,8 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                                 $welcome_message .= "Login URL: https://helpdesk.tsuniversity.ng/student_login.php\n\n";
                                 $welcome_message .= "Best regards,\nTSU ICT Help Desk Team";
                                 
-                                $welcome_headers = "From: TSU ICT Help Desk <noreply@tsuniversity.edu.ng>\r\n";
-                                $welcome_headers .= "Reply-To: support@tsuniversity.edu.ng\r\n";
+                                $welcome_headers = "From: TSU ICT Help Desk <complaints@tsuniversity.edu.ng>\r\n";
+                                $welcome_headers .= "Reply-To: complaints@tsuniversity.edu.ng\r\n";
                                 $welcome_headers .= "X-Mailer: PHP/" . phpversion() . "\r\n";
                                 $welcome_headers .= "MIME-Version: 1.0\r\n";
                                 $welcome_headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
@@ -257,10 +257,10 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                                             $welcome_message .= "If you have any questions or need assistance, please don't hesitate to contact our support team.\n\n";
                                             $welcome_message .= "Best regards,\nTSU ICT Help Desk Team\n";
                                             $welcome_message .= "Taraba State University\n";
-                                            $welcome_message .= "Email: support@tsuniversity.edu.ng";
+                                            $welcome_message .= "Email: complaints@tsuniversity.edu.ng";
                                             
-                                            $welcome_headers = "From: TSU ICT Help Desk <noreply@tsuniversity.edu.ng>\r\n";
-                                            $welcome_headers .= "Reply-To: support@tsuniversity.edu.ng\r\n";
+                                            $welcome_headers = "From: TSU ICT Help Desk <complaints@tsuniversity.edu.ng>\r\n";
+                                            $welcome_headers .= "Reply-To: complaints@tsuniversity.edu.ng\r\n";
                                             $welcome_headers .= "X-Mailer: PHP/" . phpversion() . "\r\n";
                                             $welcome_headers .= "MIME-Version: 1.0\r\n";
                                             $welcome_headers .= "Content-Type: text/plain; charset=UTF-8\r\n";

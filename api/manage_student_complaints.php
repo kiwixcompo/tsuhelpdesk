@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 require_once "../config.php";
 require_once "../includes/notification_prefs.php";
@@ -237,8 +237,8 @@ function forwardComplaint($conn) {
                      . "Type        : {$comp['complaint_type']}\n\n"
                      . "Log in to review:\nhttps://helpdesk.tsuniversity.ng/\n\n"
                      . "Best regards,\nTSU ICT Help Desk";
-            $headers = "From: TSU ICT Help Desk <noreply@tsuniversity.edu.ng>\r\n"
-                     . "Reply-To: support@tsuniversity.edu.ng\r\n";
+            $headers = "From: TSU ICT Help Desk <complaints@tsuniversity.edu.ng>\r\n"
+                     . "Reply-To: complaints@tsuniversity.edu.ng\r\n";
 
             if (function_exists('sendDeptEmailIfAllowed')) {
                 sendDeptEmailIfAllowed($conn, (int)$target['user_id'], 'on_forwarded',
