@@ -1,4 +1,7 @@
 # Configuration files with sensitive data
+config.php
+config.local.php
+.env
 
 # Log files
 logs/*
@@ -34,7 +37,9 @@ cache/
 *.cache
 
 # Environment files
-
+.env
+.env.local
+.env.production
 
 # Database dumps (except the main structure files)
 *.sql
