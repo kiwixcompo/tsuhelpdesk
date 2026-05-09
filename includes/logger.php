@@ -3,6 +3,22 @@
 // Included by config.php on every request.
 // Creates logs/error.log automatically if missing or deleted.
 
+// Ensure env() is available even when logger.php is included
+// before config.php has loaded env.php (e.g. old server config.php)
+if (!function_exists('env')) {
+    // Try to load env.php from the same includes/ directory
+    $__env_file = __DIR__ . '/env.php';
+    if (file_exists($__env_file)) {
+        require_once $__env_file;
+    } else {
+        // Inline fallback so logger never crashes
+        function env(string $key, $default = null) {
+            $val = $_ENV[$key] ?? getenv($key);
+            return ($val !== false && $val !== null) ? $val : $default;
+        }
+    }
+}
+
 define('APP_LOG', __DIR__ . '/../logs/error.log');
 
 // Ensure logs/ directory exists
