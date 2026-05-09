@@ -468,7 +468,6 @@ foreach ($complaints as $c) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Panel - <?php echo htmlspecialchars($app_name); ?></title>
     
-    <!-- Dynamic Favicon -->
     <?php if($app_favicon && file_exists($app_favicon)): ?>
         <link rel="icon" type="image/x-icon" href="<?php echo htmlspecialchars($app_favicon); ?>">
         <link rel="shortcut icon" type="image/x-icon" href="<?php echo htmlspecialchars($app_favicon); ?>">
@@ -481,7 +480,6 @@ foreach ($complaints as $c) {
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/responsive-fix.css">
     
-    <!-- Load jQuery first before any other scripts -->
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
     
     <style>
@@ -551,7 +549,7 @@ foreach ($complaints as $c) {
     include 'includes/dashboard_header.php';
     ?>
 
-    <div class="container">
+    <div class="container-fluid px-3 px-md-4 px-xl-5">
         <?php if(isset($success_message)): ?>
             <div class="alert alert-success"><?php echo $success_message; ?></div>
         <?php endif; ?>
@@ -584,7 +582,6 @@ foreach ($complaints as $c) {
             </div>
         </div>
 
-        <!-- Reports Section -->
         <div class="mb-4">
             <div class="card bg-light">
                 <div class="card-body py-2">
@@ -603,7 +600,6 @@ foreach ($complaints as $c) {
             </div>
         </div>
 
-        <!-- Student Management Section -->
         <div class="mb-4">
             <div class="card bg-light">
                 <div class="card-body py-2">
@@ -622,7 +618,6 @@ foreach ($complaints as $c) {
             </div>
         </div>
 
-        <!-- Enhanced Student Complaints Management -->
         <div class="mb-4">
             <div class="card bg-light">
                 <div class="card-body py-2">
@@ -641,7 +636,6 @@ foreach ($complaints as $c) {
             </div>
         </div>
 
-        <!-- ICT Complaints Management -->
         <div class="mb-4">
             <div class="card bg-light">
                 <div class="card-body py-2">
@@ -672,7 +666,6 @@ foreach ($complaints as $c) {
             </div>
         </div>
 
-        <!-- Search and Filter Section -->
         <div class="row mb-3">
             <div class="col-md-6">
                 <form method="get" class="form-inline">
@@ -691,7 +684,7 @@ foreach ($complaints as $c) {
                     </div>
                 </form>
             </div>
-            <div class="col-md-6">
+            <div class="col-md-6 d-flex justify-content-md-end mt-3 mt-md-0">
                 <form method="get" class="form-inline">
                     <input type="hidden" name="view" value="<?php echo htmlspecialchars($view); ?>">
                     <?php if($search_id): ?>
@@ -702,8 +695,8 @@ foreach ($complaints as $c) {
                         <option value="desc" <?php if(!isset($_GET['sort']) || $_GET['sort'] == 'desc') echo 'selected'; ?>>Newest First</option>
                         <option value="asc" <?php if(isset($_GET['sort']) && $_GET['sort'] == 'asc') echo 'selected'; ?>>Oldest First</option>
                     </select>
-                    <label class="mr-2 font-weight-bold">Type:</label>
-                    <select name="type" class="form-control form-control-sm" onchange="this.form.submit()">
+                    <label class="mr-2 font-weight-bold ml-2">Type:</label>
+                    <select name="type" class="form-control form-control-sm ml-2" onchange="this.form.submit()">
                         <option value="all" <?php if(!isset($_GET['type']) || $_GET['type'] == 'all') echo 'selected'; ?>>All</option>
                         <option value="payment" <?php if(isset($_GET['type']) && $_GET['type'] == 'payment') echo 'selected'; ?>>Payment Related</option>
                         <option value="i4cus" <?php if(isset($_GET['type']) && $_GET['type'] == 'i4cus') echo 'selected'; ?>>i4Cus Issues</option>
@@ -795,7 +788,6 @@ foreach ($complaints as $c) {
                                 <?php endif; ?>
                             </div>
                         <?php else: ?>
-                            <!-- Bulk Actions Form -->
                             <form method="post" id="bulkActionsForm">
                                 <div class="mb-3">
                                     <button type="submit" name="bulk_delete" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete the selected complaints?');">
@@ -835,7 +827,6 @@ foreach ($complaints as $c) {
                                             <td title="<?php echo $sid_full; ?>" style="cursor:default"><?php echo $sid_display; ?></td>
                                         <td>
                                             <?php echo substr($complaint['complaint_text'], 0, 50); ?>...
-                                            <!-- MODIFIED: Enhanced attachment display -->
                                             <?php if($complaint['image_path']): ?>
                                                 <?php 
                                                 $images = array_filter(explode(",", $complaint['image_path'])); 
@@ -871,7 +862,6 @@ foreach ($complaints as $c) {
                                         </td>
                                     </tr>
 
-                                    <!-- Update Modal -->
                                     <div class="modal fade" id="updateModal<?php echo $complaint['complaint_id']; ?>" tabindex="-1" data-backdrop="false" data-keyboard="true">
                                         <div class="modal-dialog">
                                             <div class="modal-content">
@@ -973,10 +963,8 @@ foreach ($complaints as $c) {
                                     <?php endforeach; ?>
                                 </tbody>
                             </table>
-                            </div><!-- /.table-responsive -->
-                        </form>
+                            </div></form>
                         
-                        <!-- Select All JavaScript -->
                         <script>
                         document.getElementById('selectAll').addEventListener('change', function() {
                             const checkboxes = document.querySelectorAll('.complaint-checkbox');
@@ -1120,7 +1108,6 @@ foreach ($complaints as $c) {
                                                 <td><?php echo htmlspecialchars($complaint['student_id']); ?></td>
                                                 <td>
                                                     <?php echo substr(htmlspecialchars($complaint['complaint_text']), 0, 50) . '...'; ?>
-                                                    <!-- MODIFIED: Enhanced attachment display -->
                                                     <?php if($complaint['image_path']): ?>
                                                         <?php 
                                                         $images = array_filter(explode(",", $complaint['image_path'])); 
@@ -1191,7 +1178,6 @@ foreach ($complaints as $c) {
         </div>
     </div>
 
-    <!-- Gallery Modal with zoom functionality -->
     <div class="modal fade" id="galleryModal" tabindex="-1">
         <div class="modal-dialog modal-xl">
             <div class="modal-content">
@@ -1206,7 +1192,6 @@ foreach ($complaints as $c) {
         </div>
     </div>
     
-    <!-- Single Image Modal -->
     <div class="modal fade" id="imageModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
@@ -1221,7 +1206,6 @@ foreach ($complaints as $c) {
         </div>
     </div>
 
-    <!-- jQuery already loaded in head -->
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script src="js/clipboard-paste.js"></script>
@@ -1376,7 +1360,6 @@ foreach ($complaints as $c) {
     });
     </script>
     
-    <!-- Complaint Calendar at the bottom of the page -->
     <div class="container mt-4 mb-4">
         <div class="row">
             <div class="col-md-12">
@@ -1389,7 +1372,6 @@ foreach ($complaints as $c) {
         </div>
     </div>
 
-    <!-- Export Modal -->
     <div class="modal fade" id="exportModal" tabindex="-1" role="dialog">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
@@ -1574,6 +1556,3 @@ foreach ($complaints as $c) {
     </script>
 </body>
 </html>
-
-<?php
-?>
