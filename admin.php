@@ -485,223 +485,39 @@ foreach ($complaints as $c) {
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
     
     <style>
-        .app-branding {
-            display: flex;
-            align-items: center;
-        }
-        .app-logo {
-            height: 40px;
-            margin-right: 10px;
-            object-fit: contain;
-        }
-        .app-name {
-            font-size: 1.25rem;
-            font-weight: bold;
-        }
-        /* Add zoom functionality to gallery */
-        .gallery-image {
-            transition: transform 0.3s ease;
-            cursor: zoom-in;
-            max-height: 300px;
-            object-fit: contain;
-        }
-        .gallery-image.zoomed {
-            transform: scale(2);
-            cursor: zoom-out;
-            z-index: 1000;
-            position: relative;
-        }
+        /* ── Admin page — only page-specific rules here.
+           All responsive/table/modal rules live in css/responsive-fix.css ── */
+
+        /* Gallery zoom */
+        .gallery-image { transition: transform .3s; cursor: zoom-in; max-height: 300px; object-fit: contain; }
+        .gallery-image.zoomed { transform: scale(2); cursor: zoom-out; z-index: 1000; position: relative; }
+
+        /* Sidebar — sticky on desktop, static on mobile */
         .sidebar-col {
             position: sticky;
             top: 80px;
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
-            z-index: 1;
             max-height: calc(100vh - 100px);
             overflow-y: auto;
         }
-        .sidebar-card {
-            margin-bottom: 1.5rem;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        @media (max-width: 991px) {
+            .sidebar-col { position: static; max-height: none; }
         }
-        /* Ensure main content has proper spacing */
-        .col-md-8 {
-            padding-right: 15px;
-            z-index: 2;
-        }
-        /* Fix table responsiveness */
-        .table-responsive {
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-        /* Ensure action buttons don't get hidden */
-        .table td:last-child,
-        .table th:last-child {
-            position: relative;
-            z-index: 3;
-            white-space: nowrap;
-        }
-        @media (max-width: 991.98px) {
-            .sidebar-col {
-                position: static;
-                top: auto;
-                max-height: none;
-            }
-        }
-        @media (min-width: 992px) {
-            .row {
-                display: flex;
-                flex-wrap: wrap;
-            }
-            .col-md-8 {
-                flex: 0 0 70%;
-                max-width: 70%;
-                padding-right: 15px;
-            }
-            .col-md-4 {
-                flex: 0 0 30%;
-                max-width: 30%;
-                padding-left: 10px;
-            }
-        }
-        /* Ensure main content takes priority */
-        @media (min-width: 1200px) {
-            .col-md-8 {
-                flex: 0 0 75%;
-                max-width: 75%;
-            }
-            .col-md-4 {
-                flex: 0 0 25%;
-                max-width: 25%;
-            }
-        }
-        /* Prevent content overflow */
-        .card-body {
-            overflow-x: visible;
-        }
-        /* Ensure buttons stay visible */
-        .btn-sm {
-            min-width: 32px;
-            padding: 0.25rem 0.5rem;
-        }
-        /* Fix for action column */
-        .table td:last-child {
-            padding-right: 1rem !important;
-        }
-        /* Table must scroll horizontally inside its wrapper — never bleed into sidebar */
-        .table-responsive {
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-        /* Let the browser size columns naturally */
-        .table {
-            table-layout: fixed;
-            width: 100%;
-            min-width: 700px; /* ensures horizontal scroll kicks in before columns collapse */
-        }
-        /* All cells: no wrap by default, middle-aligned */
-        .table td {
-            white-space: nowrap;
-            vertical-align: middle;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        /* Student ID column — truncate long matric lists */
-        .table th:nth-child(3), .table td:nth-child(3) {
-            max-width: 130px;
-            width: 130px;
-        }
-        /* Complaint text column — wraps and gets the most space */
-        .table th:nth-child(4), .table td:nth-child(4) {
-            white-space: normal;
-            word-break: break-word;
-            max-width: 200px;
-            width: 200px;
-        }
-        /* Status, Priority — compact */
-        .table th:nth-child(5), .table td:nth-child(5),
-        .table th:nth-child(6), .table td:nth-child(6) {
-            width: 90px;
-            text-align: center;
-        }
-        /* Lodged By, Handler */
-        .table th:nth-child(7), .table td:nth-child(7),
-        .table th:nth-child(8), .table td:nth-child(8) {
-            max-width: 100px;
-            width: 100px;
-        }
-        /* Action column — just wide enough for the button */
-        .table td:last-child, .table th:last-child {
-            white-space: nowrap;
-            width: 50px;
-            text-align: center;
-            overflow: visible;
-        }
-        /* Ensure form controls inside modals are never clipped */
-        .modal select,
-        .modal .form-control,
-        .modal input,
-        .modal textarea {
-            table-layout: auto !important;
-            width: 100% !important;
-            max-width: 100% !important;
-            overflow: visible !important;
-            text-overflow: unset !important;
-            white-space: normal !important;
-        }
-        .modal select option {
-            white-space: normal !important;
-        }
-        /* Checkbox column - minimal width */
-        .table th:first-child, .table td:first-child { 
-            width: 40px;
-            text-align: center;
-        }
-        /* Date column */
-        .table th:nth-child(2), .table td:nth-child(2) { 
-            font-size: 0.85rem;
-        }
-        /* Student ID */
-        .table th:nth-child(3), .table td:nth-child(3) { 
-            font-size: 0.85rem;
-        }
-        /* Status - center aligned */
-        .table th:nth-child(5), .table td:nth-child(5) { 
-            text-align: center;
-        }
-        /* Priority */
-        .table th:nth-child(6), .table td:nth-child(6) { 
-            text-align: center;
-        }
-        /* Action */
-        .table th:nth-child(9), .table td:nth-child(9) { 
-            text-align: center;
-        }
-        /* Status badge styling - prevent wrapping */
+
+        /* Status badge */
         .complaint-status {
             display: inline-block;
             white-space: nowrap;
-            padding: 4px 8px;
+            padding: 3px 8px;
             border-radius: 12px;
-            font-size: 0.8rem;
-            font-weight: 500;
-            min-width: 80px;
+            font-size: .75rem;
+            font-weight: 600;
+            min-width: 70px;
             text-align: center;
         }
-        /* Priority badge styling */
-        .badge {
-            white-space: nowrap;
-            font-size: 0.75rem;
-        }
-        /* CRITICAL FIX: Keep body scrollable when modal is open */
-        body.modal-open {
-            overflow: auto !important;
-            padding-right: 0 !important;
-        }
-        .modal-dialog {
-            margin: 5vh auto;
-        }
+
+        /* Keep body scrollable when modal open */
+        body.modal-open { overflow: auto !important; padding-right: 0 !important; }
+        .modal-dialog { margin: 5vh auto; }
     </style>
 </head>
 <body>
@@ -899,7 +715,7 @@ foreach ($complaints as $c) {
         </div>
 
         <div class="row">
-            <div class="col-md-8">
+            <div class="col-12 col-md-8 admin-main-col">
                 <div class="card">
                     <div class="card-header">
                         <h4>
@@ -1171,7 +987,7 @@ foreach ($complaints as $c) {
                     </div>
                 </div>
             </div>
-            <div class="col-md-4 sidebar-col">
+            <div class="col-12 col-md-4 admin-sidebar-col sidebar-col">
                 <div class="card sidebar-card">
                     <div class="card-header">
                         <h4>Complaint Statistics</h4>

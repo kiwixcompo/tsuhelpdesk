@@ -1,8 +1,10 @@
-/* ═══════════════════════════════════════════════════════
-   TSU ICT Help Desk — Responsive Fix
-   Covers all dashboards, tables, modals, and forms
-   ═══════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════════
+   TSU ICT Help Desk — Global Responsive Stylesheet
+   Single source of truth for layout, tables, modals, and mobile fixes.
+   Loaded on every page via the shared header/navbar includes.
+   ═══════════════════════════════════════════════════════════════════════ */
 
+/* ── Box model ──────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
 
 html, body {
@@ -12,121 +14,205 @@ html, body {
 
 img { max-width: 100%; height: auto; }
 
-/* ── Tables ─────────────────────────────────────────────── */
-.table-responsive {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    width: 100%;
+/* ── Typography scale ───────────────────────────────────────────────────── */
+/* Slightly tighter base so more fits on screen */
+body { font-size: 14px; }
+
+@media (min-width: 992px) {
+    body { font-size: 14px; }
 }
 
-/* Prevent table cells from being too narrow */
-.table td, .table th {
-    white-space: nowrap;
-    vertical-align: middle;
-}
-
-/* Allow complaint text cells to wrap */
-.table td.complaint-text,
-.table td[style*="width: 30%"],
-.table td.text-wrap {
-    white-space: normal;
-    min-width: 150px;
-}
-
-/* ── Modals ──────────────────────────────────────────────── */
-.modal-dialog {
-    max-width: min(560px, calc(100vw - 16px));
-    margin: 8px auto;
-}
-
-.modal-lg {
-    max-width: min(800px, calc(100vw - 16px));
-}
-
-body.modal-open {
-    overflow: auto !important;
-    padding-right: 0 !important;
-}
-
-/* ── Navbar ──────────────────────────────────────────────── */
+/* ── Navbar ─────────────────────────────────────────────────────────────── */
 .navbar-brand {
-    font-size: 1rem;
-    max-width: 60vw;
+    font-size: .95rem;
+    max-width: 55vw;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-/* ── Cards ───────────────────────────────────────────────── */
-.card {
+/* ── Cards ──────────────────────────────────────────────────────────────── */
+.card { overflow: visible; }          /* allow table-responsive to scroll */
+.card-body { overflow-x: visible; }
+
+/* ── Buttons ────────────────────────────────────────────────────────────── */
+.btn    { touch-action: manipulation; }
+.btn-sm { padding: .25rem .5rem; font-size: .78rem; min-height: 28px; }
+
+/* ── Forms ──────────────────────────────────────────────────────────────── */
+/* 16 px prevents iOS auto-zoom on focus */
+.form-control, select.form-control { font-size: 16px; }
+
+/* ── Modals ─────────────────────────────────────────────────────────────── */
+.modal-dialog    { max-width: min(560px, calc(100vw - 16px)); margin: 8px auto; }
+.modal-lg        { max-width: min(800px, calc(100vw - 16px)); }
+body.modal-open  { overflow: auto !important; padding-right: 0 !important; }
+
+.modal select,
+.modal .form-control,
+.modal input,
+.modal textarea {
+    width: 100% !important;
+    max-width: 100% !important;
+    white-space: normal !important;
+}
+.modal select option { white-space: normal !important; }
+
+/* ── Tables — global defaults ───────────────────────────────────────────── */
+/* Every table must live inside .table-responsive so it scrolls, not bleeds */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    /* Remove Bootstrap's border so the card border shows instead */
+    border: 0;
+}
+
+.table {
+    font-size: .8rem;          /* compact — fits more columns */
+    table-layout: auto;        /* browser sizes columns naturally */
+    width: 100%;
+    margin-bottom: 0;
+}
+
+.table th {
+    font-size: .75rem;
+    white-space: nowrap;
+    vertical-align: middle;
+    padding: .4rem .5rem;
+}
+
+.table td {
+    vertical-align: middle;
+    padding: .35rem .5rem;
+    /* Default: no wrap. Override per-column below or with .text-wrap */
+    white-space: nowrap;
     overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;          /* prevents any single cell from dominating */
 }
 
-/* ── Buttons ─────────────────────────────────────────────── */
-.btn {
-    touch-action: manipulation; /* faster tap response */
+/* Cells that should wrap (complaint text, description, etc.) */
+.table td.text-wrap,
+.table td.complaint-text,
+.table td[data-wrap] {
+    white-space: normal;
+    word-break: break-word;
+    max-width: 220px;
+    min-width: 120px;
 }
 
-/* Action button groups in tables */
-.action-buttons .btn,
-td .btn {
-    margin: 2px 1px;
+/* Action column — never clip, never wrap */
+.table td:last-child,
+.table th:last-child {
+    white-space: nowrap;
+    overflow: visible;
+    text-overflow: clip;
+    max-width: none;
+    width: 1%;              /* shrink to content */
 }
 
-/* ── Forms ───────────────────────────────────────────────── */
-.form-control, select.form-control {
-    font-size: 16px; /* prevents iOS zoom on focus */
+/* Badges inside tables */
+.table .badge { font-size: .7rem; white-space: nowrap; }
+
+/* ── Admin page — two-column layout ────────────────────────────────────── */
+/* Desktop: main content 66%, sidebar 34% */
+@media (min-width: 992px) {
+    .admin-main-col  { flex: 0 0 65%; max-width: 65%; }
+    .admin-sidebar-col { flex: 0 0 35%; max-width: 35%; padding-left: 12px; }
+}
+@media (min-width: 1200px) {
+    .admin-main-col  { flex: 0 0 68%; max-width: 68%; }
+    .admin-sidebar-col { flex: 0 0 32%; max-width: 32%; }
 }
 
-/* ── ════════════════════════════════════════════════════════
-   MOBILE (≤ 767px)
-   ════════════════════════════════════════════════════════ */
+/* Sidebar cards — compact on all sizes */
+.sidebar-card .card-body { padding: .75rem; }
+.sidebar-card .card-header { padding: .5rem .75rem; }
+.sidebar-card .form-control { font-size: .8rem; padding: .3rem .5rem; }
+.sidebar-card .btn { font-size: .78rem; padding: .3rem .6rem; }
+.sidebar-card label { font-size: .78rem; margin-bottom: 2px; }
+
+/* ── Dashboard header quick-stats ───────────────────────────────────────── */
+.quick-stats-bar .stat-number { font-size: 1.4rem; }
+.quick-stats-bar .stat-label  { font-size: .72rem; }
+
+/* ── View complaint button — always tappable ────────────────────────────── */
+a[href*="view_complaint.php"],
+a.btn[href*="view_complaint"] {
+    display: inline-flex;
+    align-items: center;
+    min-height: 32px;
+    padding: .25rem .6rem;
+}
+
+/* ── Sticky action column on scrollable tables ──────────────────────────── */
+.table-sticky-action td:last-child,
+.table-sticky-action th:last-child {
+    position: sticky;
+    right: 0;
+    background: #fff;
+    box-shadow: -2px 0 4px rgba(0,0,0,.08);
+    z-index: 2;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   TABLET  768 – 991 px
+   ══════════════════════════════════════════════════════════════════════════ */
+@media (min-width: 768px) and (max-width: 991px) {
+
+    .table th, .table td { font-size: .75rem; padding: .3rem .4rem; }
+    .btn-sm { font-size: .75rem; }
+    .card-body { padding: .85rem; }
+
+    /* Stack admin sidebar below main content on tablet */
+    .admin-main-col,
+    .admin-sidebar-col {
+        flex: 0 0 100% !important;
+        max-width: 100% !important;
+        padding-left: 15px !important;
+    }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MOBILE  ≤ 767 px
+   ══════════════════════════════════════════════════════════════════════════ */
 @media (max-width: 767px) {
 
-    /* General spacing */
-    .container, .container-fluid {
-        padding-left: 10px;
-        padding-right: 10px;
+    /* Tighter container */
+    .container, .container-fluid { padding-left: 8px; padding-right: 8px; }
+    .card-body  { padding: .65rem; }
+    .card-header { padding: .5rem .65rem; }
+
+    /* Larger tap targets */
+    .btn    { padding: .4rem .7rem; font-size: .82rem; min-height: 36px; }
+    .btn-sm { padding: .3rem .55rem; font-size: .76rem; min-height: 30px; }
+
+    /* Full-width modals */
+    .modal-dialog { margin: 4px; max-width: calc(100vw - 8px); }
+
+    /* Navbar */
+    .navbar-collapse { max-height: 80vh; overflow-y: auto; }
+
+    /* All Bootstrap columns full-width on mobile */
+    .row > [class*="col-"] { padding-left: 6px; padding-right: 6px; }
+
+    /* Admin sidebar stacks below main */
+    .admin-main-col,
+    .admin-sidebar-col {
+        flex: 0 0 100% !important;
+        max-width: 100% !important;
+        padding-left: 6px !important;
     }
 
-    .card-body {
-        padding: .75rem;
-    }
-
-    .card-header {
-        padding: .6rem .75rem;
-    }
-
-    /* Buttons — larger tap targets */
-    .btn {
-        padding: .45rem .75rem;
-        font-size: .85rem;
-        min-height: 38px;
-    }
-
-    .btn-sm {
-        padding: .35rem .6rem;
-        font-size: .8rem;
-        min-height: 32px;
-    }
-
-    /* Stack button groups vertically */
-    .btn-group-mobile-stack {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-    }
-
-    /* Tables — card-style on mobile */
-    .table-mobile-cards thead {
-        display: none;
-    }
+    /* Tables — card-style rows on mobile */
+    .table-mobile-cards thead { display: none; }
 
     .table-mobile-cards tbody tr {
         display: block;
         border: 1px solid #dee2e6;
         border-radius: 8px;
-        margin-bottom: .75rem;
+        margin-bottom: .65rem;
         padding: .5rem;
         background: #fff;
         box-shadow: 0 1px 4px rgba(0,0,0,.06);
@@ -136,235 +222,72 @@ td .btn {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        padding: .3rem .5rem;
+        padding: .25rem .4rem;
         border: none;
         border-bottom: 1px solid #f0f0f0;
         white-space: normal;
-        font-size: .85rem;
+        font-size: .8rem;
+        max-width: none;
+        overflow: visible;
     }
 
-    .table-mobile-cards tbody td:last-child {
-        border-bottom: none;
-    }
+    .table-mobile-cards tbody td:last-child { border-bottom: none; }
 
     .table-mobile-cards tbody td::before {
         content: attr(data-label);
         font-weight: 600;
         color: #495057;
-        min-width: 100px;
+        min-width: 90px;
         flex-shrink: 0;
-        margin-right: .5rem;
-        font-size: .8rem;
+        margin-right: .4rem;
+        font-size: .75rem;
     }
 
-    /* Action column — full width */
     .table-mobile-cards tbody td.action-col {
         justify-content: flex-end;
         flex-wrap: wrap;
         gap: 4px;
     }
 
-    /* Dashboard header stats */
-    .dashboard-stats {
-        flex-wrap: wrap;
-    }
-
-    .dashboard-stats .stat-item {
-        min-width: 80px;
-        text-align: center;
-    }
-
-    /* Complaint form */
-    .complaint-form .form-row {
-        flex-direction: column;
-    }
-
-    /* Navbar collapse */
-    .navbar-collapse {
-        max-height: 80vh;
-        overflow-y: auto;
-    }
-
-    /* Hide less important table columns on mobile */
-    .hide-mobile {
-        display: none !important;
-    }
-
-    /* Full-width modals on mobile */
-    .modal-dialog {
-        margin: 4px;
-        max-width: calc(100vw - 8px);
-    }
-
-    /* Pagination */
-    .pagination .page-link {
-        padding: .4rem .65rem;
-        font-size: .85rem;
-    }
-
-    /* Accordion / collapse headers */
-    .card-header[data-toggle="collapse"] {
-        cursor: pointer;
-    }
+    /* Hide less important columns on mobile */
+    .hide-mobile { display: none !important; }
 
     /* Form inline → stacked */
-    .form-inline {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
+    .form-inline { flex-direction: column; align-items: stretch; }
     .form-inline .form-group,
     .form-inline .form-control,
-    .form-inline .btn {
-        width: 100%;
-        margin-bottom: .5rem;
-        margin-right: 0;
-    }
+    .form-inline .btn { width: 100%; margin-bottom: .4rem; margin-right: 0; }
 
-    /* Row → single column */
-    .row.mobile-stack > [class*="col-"] {
-        flex: 0 0 100%;
-        max-width: 100%;
-    }
+    /* Pagination */
+    .pagination .page-link { padding: .35rem .6rem; font-size: .8rem; }
 
-    /* Stat cards in dashboard header */
-    .quick-stats-bar {
-        font-size: .8rem;
-    }
+    /* Charts */
+    canvas { max-width: 100% !important; height: auto !important; }
 
-    .quick-stats-bar .stat-number {
-        font-size: 1.2rem;
-    }
+    /* Quick stats */
+    .quick-stats-bar { font-size: .75rem; }
+    .quick-stats-bar .stat-number { font-size: 1.1rem; }
 }
 
-/* ── ════════════════════════════════════════════════════════
-   SMALL MOBILE (≤ 480px)
-   ════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════════════════
+   SMALL MOBILE  ≤ 480 px
+   ══════════════════════════════════════════════════════════════════════════ */
 @media (max-width: 480px) {
 
-    body {
-        font-size: 14px;
-    }
+    body { font-size: 13px; }
+    h4, .h4 { font-size: 1rem; }
+    h5, .h5 { font-size: .9rem; }
+    .card-body { padding: .5rem; }
 
-    h4, .h4 { font-size: 1.1rem; }
-    h5, .h5 { font-size: 1rem; }
+    .badge { font-size: .65rem; padding: .2em .45em; }
 
-    .card-body { padding: .6rem; }
+    td .btn-block-xs { display: block; width: 100%; margin-bottom: 4px; }
 
-    /* Complaint text truncation */
     .complaint-text-preview {
-        max-width: 200px;
+        max-width: 160px;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
         display: block;
     }
-
-    /* Badge sizing */
-    .badge {
-        font-size: .7rem;
-        padding: .25em .5em;
-    }
-
-    /* View/Treat buttons — full width on tiny screens */
-    td .btn-block-xs {
-        display: block;
-        width: 100%;
-        margin-bottom: 4px;
-    }
-}
-
-/* ── ════════════════════════════════════════════════════════
-   TABLET (768px – 991px)
-   ════════════════════════════════════════════════════════ */
-@media (min-width: 768px) and (max-width: 991px) {
-
-    .table td, .table th {
-        font-size: .88rem;
-        padding: .4rem .5rem;
-    }
-
-    .btn-sm {
-        font-size: .8rem;
-    }
-
-    /* Reduce padding on cards */
-    .card-body {
-        padding: 1rem;
-    }
-}
-
-/* ── Dashboard-specific fixes ────────────────────────────── */
-
-/* Make the complaints table on dashboard.php mobile-friendly */
-#complaintsTable td,
-#complaintsTable th {
-    font-size: .85rem;
-}
-
-/* View complaint button — always visible and tappable */
-a[href*="view_complaint.php"],
-a.btn[href*="view_complaint"] {
-    display: inline-flex;
-    align-items: center;
-    min-height: 36px;
-    padding: .35rem .75rem;
-}
-
-/* Ensure the main content doesn't overflow */
-.main-content {
-    overflow-x: hidden;
-}
-
-/* Fix for Bootstrap table inside card on mobile */
-.card > .table-responsive {
-    border: 0;
-}
-
-/* Sticky action column for wide tables */
-@media (max-width: 767px) {
-    .table-sticky-action td:last-child,
-    .table-sticky-action th:last-child {
-        position: sticky;
-        right: 0;
-        background: #fff;
-        box-shadow: -2px 0 4px rgba(0,0,0,.08);
-        z-index: 1;
-    }
-}
-
-/* ── Admin.php sidebar fix ───────────────────────────────── */
-@media (max-width: 991px) {
-    /* Stack named sidebar elements below main content on tablet/mobile */
-    .admin-sidebar,
-    [class*="col-"][class*="sidebar"] {
-        width: 100% !important;
-        max-width: 100% !important;
-        flex: 0 0 100% !important;
-    }
-
-    /* Prevent sidebar cards from overflowing viewport */
-    .card {
-        max-width: 100%;
-        overflow: hidden;
-    }
-    /* NOTE: Do NOT force col-md-* / col-lg-* to 100% here —
-       Bootstrap already stacks them below 768 px.
-       Overriding at 991 px breaks the desktop sidebar layout. */
-}
-
-@media (max-width: 767px) {
-    /* Full-width columns on mobile */
-    .row > [class*="col-"] {
-        padding-left: 8px;
-        padding-right: 8px;
-    }
-
-    /* Fix chart containers */
-    canvas {
-        max-width: 100% !important;
-        height: auto !important;
-    }
-    /* NOTE: col-md-* / col-lg-* are intentionally NOT forced to 100% here;
-       Bootstrap 4 already makes them full-width on xs/sm screens. */
 }
