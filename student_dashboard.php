@@ -78,7 +78,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_complaint'])){
     }
 }
 
-// Fetch student's result verification complaints — split active vs archived
+// Fetch student's academic complaints — split active vs archived
 $complaints_active = [];
 $complaints_archived = [];
 $sql = "SELECT * FROM student_complaints WHERE student_id = ? ORDER BY created_at DESC";
