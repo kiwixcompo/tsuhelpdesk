@@ -84,7 +84,11 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                                         $headers = "From: TSU ICT Help Desk <complaints@tsuniversity.edu.ng>\r\n";
                                         $headers .= "Reply-To: complaints@tsuniversity.edu.ng\r\n";
                                         
-                                        app_mail($to, $subject, $message, $headers);
+                                        if(function_exists('app_mail')) {
+                                            app_mail($to, $subject, $message, $headers);
+                                        } else {
+                                            mail($to, $subject, $message, $headers);
+                                        }
                                     }
                                 }
                                 mysqli_stmt_close($email_stmt);
@@ -162,9 +166,6 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 $faculty_filter = isset($_GET['faculty_id']) ? $_GET['faculty_id'] : '';
 $status_filter = isset($_GET['status']) ? $_GET['status'] : '';
-$page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
-$per_page = 20;
-$offset = ($page - 1) * $per_page;
 
 // Build WHERE clause
 $where_conditions = [];
@@ -219,6 +220,36 @@ if($count_stmt = mysqli_prepare($conn, $count_sql)){
     mysqli_stmt_close($count_stmt);
 }
 
+// Dynamic Pagination Logic
+$default_limit = 20;
+$allowed_limits = [10, 20, 50, 100, 'all'];
+
+$per_page = isset($_GET['limit']) ? $_GET['limit'] : $default_limit;
+
+// Validate limit parameter
+if (!in_array($per_page, $allowed_limits)) {
+    $per_page = $default_limit;
+}
+
+// Calculate offset and limits
+if ($per_page === 'all') {
+    $total_pages = 1;
+    $page = 1;
+    $limit_clause = "";
+} else {
+    $per_page = (int)$per_page;
+    $total_pages = ceil($total_students / $per_page);
+    
+    $page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
+    if ($page < 1) $page = 1;
+    if ($page > $total_pages && $total_pages > 0) $page = $total_pages;
+    
+    $offset = ($page - 1) * $per_page;
+    if ($offset < 0) $offset = 0;
+    
+    $limit_clause = "LIMIT $per_page OFFSET $offset";
+}
+
 // Get students with pagination
 $students_sql = "SELECT s.*, f.faculty_name, sd.department_name,
                  COALESCE(p.programme_name,
@@ -231,7 +262,7 @@ $students_sql = "SELECT s.*, f.faculty_name, sd.department_name,
                  LEFT JOIN programmes p ON s.programme_id = p.programme_id 
                  $where_clause
                  ORDER BY s.created_at DESC 
-                 LIMIT $per_page OFFSET $offset";
+                 $limit_clause";
 
 $students = [];
 if($students_stmt = mysqli_prepare($conn, $students_sql)){
@@ -260,9 +291,6 @@ if($faculties_result){
         $faculties[] = $row;
     }
 }
-
-// Calculate pagination
-$total_pages = ceil($total_students / $per_page);
 ?>
 
 <!DOCTYPE html>
@@ -274,6 +302,7 @@ $total_pages = ceil($total_students / $per_page);
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/responsive-fix.css">
     <style>
         .student-card {
             border: none;
@@ -289,8 +318,7 @@ $total_pages = ceil($total_students / $per_page);
         }
         .status-active { color: #28a745; font-weight: bold; }
         .status-inactive { color: #dc3545; font-weight: bold; }
-        .btn-sm { margin: 2px; }
-        .table-responsive { border-radius: 10px; }
+        
         .search-section {
             background: #f8f9fa;
             padding: 1.5rem;
@@ -301,6 +329,11 @@ $total_pages = ceil($total_students / $per_page);
         /* Anti-flicker modal fix */
         body.modal-open { overflow: auto !important; padding-right: 0 !important; }
         .modal-dialog { margin: 5vh auto; }
+        
+        /* Pagination Styling */
+        .pagination { margin-bottom: 0; }
+        .page-link { color: var(--primary-blue); padding: 0.5rem 0.75rem; }
+        .page-item.active .page-link { background-color: var(--primary-blue); border-color: var(--primary-blue); }
     </style>
 </head>
 <body>
@@ -322,6 +355,7 @@ $total_pages = ceil($total_students / $per_page);
     $inactive_students = 0;
     $total_complaints = 0;
     
+    // Approximate active vs inactive from the fetched subset (or re-query if exact global is needed)
     foreach($students as $student) {
         if($student['is_active']) {
             $active_students++;
@@ -333,27 +367,14 @@ $total_pages = ceil($total_students / $per_page);
     
     $quick_stats = [
         ['number' => $total_students, 'label' => 'Total Students'],
-        ['number' => $active_students, 'label' => 'Active'],
-        ['number' => $total_complaints, 'label' => 'Total Complaints']
+        ['number' => $active_students . '+', 'label' => 'Active (Showing)'],
+        ['number' => $total_complaints, 'label' => 'Complaints (Showing)']
     ];
     
     include 'includes/dashboard_header.php';
     ?>
 
-    <div class="container-fluid">
-        <!-- Page Header -->
-        <div class="row">
-            <div class="col-12">
-                <div class="card student-card">
-                    <div class="card-header">
-                        <h2 class="mb-0"><i class="fas fa-users mr-2"></i>Student Management</h2>
-                        <p class="mb-0 mt-2 opacity-75">View, edit, and manage student accounts</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Alerts -->
+    <div class="container-fluid px-3 px-md-4 px-xl-5">
         <?php if(!empty($success_msg)): ?>
             <div class="alert alert-success alert-dismissible fade show" role="alert">
                 <i class="fas fa-check-circle mr-2"></i><?php echo htmlspecialchars($success_msg); ?>
@@ -372,20 +393,23 @@ $total_pages = ceil($total_students / $per_page);
             </div>
         <?php endif; ?>
 
-        <!-- Search and Filter Section -->
         <div class="search-section">
-            <form method="GET" class="row">
-                <div class="col-md-4">
-                    <div class="form-group">
-                        <label for="search">Search Students</label>
+            <form method="GET" class="row align-items-end">
+                <?php if (isset($_GET['limit'])): ?>
+                    <input type="hidden" name="limit" value="<?php echo htmlspecialchars($_GET['limit']); ?>">
+                <?php endif; ?>
+                
+                <div class="col-12 col-md-4 mb-3 mb-md-0">
+                    <div class="form-group mb-0">
+                        <label for="search" class="font-weight-bold">Search Students</label>
                         <input type="text" id="search" name="search" class="form-control" 
-                               placeholder="Name, email, or registration number" 
+                               placeholder="Name, email, or reg number" 
                                value="<?php echo htmlspecialchars($search); ?>">
                     </div>
                 </div>
-                <div class="col-md-3">
-                    <div class="form-group">
-                        <label for="faculty_id">Faculty</label>
+                <div class="col-12 col-md-3 mb-3 mb-md-0">
+                    <div class="form-group mb-0">
+                        <label for="faculty_id" class="font-weight-bold">Faculty</label>
                         <select id="faculty_id" name="faculty_id" class="form-control">
                             <option value="">All Faculties</option>
                             <?php foreach($faculties as $faculty): ?>
@@ -397,9 +421,9 @@ $total_pages = ceil($total_students / $per_page);
                         </select>
                     </div>
                 </div>
-                <div class="col-md-3">
-                    <div class="form-group">
-                        <label for="status">Status</label>
+                <div class="col-12 col-md-3 mb-3 mb-md-0">
+                    <div class="form-group mb-0">
+                        <label for="status" class="font-weight-bold">Status</label>
                         <select id="status" name="status" class="form-control">
                             <option value="">All Status</option>
                             <option value="1" <?php echo ($status_filter === '1') ? 'selected' : ''; ?>>Active</option>
@@ -407,20 +431,15 @@ $total_pages = ceil($total_students / $per_page);
                         </select>
                     </div>
                 </div>
-                <div class="col-md-2">
-                    <div class="form-group">
-                        <label>&nbsp;</label>
-                        <div>
-                            <button type="submit" class="btn btn-primary btn-block">
-                                <i class="fas fa-search mr-1"></i>Search
-                            </button>
-                        </div>
-                    </div>
+                <div class="col-12 col-md-2">
+                    <button type="submit" class="btn btn-primary btn-block h-100">
+                        <i class="fas fa-search mr-1"></i>Search
+                    </button>
                 </div>
             </form>
             
             <?php if(!empty($search) || !empty($faculty_filter) || $status_filter !== ''): ?>
-                <div class="mt-2">
+                <div class="mt-3">
                     <a href="manage_students.php" class="btn btn-secondary btn-sm">
                         <i class="fas fa-times mr-1"></i>Clear Filters
                     </a>
@@ -428,13 +447,14 @@ $total_pages = ceil($total_students / $per_page);
             <?php endif; ?>
         </div>
 
-        <!-- Students Table -->
         <div class="card student-card">
             <div class="card-header">
-                <h4 class="mb-0">
-                    <i class="fas fa-table mr-2"></i>Students List 
-                    <span class="badge badge-light ml-2"><?php echo $total_students; ?> total</span>
-                </h4>
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center">
+                    <h4 class="mb-2 mb-md-0">
+                        <i class="fas fa-list mr-2"></i>Students List 
+                        <span class="badge badge-light text-primary ml-2"><?php echo $total_students; ?> total</span>
+                    </h4>
+                </div>
             </div>
             <div class="card-body">
                 <?php if(empty($students)): ?>
@@ -444,50 +464,62 @@ $total_pages = ceil($total_students / $per_page);
                         <p class="text-muted">Try adjusting your search criteria</p>
                     </div>
                 <?php else: ?>
-                    <!-- Bulk Actions -->
                     <div class="mb-3">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="btn-group" role="group">
+                        <div class="row align-items-center">
+                            <div class="col-12 col-md-3 mb-2 mb-md-0">
+                                <div class="btn-group w-100 w-md-auto" role="group">
                                     <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAllStudents()">
                                         <i class="fas fa-check-square"></i> Select All
                                     </button>
                                     <button type="button" class="btn btn-sm btn-outline-secondary" onclick="deselectAllStudents()">
-                                        <i class="fas fa-square"></i> Deselect All
+                                        <i class="fas fa-square"></i> Deselect
                                     </button>
                                 </div>
                             </div>
-                            <div class="col-md-6 text-right">
-                                <div class="btn-group" role="group">
+                            <div class="col-12 col-md-3 mb-2 mb-md-0 d-flex justify-content-center justify-content-md-start">
+                                <div class="d-flex align-items-center">
+                                    <label class="mr-2 mb-0 font-weight-bold text-muted" style="white-space: nowrap;">Show:</label>
+                                    <select class="form-control form-control-sm" style="width: auto; cursor: pointer;" 
+                                            onchange="window.location.href='?<?php echo http_build_query(array_merge($_GET, ['page' => 1])); ?>&limit='+this.value">
+                                        <option value="10" <?php echo $per_page == 10 ? 'selected' : ''; ?>>10 entries</option>
+                                        <option value="20" <?php echo $per_page == 20 ? 'selected' : ''; ?>>20 entries</option>
+                                        <option value="50" <?php echo $per_page == 50 ? 'selected' : ''; ?>>50 entries</option>
+                                        <option value="100" <?php echo $per_page == 100 ? 'selected' : ''; ?>>100 entries</option>
+                                        <option value="all" <?php echo $per_page === 'all' ? 'selected' : ''; ?>>All entries</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-6 text-md-right">
+                                <div class="btn-group w-100 w-md-auto flex-wrap" role="group">
                                     <button type="button" class="btn btn-sm btn-warning" onclick="bulkResetStudentPasswords()" disabled id="bulkResetStudentsBtn">
-                                        <i class="fas fa-key"></i> Reset Selected Passwords
+                                        <i class="fas fa-key"></i> <span class="d-none d-lg-inline">Reset</span>
                                     </button>
                                     <button type="button" class="btn btn-sm btn-success" onclick="bulkActivateStudents()" disabled id="bulkActivateBtn">
-                                        <i class="fas fa-check"></i> Activate Selected
+                                        <i class="fas fa-check"></i> <span class="d-none d-lg-inline">Activate</span>
                                     </button>
                                     <button type="button" class="btn btn-sm btn-secondary" onclick="bulkDeactivateStudents()" disabled id="bulkDeactivateBtn">
-                                        <i class="fas fa-ban"></i> Deactivate Selected
+                                        <i class="fas fa-ban"></i> <span class="d-none d-lg-inline">Deactivate</span>
                                     </button>
                                     <?php if(!empty($_SESSION["is_super_admin"])): ?>
                                     <button type="button" class="btn btn-sm btn-danger" onclick="bulkDeleteStudents()" disabled id="bulkDeleteStudentsBtn">
-                                        <i class="fas fa-trash"></i> Delete Selected
+                                        <i class="fas fa-trash"></i> <span class="d-none d-lg-inline">Delete</span>
                                     </button>
                                     <?php endif; ?>
                                 </div>
                             </div>
                         </div>
-                        <div class="mt-2">
+                        <div class="mt-2 text-center text-md-left">
                             <small class="text-muted">
                                 <span id="selectedStudentCount">0</span> student(s) selected
                             </small>
                         </div>
                     </div>
                     
-                    <div class="table-responsive">
-                        <table class="table table-hover">
+                    <div class="table-responsive mb-3">
+                        <table class="table table-hover table-mobile-cards">
                             <thead class="thead-light">
                                 <tr>
-                                    <th width="40">
+                                    <th style="width: 40px;">
                                         <input type="checkbox" id="selectAllStudentsCheckbox" onchange="toggleAllStudents(this)">
                                     </th>
                                     <th>Student Info</th>
@@ -496,16 +528,16 @@ $total_pages = ceil($total_students / $per_page);
                                     <th>Status</th>
                                     <th>Complaints</th>
                                     <th>Joined</th>
-                                    <th>Actions</th>
+                                    <th style="width: 140px;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php foreach($students as $student): ?>
                                     <tr>
-                                        <td>
+                                        <td data-label="Select">
                                             <input type="checkbox" class="student-checkbox" value="<?php echo $student['student_id']; ?>" onchange="updateStudentBulkActions()">
                                         </td>
-                                        <td>
+                                        <td data-label="Student Info">
                                             <div>
                                                 <strong><?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?></strong>
                                                 <?php if(!empty($student['middle_name'])): ?>
@@ -517,12 +549,12 @@ $total_pages = ceil($total_students / $per_page);
                                                 </small>
                                             </div>
                                         </td>
-                                        <td>
+                                        <td data-label="Registration">
                                             <code><?php echo htmlspecialchars($student['registration_number']); ?></code>
                                             <br>
                                             <small class="text-muted">Year: <?php echo $student['year_of_entry']; ?></small>
                                         </td>
-                                        <td>
+                                        <td data-label="Programme">
                                             <div>
                                                 <strong><?php echo htmlspecialchars($student['programme_name']); ?></strong>
                                                 <br>
@@ -531,22 +563,22 @@ $total_pages = ceil($total_students / $per_page);
                                                 <small class="text-muted"><?php echo htmlspecialchars($student['faculty_name'] ?? 'N/A'); ?></small>
                                             </div>
                                         </td>
-                                        <td>
+                                        <td data-label="Status">
                                             <span class="<?php echo $student['is_active'] ? 'status-active' : 'status-inactive'; ?>">
-                                                <i class="fas fa-circle mr-1"></i>
+                                                <i class="fas fa-circle mr-1" style="font-size: 0.6rem; vertical-align: middle;"></i>
                                                 <?php echo $student['is_active'] ? 'Active' : 'Inactive'; ?>
                                             </span>
                                         </td>
-                                        <td>
+                                        <td data-label="Complaints">
                                             <span class="badge badge-info">
-                                                <?php echo $student['complaint_count']; ?> complaints
+                                                <?php echo $student['complaint_count']; ?>
                                             </span>
                                         </td>
-                                        <td>
-                                            <?php echo date('M d, Y', strtotime($student['created_at'])); ?>
+                                        <td data-label="Joined">
+                                            <?php echo date('M d, y', strtotime($student['created_at'])); ?>
                                         </td>
-                                        <td>
-                                            <button type="button" class="btn btn-primary btn-sm btn-edit-student"
+                                        <td data-label="Actions" class="action-col">
+                                            <button type="button" class="btn btn-primary btn-sm btn-edit-student" title="Edit"
                                                     data-id="<?php echo $student['student_id']; ?>"
                                                     data-firstname="<?php echo htmlspecialchars($student['first_name'], ENT_QUOTES); ?>"
                                                     data-middlename="<?php echo htmlspecialchars($student['middle_name'], ENT_QUOTES); ?>"
@@ -556,15 +588,15 @@ $total_pages = ceil($total_students / $per_page);
                                                     data-active="<?php echo $student['is_active']; ?>">
                                                 <i class="fas fa-edit"></i>
                                             </button>
-                                            <button type="button" class="btn btn-warning btn-sm btn-reset-student"
+                                            <button type="button" class="btn btn-warning btn-sm btn-reset-student" title="Reset Password"
                                                     data-id="<?php echo $student['student_id']; ?>"
                                                     data-name="<?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name'], ENT_QUOTES); ?>"
                                                     data-email="<?php echo htmlspecialchars($student['email'], ENT_QUOTES); ?>">
                                                 <i class="fas fa-key"></i>
                                             </button>
                                             <?php if(!empty($_SESSION["is_super_admin"])): ?>
-                                                <button type="button" class="btn btn-danger btn-sm"
-                                                        onclick="confirmDelete(<?php echo $student['student_id']; ?>, '<?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>')">
+                                                <button type="button" class="btn btn-danger btn-sm" title="Delete"
+                                                        onclick="confirmDelete(<?php echo $student['student_id']; ?>, '<?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name'], ENT_QUOTES); ?>')">
                                                     <i class="fas fa-trash"></i>
                                                 </button>
                                             <?php endif; ?>
@@ -575,33 +607,51 @@ $total_pages = ceil($total_students / $per_page);
                         </table>
                     </div>
 
-                    <!-- Pagination -->
                     <?php if($total_pages > 1): ?>
                         <nav aria-label="Students pagination" class="mt-4">
-                            <ul class="pagination justify-content-center">
-                                <?php if($page > 1): ?>
-                                    <li class="page-item">
-                                        <a class="page-link" href="?<?php echo http_build_query(array_merge($_GET, ['page' => $page - 1])); ?>">
-                                            <i class="fas fa-chevron-left"></i> Previous
-                                        </a>
-                                    </li>
-                                <?php endif; ?>
+                            <ul class="pagination justify-content-center flex-wrap">
+                                <?php 
+                                    // Preserve limits and search parameters for links
+                                    $page_params = $_GET;
+                                    if(isset($page_params['page'])) unset($page_params['page']);
+                                    $qs = http_build_query($page_params);
+                                    $qs = $qs ? '&' . $qs : '';
+                                ?>
+                                
+                                <li class="page-item <?php echo ($page <= 1) ? 'disabled' : ''; ?>">
+                                    <a class="page-link" href="?page=<?php echo $page - 1 . $qs; ?>" tabindex="-1">Previous</a>
+                                </li>
 
-                                <?php for($i = max(1, $page - 2); $i <= min($total_pages, $page + 2); $i++): ?>
+                                <?php 
+                                $start_page = max(1, $page - 2);
+                                $end_page = min($total_pages, $page + 2);
+                                
+                                if($start_page > 1) {
+                                    echo '<li class="page-item"><a class="page-link" href="?page=1'.$qs.'">1</a></li>';
+                                    if($start_page > 2) {
+                                        echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                                    }
+                                }
+                                
+                                for($i = $start_page; $i <= $end_page; $i++): 
+                                ?>
                                     <li class="page-item <?php echo ($i == $page) ? 'active' : ''; ?>">
-                                        <a class="page-link" href="?<?php echo http_build_query(array_merge($_GET, ['page' => $i])); ?>">
-                                            <?php echo $i; ?>
-                                        </a>
+                                        <a class="page-link" href="?page=<?php echo $i . $qs; ?>"><?php echo $i; ?></a>
                                     </li>
                                 <?php endfor; ?>
 
-                                <?php if($page < $total_pages): ?>
-                                    <li class="page-item">
-                                        <a class="page-link" href="?<?php echo http_build_query(array_merge($_GET, ['page' => $page + 1])); ?>">
-                                            Next <i class="fas fa-chevron-right"></i>
-                                        </a>
-                                    </li>
-                                <?php endif; ?>
+                                <?php 
+                                if($end_page < $total_pages) {
+                                    if($end_page < $total_pages - 1) {
+                                        echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                                    }
+                                    echo '<li class="page-item"><a class="page-link" href="?page='.$total_pages.$qs.'">'.$total_pages.'</a></li>';
+                                }
+                                ?>
+                                
+                                <li class="page-item <?php echo ($page >= $total_pages) ? 'disabled' : ''; ?>">
+                                    <a class="page-link" href="?page=<?php echo $page + 1 . $qs; ?>">Next</a>
+                                </li>
                             </ul>
                         </nav>
                     <?php endif; ?>
@@ -610,91 +660,100 @@ $total_pages = ceil($total_students / $per_page);
         </div>
     </div>
 
-    <!-- Shared Edit Student Modal (outside table — no flicker) -->
     <div class="modal fade" id="sharedEditModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Edit Student</h5>
-                    <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                    <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
                 </div>
                 <form method="POST">
                     <div class="modal-body">
                         <input type="hidden" name="action" value="update_student">
                         <input type="hidden" name="student_id" id="editStudentId">
                         <div class="row">
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <div class="form-group">
-                                    <label>First Name</label>
+                                    <label class="font-weight-bold text-muted">First Name</label>
                                     <input type="text" name="first_name" id="editFirstName" class="form-control" required>
                                 </div>
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <div class="form-group">
-                                    <label>Middle Name</label>
+                                    <label class="font-weight-bold text-muted">Middle Name</label>
                                     <input type="text" name="middle_name" id="editMiddleName" class="form-control">
                                 </div>
                             </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label class="font-weight-bold text-muted">Last Name</label>
+                                    <input type="text" name="last_name" id="editLastName" class="form-control" required>
+                                </div>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label>Last Name</label>
-                            <input type="text" name="last_name" id="editLastName" class="form-control" required>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="font-weight-bold text-muted">Email</label>
+                                    <input type="email" name="email" id="editEmail" class="form-control" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="font-weight-bold text-muted">Registration Number</label>
+                                    <input type="text" name="registration_number" id="editRegNumber" class="form-control" required>
+                                </div>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label>Email</label>
-                            <input type="email" name="email" id="editEmail" class="form-control" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Registration Number</label>
-                            <input type="text" name="registration_number" id="editRegNumber" class="form-control" required>
-                        </div>
-                        <div class="form-group">
-                            <div class="custom-control custom-checkbox">
+                        <div class="form-group mb-0">
+                            <div class="custom-control custom-checkbox mt-2">
                                 <input type="checkbox" class="custom-control-input" id="editIsActive" name="is_active">
-                                <label class="custom-control-label" for="editIsActive">Active Account</label>
+                                <label class="custom-control-label font-weight-bold" for="editIsActive">Active Account</label>
                             </div>
                         </div>
                     </div>
-                    <div class="modal-footer">
+                    <div class="modal-footer bg-light">
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Update Student</button>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-1"></i> Update Student</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- Shared Reset Password Modal (outside table — no flicker) -->
     <div class="modal fade" id="sharedResetModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Reset Student Password</h5>
-                    <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                    <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
                 </div>
                 <form method="POST">
                     <div class="modal-body">
                         <input type="hidden" name="action" value="reset_password">
                         <input type="hidden" name="student_id" id="resetStudentId">
-                        <p><strong>Student:</strong> <span id="resetStudentName"></span></p>
-                        <p><strong>Email:</strong> <span id="resetStudentEmail"></span></p>
-                        <div class="form-group">
-                            <label>New Password</label>
+                        
+                        <div class="alert alert-info py-2">
+                            <p class="mb-1"><i class="fas fa-user-circle mr-2"></i><strong>Student:</strong> <span id="resetStudentName"></span></p>
+                            <p class="mb-0"><i class="fas fa-envelope mr-2"></i><strong>Email:</strong> <span id="resetStudentEmail"></span></p>
+                        </div>
+                        
+                        <div class="form-group mt-3">
+                            <label class="font-weight-bold text-muted">New Password</label>
                             <input type="password" name="new_password" class="form-control"
                                    placeholder="Enter new password" required minlength="6">
-                            <small class="form-text text-muted">Minimum 6 characters. Student will be notified via email.</small>
+                            <small class="form-text text-muted">Minimum 6 characters. The student will be notified via email.</small>
                         </div>
                     </div>
-                    <div class="modal-footer">
+                    <div class="modal-footer bg-light">
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-warning"><i class="fas fa-key mr-1"></i>Reset Password</button>
+                        <button type="submit" class="btn btn-warning"><i class="fas fa-key mr-1"></i> Reset Password</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- Delete Confirmation Form -->
     <form id="deleteForm" method="POST" style="display: none;">
         <input type="hidden" name="action" value="delete_student">
         <input type="hidden" name="student_id" id="deleteStudentId">
@@ -706,7 +765,7 @@ $total_pages = ceil($total_students / $per_page);
     
     <script>
         function confirmDelete(studentId, studentName) {
-            if(confirm('Are you sure you want to delete ' + studentName + '?\n\nThis will also delete all their complaints and cannot be undone.')) {
+            if(confirm('Are you sure you want to delete ' + studentName + '?\n\nThis will also delete all their complaints and CANNOT be undone.')) {
                 document.getElementById('deleteStudentId').value = studentId;
                 document.getElementById('deleteForm').submit();
             }
@@ -859,8 +918,8 @@ $total_pages = ceil($total_students / $per_page);
             
             // Show progress
             const progressMsg = document.createElement('div');
-            progressMsg.className = 'alert alert-info';
-            progressMsg.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Processing ${studentIds.length} student(s)...`;
+            progressMsg.className = 'alert alert-info mx-3 mt-3';
+            progressMsg.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> Processing ${studentIds.length} student(s)...`;
             document.querySelector('.container-fluid').insertBefore(progressMsg, document.querySelector('.container-fluid').firstChild);
             
             studentIds.forEach(studentId => {
@@ -925,6 +984,3 @@ $total_pages = ceil($total_students / $per_page);
     </script>
 </body>
 </html>
-
-<?php
-?>
