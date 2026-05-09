@@ -69,8 +69,8 @@ body.modal-open  { overflow: auto !important; padding-right: 0 !important; }
 }
 
 .table {
-    font-size: .8rem;          /* compact — fits more columns */
-    table-layout: auto;        /* browser sizes columns naturally */
+    font-size: .8rem;
+    table-layout: fixed;       /* fixed layout so we control column widths */
     width: 100%;
     margin-bottom: 0;
 }
@@ -85,11 +85,38 @@ body.modal-open  { overflow: auto !important; padding-right: 0 !important; }
 .table td {
     vertical-align: middle;
     padding: .35rem .5rem;
-    /* Default: no wrap. Override per-column below or with .text-wrap */
-    white-space: nowrap;
+    white-space: nowrap;       /* default: no wrap */
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 180px;          /* prevents any single cell from dominating */
+}
+
+/* ── Admin.php table — 9 columns ────────────────────────────────────────── */
+/* Checkbox */
+.table th:nth-child(1), .table td:nth-child(1) { width: 40px; text-align: center; }
+/* Date */
+.table th:nth-child(2), .table td:nth-child(2) { width: 90px; }
+/* Student ID — truncate with ellipsis */
+.table th:nth-child(3), .table td:nth-child(3) { width: 120px; max-width: 120px; }
+/* Complaint — wraps, gets remaining space */
+.table th:nth-child(4), .table td:nth-child(4) {
+    width: auto;
+    white-space: normal;
+    word-break: break-word;
+}
+/* Status */
+.table th:nth-child(5), .table td:nth-child(5) { width: 90px; text-align: center; }
+/* Priority */
+.table th:nth-child(6), .table td:nth-child(6) { width: 80px; text-align: center; }
+/* Lodged By */
+.table th:nth-child(7), .table td:nth-child(7) { width: 100px; }
+/* Handler */
+.table th:nth-child(8), .table td:nth-child(8) { width: 100px; }
+/* Action — shrink to content, never clip */
+.table th:nth-child(9), .table td:nth-child(9) {
+    width: 60px;
+    white-space: nowrap;
+    overflow: visible;
+    text-align: center;
 }
 
 /* Cells that should wrap (complaint text, description, etc.) */
@@ -98,18 +125,6 @@ body.modal-open  { overflow: auto !important; padding-right: 0 !important; }
 .table td[data-wrap] {
     white-space: normal;
     word-break: break-word;
-    max-width: 220px;
-    min-width: 120px;
-}
-
-/* Action column — never clip, never wrap */
-.table td:last-child,
-.table th:last-child {
-    white-space: nowrap;
-    overflow: visible;
-    text-overflow: clip;
-    max-width: none;
-    width: 1%;              /* shrink to content */
 }
 
 /* Badges inside tables */
