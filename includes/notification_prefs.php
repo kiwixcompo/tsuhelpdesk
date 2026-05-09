@@ -19,25 +19,37 @@
 
 // ── Table bootstrap ──────────────────────────────────────────────────────────
 
+/**
+ * Create the prefs table if it doesn't exist, then ALTER to add any columns
+ * that were introduced after the table was first created on the server.
+ * This makes the schema self-healing — no manual SQL migration needed.
+ */
 function ensureNotifPrefsTable($conn): void {
+    // Create with the original minimal set of columns (always safe)
     mysqli_query($conn, "CREATE TABLE IF NOT EXISTS user_notification_prefs (
         pref_id                  INT AUTO_INCREMENT PRIMARY KEY,
         user_id                  INT NOT NULL UNIQUE,
-        -- Fires when a complaint is forwarded TO this user / role
         on_forwarded             TINYINT(1) NOT NULL DEFAULT 1,
-        -- Fires when ICT adds a response / feedback to a forwarded complaint
         on_ict_response          TINYINT(1) NOT NULL DEFAULT 1,
-        -- Fires when the status of any complaint relevant to this user changes
         on_status_change         TINYINT(1) NOT NULL DEFAULT 1,
-        -- Fires when ANY new student ICT complaint is submitted (high-volume)
         on_new_student_complaint TINYINT(1) NOT NULL DEFAULT 0,
-        -- Fires when a new staff/department complaint is submitted (admin only)
-        on_new_complaint         TINYINT(1) NOT NULL DEFAULT 1,
-        -- Fires when a complaint this user lodged gets feedback
-        on_feedback_received     TINYINT(1) NOT NULL DEFAULT 1,
         updated_at               TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         INDEX idx_user (user_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    // Add newer columns if they are missing (ALTER TABLE … ADD COLUMN IF NOT EXISTS
+    // is only available in MySQL 8+; use SHOW COLUMNS for compatibility with MySQL 5.x)
+    $new_cols = [
+        'on_new_complaint'     => "TINYINT(1) NOT NULL DEFAULT 1",
+        'on_feedback_received' => "TINYINT(1) NOT NULL DEFAULT 1",
+    ];
+    foreach ($new_cols as $col => $definition) {
+        $r = mysqli_query($conn, "SHOW COLUMNS FROM user_notification_prefs LIKE '$col'");
+        if ($r && mysqli_num_rows($r) === 0) {
+            mysqli_query($conn,
+                "ALTER TABLE user_notification_prefs ADD COLUMN $col $definition");
+        }
+    }
 }
 
 // ── Read preferences ─────────────────────────────────────────────────────────
@@ -52,11 +64,8 @@ function ensureNotifPrefsTable($conn): void {
  * @return array
  */
 function getUserNotifPrefs($conn, int $user_id, int $role_id = 0): array {
-    ensureNotifPrefsTable($conn);
+    ensureNotifPrefsTable($conn);  // also adds missing columns
 
-    // Role-based defaults
-    // Admins get everything on; departments get forwarded/response/status on;
-    // i4cus/payment same as departments.
     $defaults = [
         'on_forwarded'             => 1,
         'on_ict_response'          => 1,
@@ -66,11 +75,13 @@ function getUserNotifPrefs($conn, int $user_id, int $role_id = 0): array {
         'on_feedback_received'     => 1,
     ];
 
+    // Query all columns — by the time we get here ensureNotifPrefsTable() has
+    // already added any missing columns, so this SELECT is safe.
     $stmt = mysqli_prepare($conn,
         "SELECT on_forwarded, on_ict_response, on_status_change,
                 on_new_student_complaint, on_new_complaint, on_feedback_received
          FROM user_notification_prefs WHERE user_id = ?");
-    if (!$stmt) return $defaults;
+    if (!$stmt) return $defaults;   // DB error — return safe defaults
 
     mysqli_stmt_bind_param($stmt, 'i', $user_id);
     mysqli_stmt_execute($stmt);

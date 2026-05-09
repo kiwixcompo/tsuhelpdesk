@@ -142,6 +142,84 @@ if (mysqli_stmt_execute($stmt)) {
     $complaint_id = mysqli_insert_id($conn);
     mysqli_stmt_close($stmt);
 
+    // ── Notify admins (role_id=1) of the new ICT complaint ───────────────
+    // Only fires for complaints that need human attention (not auto-resolved)
+    if ($status !== 'Auto-Resolved') {
+        // Load notification helpers (config.php is already loaded above)
+        require_once __DIR__ . '/../includes/notification_prefs.php';
+
+        // Fetch student details for the email body
+        $st_stmt = mysqli_prepare($conn,
+            "SELECT s.first_name, s.last_name, s.email, s.registration_number,
+                    sd.department_name, f.faculty_name, p.programme_name
+             FROM students s
+             LEFT JOIN student_departments sd ON s.department_id = sd.department_id
+             LEFT JOIN faculties f ON s.faculty_id = f.faculty_id
+             LEFT JOIN programmes p ON s.programme_id = p.programme_id
+             WHERE s.student_id = ?");
+        $student_info = null;
+        if ($st_stmt) {
+            mysqli_stmt_bind_param($st_stmt, 'i', $student_id);
+            mysqli_stmt_execute($st_stmt);
+            $student_info = mysqli_fetch_assoc(mysqli_stmt_get_result($st_stmt));
+            mysqli_stmt_close($st_stmt);
+        }
+
+        $s_name   = $student_info
+            ? trim(($student_info['first_name'] ?? '') . ' ' . ($student_info['last_name'] ?? ''))
+            : "Student #$student_id";
+        $s_reg    = $student_info['registration_number'] ?? 'N/A';
+        $s_email  = $student_info['email']               ?? 'N/A';
+        $s_dept   = $student_info['department_name']     ?? 'N/A';
+        $s_fac    = $student_info['faculty_name']        ?? 'N/A';
+        $s_prog   = $student_info['programme_name']      ?? 'N/A';
+
+        $subject = "New ICT Complaint #{$complaint_id} — {$category}";
+        $body    = "A new student ICT complaint has been submitted and requires your attention.\n\n"
+                 . "─────────────────────────────────────\n"
+                 . "COMPLAINT DETAILS\n"
+                 . "─────────────────────────────────────\n"
+                 . "Complaint ID   : #{$complaint_id}\n"
+                 . "Category       : {$category}\n"
+                 . "Issue          : {$node_label}\n"
+                 . "Decision Path  : {$path_summary}\n"
+                 . ($description ? "Extra Details  : " . mb_substr($description, 0, 300) . "\n" : "")
+                 . "\n"
+                 . "─────────────────────────────────────\n"
+                 . "STUDENT DETAILS\n"
+                 . "─────────────────────────────────────\n"
+                 . "Name           : {$s_name}\n"
+                 . "Reg. Number    : {$s_reg}\n"
+                 . "Email          : {$s_email}\n"
+                 . "Department     : {$s_dept}\n"
+                 . "Faculty        : {$s_fac}\n"
+                 . "Programme      : {$s_prog}\n"
+                 . "\n"
+                 . "─────────────────────────────────────\n"
+                 . "Review and respond here:\n"
+                 . "https://helpdesk.tsuniversity.ng/ict_complaints_admin.php\n\n"
+                 . "-- TSU ICT Help Desk (automated notification)";
+
+        // Send to every active admin whose on_new_student_complaint pref is ON
+        $admin_res = mysqli_query($conn,
+            "SELECT user_id, email FROM users
+             WHERE role_id = 1 AND is_active = 1 AND email IS NOT NULL AND email != ''");
+        if ($admin_res) {
+            while ($admin = mysqli_fetch_assoc($admin_res)) {
+                sendEmailIfAllowed(
+                    $conn,
+                    (int) $admin['user_id'],
+                    1,                          // role_id = Admin
+                    'on_new_student_complaint', // preference key
+                    $admin['email'],
+                    $subject,
+                    $body
+                );
+            }
+        }
+    }
+    // ── End admin notification ────────────────────────────────────────────
+
     // Notify student if auto-resolved
     if ($status === 'Auto-Resolved' && $auto_response) {
         // Auto-create notifications table if missing
