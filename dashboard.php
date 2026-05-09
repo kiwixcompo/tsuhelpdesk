@@ -4,7 +4,12 @@ ob_start();
 session_start();
 require_once "config.php";
 require_once "includes/notifications.php";
+require_once "includes/notification_prefs.php";
 require_once "calendar_helper.php";
+
+// Load admin notification preferences
+ensureNotifPrefsTable($conn);
+$notif_prefs = getUserNotifPrefs($conn, $_SESSION['user_id'] ?? 0, 1);
 
 // Initialize arrays and variables
 $complaints = [];

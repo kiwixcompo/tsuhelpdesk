@@ -9,7 +9,12 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true || $_SESSION[
 
 require_once "config.php";
 require_once "includes/notifications.php";
+require_once "includes/notification_prefs.php";
 require_once "calendar_helper.php";
+
+// Load notification preferences
+ensureNotifPrefsTable($conn);
+$notif_prefs = getUserNotifPrefs($conn, $_SESSION['user_id'], 5);
 
 // ── Handle bulk complaint submission ─────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_bulk_complaint'])) {
@@ -238,6 +243,8 @@ function getImagePath($image) {
     include 'includes/dashboard_header.php';
     ?>
     <div class="container main-content">
+
+        <?php renderNotifPrefsCard($notif_prefs, 5, 'i4cusNotifPrefs'); ?>
 
         <?php if (isset($_GET['treated'])): ?>
         <div class="alert alert-success alert-dismissible fade show" role="alert">

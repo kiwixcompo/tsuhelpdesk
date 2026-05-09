@@ -1,6 +1,11 @@
 <?php
 // Include the header with dynamic branding
 require_once "includes/header.php";
+require_once "includes/notification_prefs.php";
+
+// Load this user's notification preferences
+ensureNotifPrefsTable($conn);
+$current_notif_prefs = getUserNotifPrefs($conn, $_SESSION['user_id'], (int)$_SESSION['role_id']);
 
 // Initialize notification variables for navbar
 $notification_count = 0;
@@ -304,6 +309,8 @@ function getDashboardUrlByRole($role_id) {
                     </form>
                 </div>
             </div>
+
+            <?php renderNotifPrefsCard($current_notif_prefs, (int)$_SESSION['role_id'], 'accountNotifPrefs'); ?>
 
             <div class="card">
                 <div class="card-header">
