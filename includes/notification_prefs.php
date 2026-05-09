@@ -32,13 +32,12 @@ function ensureNotifPrefsTable($conn): void {
         on_forwarded             TINYINT(1) NOT NULL DEFAULT 1,
         on_ict_response          TINYINT(1) NOT NULL DEFAULT 1,
         on_status_change         TINYINT(1) NOT NULL DEFAULT 1,
-        on_new_student_complaint TINYINT(1) NOT NULL DEFAULT 0,
+        on_new_student_complaint TINYINT(1) NOT NULL DEFAULT 1,
         updated_at               TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         INDEX idx_user (user_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
-    // Add newer columns if they are missing (ALTER TABLE … ADD COLUMN IF NOT EXISTS
-    // is only available in MySQL 8+; use SHOW COLUMNS for compatibility with MySQL 5.x)
+    // Add newer columns if they are missing
     $new_cols = [
         'on_new_complaint'     => "TINYINT(1) NOT NULL DEFAULT 1",
         'on_feedback_received' => "TINYINT(1) NOT NULL DEFAULT 1",
@@ -48,6 +47,31 @@ function ensureNotifPrefsTable($conn): void {
         if ($r && mysqli_num_rows($r) === 0) {
             mysqli_query($conn,
                 "ALTER TABLE user_notification_prefs ADD COLUMN $col $definition");
+        }
+    }
+
+    // Fix: ensure every admin has on_new_student_complaint = 1 and on_new_complaint = 1
+    // UPDATE existing rows where the admin has opted out (value = 0) — only if they
+    // haven't explicitly changed it themselves (we can't tell, so we just ensure ON for admins)
+    mysqli_query($conn,
+        "UPDATE user_notification_prefs unp
+         JOIN users u ON unp.user_id = u.user_id
+         SET unp.on_new_student_complaint = 1,
+             unp.on_new_complaint = 1
+         WHERE u.role_id = 1"
+    );
+
+    // Ensure every active admin has a prefs row (INSERT IGNORE = skip if already exists)
+    $admin_res = mysqli_query($conn,
+        "SELECT user_id FROM users WHERE role_id = 1 AND is_active = 1");
+    if ($admin_res) {
+        while ($admin = mysqli_fetch_assoc($admin_res)) {
+            mysqli_query($conn,
+                "INSERT IGNORE INTO user_notification_prefs
+                 (user_id, on_forwarded, on_ict_response, on_status_change,
+                  on_new_student_complaint, on_new_complaint, on_feedback_received)
+                 VALUES ({$admin['user_id']}, 1, 1, 1, 1, 1, 1)"
+            );
         }
     }
 }
