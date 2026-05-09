@@ -1,1 +1,1006 @@
-{"id":"root_complaint_tree","label":"What best describes your complaint?","type":"question","children":[{"id":"account_login_profile","label":"Account, Login & Profile Corrections","type":"category","children":[{"id":"login_cannot_access","label":"I cannot log in to the portal","type":"question","children":[{"id":"forgot_password","label":"I forgot my password","type":"leaf","actionType":"auto_response","responseText":"Click the 'Forgot Password' link on the login page and enter your registered email address. A reset link will be sent to you. If you do not receive the email within 5 minutes, check your spam folder. If the email is not registered or the reset fails, escalate to ICT with your matric number.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id","registered_email"]},{"id":"know_details_but_cannot_login","label":"I know my details but still cannot log in","type":"leaf","actionType":"escalate","responseText":"This is usually caused by an account lock, username mismatch, or portal mapping issue. ICT will verify your account status and resolve it. Please provide your matric number and the exact error message you see.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id","matric_number"]},{"id":"invalid_username_password","label":"Portal shows 'Invalid Username/Password'","type":"leaf","actionType":"escalate","responseText":"This error usually means your JAMB number or matric number is not correctly mapped to your portal account. ICT will verify and correct the mapping. Please provide your JAMB registration number and matric number.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id","matric_number","jamb_number","jamb_login_email","jamb_profile_code"]},{"id":"account_locked","label":"My account has been locked or suspended","type":"leaf","actionType":"escalate","responseText":"Account locks are usually triggered by multiple failed login attempts or administrative action. ICT will review and unlock your account. Please provide your matric number and student ID.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id","matric_number"]}]},{"id":"name_misspelt","label":"My name is misspelt on the portal","type":"leaf","actionType":"auto_response","responseText":"Name corrections require verification against your JAMB CAPS record. Please upload a clear photo of your JAMB CAPS slip showing your correct name. ICT will process the correction after JAMB-side validation. This process typically takes 3-5 working days.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id","jamb_number","jamb_login_email","jamb_profile_code"]},{"id":"dob_wrong","label":"My date of birth is wrong","type":"leaf","actionType":"auto_response","responseText":"Date of birth corrections require official documentation. Please upload your NIN slip or birth certificate. ICT will process the correction after document verification. Ensure the document clearly shows your correct date of birth.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id","nin"]},{"id":"passport_signature_change","label":"My passport photo or signature needs updating","type":"leaf","actionType":"auto_response","responseText":"You can update your passport photo and signature directly from the Profile section of the student portal. Go to Profile > Update Photo/Signature. If the update fails or the option is not available, escalate to ICT with your student ID.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id"]},{"id":"name_order_incorrect","label":"My name order is incorrect (e.g., surname and first name swapped)","type":"leaf","actionType":"escalate","responseText":"Name order corrections require ICT backend access. Please provide your correct name order as it appears on your JAMB CAPS slip or admission letter. ICT will update the record within 2-3 working days.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id"]},{"id":"wrong_programme_faculty","label":"My programme or faculty is wrong on the portal","type":"leaf","actionType":"escalate","responseText":"Programme or faculty corrections require verification of your admission letter and JAMB CAPS. Please provide your correct programme/faculty details and upload your admission letter. ICT will coordinate with the Admissions Office to correct this.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id","matric_number"]}]},{"id":"portal_session_level_status","label":"Portal Session, Level & Status Updates","type":"category","children":[{"id":"spillover_session_update","label":"I am a spillover student — my portal needs to move to the current session","type":"leaf","actionType":"escalate","responseText":"Spillover session updates require backend processing. Please provide your current session, the target session, and your student ID. ICT will update your portal session after verifying your academic status with the Exams & Records office.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id","current_session","target_session"]},{"id":"deferment_resumption_level_wrong","label":"I resumed after deferment/suspension and my level is wrong","type":"leaf","actionType":"escalate","responseText":"Level corrections after deferment or suspension require your official resumption/approval letter. Please upload the letter from the Dean of Students or Senate. ICT will update your level after verifying the document.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id"]},{"id":"extension_of_studies","label":"I need an extension of studies on my portal","type":"leaf","actionType":"escalate","responseText":"Extension of studies requires an approved letter from the Senate or relevant authority. Please upload your approval letter. ICT will update your portal status after verification. Note: extensions must be officially approved before ICT can process them.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id"]},{"id":"wrong_semester","label":"My portal shows the wrong semester","type":"leaf","actionType":"auto_response","responseText":"School fees typically cover both semesters. If your portal shows the wrong semester, first confirm that your school fees are fully paid. Then proceed with registration for the correct semester. If the issue persists after payment confirmation, escalate to ICT.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id"]},{"id":"wrong_matric_year","label":"My matric number shows the wrong year","type":"leaf","actionType":"escalate","responseText":"Matric number year corrections require backend database access. Please provide your correct matric number as it appears on your admission letter. ICT will verify and correct the record.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id","matric_number"]},{"id":"incorrect_level","label":"My level is incorrect (e.g., showing 100L instead of 200L)","type":"leaf","actionType":"escalate","responseText":"Level corrections require verification of your academic records. Please provide your correct level and the evidence (e.g., previous session result slip or course form). ICT will coordinate with Exams & Records to update your level.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id","correct_level"]},{"id":"graduation_status_issue","label":"My graduation status or clearance is not reflecting","type":"leaf","actionType":"escalate","responseText":"Graduation status issues require coordination between ICT, Exams & Records, and the Bursary. Please ensure all fees are cleared and all results are uploaded. Provide your matric number and the specific issue you are experiencing.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id","matric_number"]}]},{"id":"course_registration_carryovers","label":"Course Registration & Carryovers","type":"category","children":[{"id":"cannot_add_course","label":"I cannot add a course","type":"question","children":[{"id":"course_not_appearing","label":"The course is not appearing on my portal","type":"leaf","actionType":"escalate","responseText":"Missing courses are usually caused by curriculum mapping issues. Your department's curriculum may not be fully set up in the portal. Please provide the course code and title. ICT will check the curriculum mapping and add the course if it belongs to your programme.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id","course_code"]},{"id":"drop_course","label":"I need to drop a course from my registration","type":"leaf","actionType":"auto_response","responseText":"Course add/drop is normally handled by your Departmental Exam Officer during the add/drop period. Visit your department's Exam Officer with your course form. If the add/drop period has passed or the Exam Officer cannot process it, escalate to ICT.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id","course_code"]},{"id":"carryover_duplicate","label":"A carryover course is appearing multiple times","type":"leaf","actionType":"escalate","responseText":"Duplicate carryover records need to be cleaned up in the database. Please provide the course code and the number of times it appears. ICT will remove the duplicate entries and ensure only one record remains.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id","course_code"]},{"id":"wrong_department_course","label":"A course from another department appears on my list","type":"leaf","actionType":"escalate","responseText":"Stray course records from other departments need to be removed. Please provide the course code and the department it belongs to. ICT will remove the incorrect course from your registration.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id","course_code"]}]},{"id":"unit_limits_issue","label":"I cannot register because of unit limits","type":"question","children":[{"id":"max_credit_exceeded","label":"I have exceeded the maximum credit units","type":"leaf","actionType":"auto_response","responseText":"The portal enforces maximum credit unit limits per semester. To resolve this: (1) Review your registered courses and identify any you can drop. (2) Contact your Exam Officer to drop excess courses. (3) If you believe the unit calculation is wrong (e.g., a course is counted twice), escalate to ICT with your course list.","allowEscalation":true,"escalationTarget":"Exam Officer","requiredFields":["student_id","total_units"]},{"id":"minimum_units_not_met","label":"I have not met the minimum credit units","type":"leaf","actionType":"auto_response","responseText":"You need to add more courses to meet the minimum required units. Check your curriculum for available courses in your current level and semester. If required courses are not available on the portal, escalate to ICT with the missing course codes.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id","total_units"]}]},{"id":"registered_courses_disappeared","label":"My registered courses disappeared from my dashboard","type":"leaf","actionType":"escalate","responseText":"Disappearing courses are usually caused by a portal rollback or sync issue. This is urgent — please escalate immediately with your student ID and the date you last saw your courses. ICT will check the database logs and restore your registration.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id"]},{"id":"no_curriculum_provided","label":"My course form says 'No Curriculum Provided'","type":"leaf","actionType":"escalate","responseText":"This error means your department's curriculum has not been set up in the portal for your programme and level. ICT needs to work with your department to upload the curriculum. Please provide your department, programme, and current level. This may take a few days to resolve.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id","department"]},{"id":"course_form_not_generating","label":"My course form is not generating or is blank","type":"leaf","actionType":"escalate","responseText":"Course form generation issues can be caused by incomplete registration, missing curriculum, or payment issues. Please verify: (1) All courses are registered, (2) School fees are paid, (3) Curriculum is available. If all these are in order, escalate to ICT.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id"]}]},{"id":"payments_fees","label":"Payments & Fees","type":"category","children":[{"id":"payment_not_reflecting","label":"I made a payment but it is not reflecting on my portal","type":"leaf","actionType":"escalate","responseText":"Payment sync issues are common and usually resolve within 24-48 hours. If your payment is not reflecting after 48 hours: (1) Confirm the payment was successful with your bank. (2) Provide your RRR (Remita Retrieval Reference) or transaction ID. (3) Upload your payment receipt. ICT will sync the payment manually.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id","transaction_id","rrr"]},{"id":"wrong_balance","label":"My portal shows an outstanding balance even though I paid in full","type":"leaf","actionType":"escalate","responseText":"Outstanding balance issues can be caused by fee mapping errors, indigene/non-indigene status mismatches, or hidden charges. Please provide your payment receipt and the amount shown as outstanding. ICT will investigate the fee structure applied to your account.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id"]},{"id":"convocation_fee_still_shown","label":"Convocation fee still appears after graduation","type":"leaf","actionType":"escalate","responseText":"Post-graduation fee flags need to be removed from your account. Please provide your matric number and graduation year. ICT will remove the convocation fee flag from your portal.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id"]},{"id":"paid_twice_refund","label":"I paid twice or need a refund","type":"leaf","actionType":"escalate","responseText":"Duplicate payments require manual financial adjustment by the Bursary. Please provide both payment receipts or transaction IDs. ICT will forward your case to the Bursary for a refund or credit. Note: refunds may take 2-4 weeks to process.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id"]},{"id":"nelfund_payment_issue","label":"NELFUND payment is not showing or was duplicated","type":"leaf","actionType":"escalate","responseText":"NELFUND payment issues require verification with the NELFUND portal. Please provide your NELFUND transaction ID and the date of payment. ICT will verify the payment sync between NELFUND and the university portal.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id","transaction_id"]},{"id":"id_card_payment_issue","label":"I paid for ID card but it is not reflecting","type":"leaf","actionType":"escalate","responseText":"ID card payment issues require verification of the payment module. Please provide your transaction ID or RRR for the ID card payment. ICT will confirm the payment and activate your ID card printing access.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id","transaction_id"]},{"id":"acceptance_fee_issue","label":"Acceptance fee payment issue","type":"leaf","actionType":"escalate","responseText":"Acceptance fee issues can prevent portal activation. Please provide your JAMB registration number and acceptance fee receipt. ICT will verify the payment and activate your portal account.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id","jamb_number"]}]},{"id":"printing_documents","label":"Printing & Document Generation","type":"category","children":[{"id":"course_form_printing","label":"I cannot print my course form","type":"question","children":[{"id":"course_form_unit_issue","label":"Printing is blocked due to credit unit issues","type":"leaf","actionType":"auto_response","responseText":"Course form printing is blocked because your registered units do not meet the required minimum or exceed the maximum. Please review your course registration: (1) Add courses if below minimum units, (2) Drop courses if above maximum units. Contact your Exam Officer for assistance.","allowEscalation":true,"escalationTarget":"Exam Officer","requiredFields":["student_id"]},{"id":"course_form_payment_issue","label":"Printing is blocked due to payment status","type":"leaf","actionType":"escalate","responseText":"Your course form printing is blocked because your school fees payment has not been confirmed on the portal. Please verify your payment is reflected on the portal. If payment is confirmed but printing is still blocked, escalate to ICT with your payment receipt.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id"]},{"id":"course_form_curriculum_issue","label":"Printing is blocked due to missing curriculum","type":"leaf","actionType":"escalate","responseText":"Your course form cannot be generated because your department's curriculum is not set up in the portal. ICT needs to work with your department to upload the curriculum. Please provide your department, programme, and level. Escalate urgently if this is close to the exam period.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id"]}]},{"id":"exam_card_printing","label":"I cannot print my exam card","type":"question","children":[{"id":"exam_card_biometrics_missing","label":"I have not done biometrics yet","type":"leaf","actionType":"auto_response","responseText":"Biometrics are required before you can print your exam card. Please visit the ICT Biometrics Unit during working hours (Monday-Friday, 8am-4pm). Bring your student ID card or matric number. Biometrics are usually done once and remain valid throughout your studies.","allowEscalation":false,"requiredFields":["student_id"]},{"id":"exam_card_biometrics_done","label":"I have done biometrics but still cannot print","type":"leaf","actionType":"escalate","responseText":"If biometrics are done but exam card printing is still blocked, there may be a sync issue or a payment/registration problem. ICT will check your biometrics record and exam card generation status. Please provide your student ID and the error message you see.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id"]},{"id":"exam_card_payment_blocked","label":"Exam card printing is blocked due to payment","type":"leaf","actionType":"escalate","responseText":"Exam card printing requires confirmed school fees payment. Please verify your payment is reflected on the portal. If payment is confirmed but printing is still blocked, escalate to ICT with your payment receipt and student ID.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id"]}]},{"id":"transcript_issue","label":"Transcript application error or not processing","type":"leaf","actionType":"escalate","responseText":"Transcript application errors usually require curriculum mapping or module review. Please provide your matric number and the specific error message. Note: transcripts require all fees to be cleared and all results to be uploaded before they can be processed.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id"]},{"id":"admission_letter_printing","label":"I cannot print my admission letter","type":"leaf","actionType":"escalate","responseText":"Admission letter printing issues are usually caused by incomplete portal setup or payment issues. Please ensure your acceptance fee is paid and your portal is fully activated. If the issue persists, escalate to ICT with your JAMB registration number.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id","jamb_number"]},{"id":"other_print_error","label":"Other printing or document generation error","type":"leaf","actionType":"escalate","responseText":"Please describe the specific document you are trying to print and the exact error message you see. ICT will investigate the print service or document generation issue and resolve it.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id"]}]},{"id":"results_grades_records","label":"Results, Grades & Academic Records","type":"category","children":[{"id":"fa_for_course_taken","label":"I have Fail Absent (FA) for a course I sat for","type":"leaf","actionType":"auto_response","responseText":"FA (Fail Absent) means the portal shows you did not sit for the exam. First step: Visit your department and speak to your Exam Officer. They will verify your attendance and initiate a result correction if needed. If the department confirms you sat for the exam but the result is still FA after departmental verification, escalate to ICT with your course code and department confirmation.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id","course_code"]},{"id":"incorrect_grade","label":"I have an incorrect grade for a course","type":"leaf","actionType":"auto_response","responseText":"Grade corrections must go through the official academic channel: (1) Contact your course lecturer to verify the grade. (2) If the lecturer confirms an error, they will submit a grade correction form to the Exam Officer. (3) The Exam Officer forwards to the Faculty Board for approval. (4) After Faculty Board approval, ICT uploads the corrected grade. This process can take 2-6 weeks.","allowEscalation":true,"escalationTarget":"Exam Officer","requiredFields":["student_id","course_code","expected_grade"]},{"id":"result_not_approved","label":"My result says 'Not yet approved by Senate'","type":"leaf","actionType":"escalate","responseText":"Results pending Senate approval are in the final stage of the academic approval process. This is usually resolved after the next Senate meeting. If this has been pending for more than one semester, escalate to ICT who will check the approval status with Exams & Records.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id"]},{"id":"cgpa_wrong","label":"My CGPA or CPA seems wrong","type":"leaf","actionType":"escalate","responseText":"CGPA calculation errors can be caused by duplicate course records, missing grades, or incorrect credit unit assignments. Please provide your expected CGPA and the courses you believe are causing the discrepancy. ICT will audit your academic record.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id"]},{"id":"siwes_summer_missing","label":"My SIWES or summer school result is missing","type":"leaf","actionType":"escalate","responseText":"SIWES and summer school results are uploaded separately from regular semester results. Please confirm with your department that the result has been submitted to Exams & Records. If submitted but not reflecting, escalate to ICT with your SIWES/summer school completion certificate.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id"]},{"id":"result_verification","label":"I need result verification for a specific course","type":"leaf","actionType":"auto_response","responseText":"Result verification starts at the departmental level. Please visit your department's Exam Officer with your course form and the specific course(s) in question. The Exam Officer will verify the result against the original score sheet. If the department confirms a discrepancy, they will initiate the correction process through ICT.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id","course_code"]},{"id":"missing_result_semester","label":"My results for an entire semester are missing","type":"leaf","actionType":"escalate","responseText":"Missing semester results are a serious issue that requires urgent attention. Please escalate immediately with your student ID, the affected semester, and your academic session. ICT will check with Exams & Records to determine if results were uploaded.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id"]}]},{"id":"biometrics_id_transcript","label":"Biometrics, ID Card & Transcript","type":"category","children":[{"id":"biometrics_not_captured","label":"Biometrics not captured or portal shows 'Visit ICT'","type":"leaf","actionType":"auto_response","responseText":"Please visit the ICT Biometrics Unit to have your biometrics captured. Working hours: Monday to Friday, 8:00am to 4:00pm. Bring your student ID or matric number. Biometrics are required for exam card printing and other portal functions.","allowEscalation":false,"requiredFields":["student_id"]},{"id":"id_card_not_printing","label":"I cannot print my ID card","type":"leaf","actionType":"escalate","responseText":"ID card printing issues can be caused by unpaid ID card fees, incomplete biometrics, or a portal module issue. Please verify: (1) ID card fee is paid, (2) Biometrics are captured. If both are done and printing is still blocked, escalate to ICT with your student ID and payment receipt.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id"]},{"id":"passport_signature_update","label":"I need to update my passport photo or signature","type":"leaf","actionType":"auto_response","responseText":"You can update your passport photo and signature from the Profile section of the student portal. If the update option is not available or the update fails, escalate to ICT. Please note that passport photos must be recent, clear, and on a white background.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id"]},{"id":"transcript_error","label":"Transcript application error","type":"leaf","actionType":"escalate","responseText":"Transcript application errors require curriculum mapping or module review. Ensure all fees are cleared and all results are uploaded before applying. If the error persists, escalate to ICT with your matric number and the specific error message.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id"]},{"id":"other_identity_document_issue","label":"Other identity or document issue","type":"leaf","actionType":"escalate","responseText":"Please describe the specific document issue you are experiencing. ICT will review and resolve it. Provide your student ID and any relevant details about the document in question.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id"]}]},{"id":"portal_technical_issues","label":"Portal Technical Issues & Errors","type":"category","children":[{"id":"portal_slow_not_loading","label":"The portal is very slow or not loading","type":"leaf","actionType":"auto_response","responseText":"Portal slowness is often caused by high traffic during peak periods (e.g., registration periods). Try: (1) Use the portal during off-peak hours (early morning or late evening). (2) Clear your browser cache and cookies. (3) Try a different browser (Chrome or Firefox recommended). (4) Check your internet connection. If the portal is completely down, ICT is likely already aware and working on it.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id"]},{"id":"portal_error_message","label":"I see an error message on the portal","type":"leaf","actionType":"escalate","responseText":"Please take a screenshot of the exact error message and escalate to ICT. Include your student ID, the page where the error occurs, and what you were trying to do when the error appeared. This helps ICT diagnose and fix the issue quickly.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id"]},{"id":"data_not_saving","label":"Changes I make on the portal are not saving","type":"leaf","actionType":"escalate","responseText":"Data not saving can be caused by session timeouts, browser issues, or server errors. Try: (1) Log out and log back in. (2) Clear browser cache. (3) Use a different browser. If the issue persists, escalate to ICT with details of what you are trying to save.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id"]},{"id":"portal_access_new_student","label":"I am a new student and cannot access the portal at all","type":"leaf","actionType":"escalate","responseText":"New student portal access requires: (1) Acceptance fee payment, (2) JAMB admission confirmation, (3) Portal activation by ICT. If you have completed all these steps and still cannot access the portal, escalate to ICT with your JAMB registration number and admission letter.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id","jamb_number"]}]},{"id":"staff_specific_admin","label":"Staff-Specific or Departmental Admin Complaints","type":"category","children":[{"id":"departmental_curriculum_issue","label":"Departmental curriculum issue affecting students","type":"leaf","actionType":"escalate","responseText":"Curriculum issues affecting multiple students require coordination between ICT and the department. Please provide the department name, programme, level, and the specific curriculum issue. ICT will work with the department to upload or correct the curriculum.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["staff_id","department"]},{"id":"bulk_student_data_update","label":"Bulk student data update needed","type":"leaf","actionType":"escalate","responseText":"Bulk data updates require administrative processing and proper authorization. Please provide the department, the type of update needed, and the number of students affected. ICT will process bulk updates after receiving proper authorization from the relevant authority.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["staff_id","department"]},{"id":"course_mapping_many_students","label":"Course mapping issue affecting many students","type":"leaf","actionType":"escalate","responseText":"Department-wide course mapping issues need to be reviewed as a batch. Please provide the course code(s), the programme(s) affected, and the nature of the mapping issue. ICT will review and correct the course mapping for all affected students.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["staff_id","department"]},{"id":"other_staff_admin_issue","label":"Other administrative correction needed","type":"leaf","actionType":"escalate","responseText":"Please provide the relevant administrative details including the type of correction needed, the students or records affected, and any supporting documentation. ICT will review and process the request.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["staff_id"]}]},{"id":"other_not_listed","label":"Other / Not Listed Above","type":"leaf","actionType":"free_text","responseText":"Please describe your issue in as much detail as possible. Include: (1) What you were trying to do, (2) What happened instead, (3) Any error messages you saw, (4) When the issue started. The more detail you provide, the faster ICT can resolve your complaint.","allowEscalation":true,"escalationTarget":"ICT","requiredFields":["student_id","complaint_description"],"aiClassificationEnabled":true,"aiClassificationTargets":["account_login_profile","portal_session_level_status","course_registration_carryovers","payments_fees","printing_documents","results_grades_records","biometrics_id_transcript","portal_technical_issues","staff_specific_admin"]}]}
+{
+    "id": "root_complaint_tree",
+    "label": "What best describes your complaint?",
+    "type": "question",
+    "children": [
+        {
+            "id": "account_login_profile",
+            "label": "Account, Login & Profile Corrections",
+            "type": "category",
+            "children": [
+                {
+                    "id": "login_cannot_access",
+                    "label": "I cannot log in to the portal",
+                    "type": "question",
+                    "children": [
+                        {
+                            "id": "forgot_password",
+                            "label": "I forgot my password",
+                            "type": "leaf",
+                            "actionType": "auto_response",
+                            "responseText": "Click the 'Forgot Password' link on the login page and enter your registered email address. A reset link will be sent to you. If you do not receive the email within 5 minutes, check your spam folder. If the email is not registered or the reset fails, escalate to ICT with your matric number.",
+                            "allowEscalation": true,
+                            "escalationTarget": "ICT",
+                            "requiredFields": [
+                                "student_id",
+                                "registered_email"
+                            ]
+                        },
+                        {
+                            "id": "know_details_but_cannot_login",
+                            "label": "I know my details but still cannot log in",
+                            "type": "leaf",
+                            "actionType": "escalate",
+                            "responseText": "This is usually caused by an account lock, username mismatch, or portal mapping issue. ICT will verify your account status and resolve it. Please provide your matric number and the exact error message you see.",
+                            "allowEscalation": true,
+                            "escalationTarget": "ICT",
+                            "requiredFields": [
+                                "student_id",
+                                "matric_number"
+                            ]
+                        },
+                        {
+                            "id": "invalid_username_password",
+                            "label": "Portal shows 'Invalid Username/Password'",
+                            "type": "leaf",
+                            "actionType": "escalate",
+                            "responseText": "This error usually means your JAMB number or matric number is not correctly mapped to your portal account. ICT will verify and correct the mapping. Please provide your JAMB registration number and matric number.",
+                            "allowEscalation": true,
+                            "escalationTarget": "ICT",
+                            "requiredFields": [
+                                "student_id",
+                                "matric_number",
+                                "jamb_number",
+                                "jamb_login_email",
+                                "jamb_profile_code"
+                            ]
+                        },
+                        {
+                            "id": "account_locked",
+                            "label": "My account has been locked or suspended",
+                            "type": "leaf",
+                            "actionType": "escalate",
+                            "responseText": "Account locks are usually triggered by multiple failed login attempts or administrative action. ICT will review and unlock your account. Please provide your matric number and student ID.",
+                            "allowEscalation": true,
+                            "escalationTarget": "ICT",
+                            "requiredFields": [
+                                "student_id",
+                                "matric_number"
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "id": "name_misspelt",
+                    "label": "My name is misspelt on the portal",
+                    "type": "leaf",
+                    "actionType": "auto_response",
+                    "responseText": "Name corrections require verification against your JAMB CAPS record. Please upload a clear photo of your JAMB CAPS slip showing your correct name. ICT will process the correction after JAMB-side validation. This process typically takes 3-5 working days.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id",
+                        "jamb_number",
+                        "jamb_login_email",
+                        "jamb_profile_code"
+                    ]
+                },
+                {
+                    "id": "dob_wrong",
+                    "label": "My date of birth is wrong",
+                    "type": "leaf",
+                    "actionType": "auto_response",
+                    "responseText": "Date of birth corrections require official documentation. Please upload your NIN slip or birth certificate. ICT will process the correction after document verification. Ensure the document clearly shows your correct date of birth.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id",
+                        "nin"
+                    ]
+                },
+                {
+                    "id": "passport_signature_change",
+                    "label": "My passport photo or signature needs updating",
+                    "type": "leaf",
+                    "actionType": "auto_response",
+                    "responseText": "You can update your passport photo and signature directly from the Profile section of the student portal. Go to Profile > Update Photo/Signature. If the update fails or the option is not available, escalate to ICT with your student ID.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id"
+                    ]
+                },
+                {
+                    "id": "name_order_incorrect",
+                    "label": "My name order is incorrect (e.g., surname and first name swapped)",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "Name order corrections require ICT backend access. Please provide your correct name order as it appears on your JAMB CAPS slip or admission letter. ICT will update the record within 2-3 working days.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id"
+                    ]
+                },
+                {
+                    "id": "wrong_programme_faculty",
+                    "label": "My programme or faculty is wrong on the portal",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "Programme or faculty corrections require verification of your admission letter and JAMB CAPS. Please provide your correct programme/faculty details and upload your admission letter. ICT will coordinate with the Admissions Office to correct this.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id",
+                        "matric_number"
+                    ]
+                },
+                {
+                    "id": "account_login_profile_other",
+                    "label": "Other / Not listed above",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "Your issue is related to \"Account, Login & Profile Corrections\" but does not match any of the listed options. Please describe your issue in detail in the complaint box below and ICT will review and respond as soon as possible.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id"
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "portal_session_level_status",
+            "label": "Portal Session, Level & Status Updates",
+            "type": "category",
+            "children": [
+                {
+                    "id": "spillover_session_update",
+                    "label": "I am a spillover student — my portal needs to move to the current session",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "Spillover session updates require backend processing. Please provide your current session, the target session, and your student ID. ICT will update your portal session after verifying your academic status with the Exams & Records office.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id",
+                        "current_session",
+                        "target_session"
+                    ]
+                },
+                {
+                    "id": "deferment_resumption_level_wrong",
+                    "label": "I resumed after deferment/suspension and my level is wrong",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "Level corrections after deferment or suspension require your official resumption/approval letter. Please upload the letter from the Dean of Students or Senate. ICT will update your level after verifying the document.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id"
+                    ]
+                },
+                {
+                    "id": "extension_of_studies",
+                    "label": "I need an extension of studies on my portal",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "Extension of studies requires an approved letter from the Senate or relevant authority. Please upload your approval letter. ICT will update your portal status after verification. Note: extensions must be officially approved before ICT can process them.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id"
+                    ]
+                },
+                {
+                    "id": "wrong_semester",
+                    "label": "My portal shows the wrong semester",
+                    "type": "leaf",
+                    "actionType": "auto_response",
+                    "responseText": "School fees typically cover both semesters. If your portal shows the wrong semester, first confirm that your school fees are fully paid. Then proceed with registration for the correct semester. If the issue persists after payment confirmation, escalate to ICT.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id"
+                    ]
+                },
+                {
+                    "id": "wrong_matric_year",
+                    "label": "My matric number shows the wrong year",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "Matric number year corrections require backend database access. Please provide your correct matric number as it appears on your admission letter. ICT will verify and correct the record.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id",
+                        "matric_number"
+                    ]
+                },
+                {
+                    "id": "incorrect_level",
+                    "label": "My level is incorrect (e.g., showing 100L instead of 200L)",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "Level corrections require verification of your academic records. Please provide your correct level and the evidence (e.g., previous session result slip or course form). ICT will coordinate with Exams & Records to update your level.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id",
+                        "correct_level"
+                    ]
+                },
+                {
+                    "id": "graduation_status_issue",
+                    "label": "My graduation status or clearance is not reflecting",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "Graduation status issues require coordination between ICT, Exams & Records, and the Bursary. Please ensure all fees are cleared and all results are uploaded. Provide your matric number and the specific issue you are experiencing.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id",
+                        "matric_number"
+                    ]
+                },
+                {
+                    "id": "portal_session_level_status_other",
+                    "label": "Other / Not listed above",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "Your issue is related to \"Portal Session, Level & Status Updates\" but does not match any of the listed options. Please describe your issue in detail in the complaint box below and ICT will review and respond as soon as possible.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id"
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "course_registration_carryovers",
+            "label": "Course Registration & Carryovers",
+            "type": "category",
+            "children": [
+                {
+                    "id": "cannot_add_course",
+                    "label": "I cannot add a course",
+                    "type": "question",
+                    "children": [
+                        {
+                            "id": "course_not_appearing",
+                            "label": "The course is not appearing on my portal",
+                            "type": "leaf",
+                            "actionType": "escalate",
+                            "responseText": "Missing courses are usually caused by curriculum mapping issues. Your department's curriculum may not be fully set up in the portal. Please provide the course code and title. ICT will check the curriculum mapping and add the course if it belongs to your programme.",
+                            "allowEscalation": true,
+                            "escalationTarget": "ICT",
+                            "requiredFields": [
+                                "student_id",
+                                "course_code"
+                            ]
+                        },
+                        {
+                            "id": "drop_course",
+                            "label": "I need to drop a course from my registration",
+                            "type": "leaf",
+                            "actionType": "auto_response",
+                            "responseText": "Course add/drop is normally handled by your Departmental Exam Officer during the add/drop period. Visit your department's Exam Officer with your course form. If the add/drop period has passed or the Exam Officer cannot process it, escalate to ICT.",
+                            "allowEscalation": true,
+                            "escalationTarget": "ICT",
+                            "requiredFields": [
+                                "student_id",
+                                "course_code"
+                            ]
+                        },
+                        {
+                            "id": "carryover_duplicate",
+                            "label": "A carryover course is appearing multiple times",
+                            "type": "leaf",
+                            "actionType": "escalate",
+                            "responseText": "Duplicate carryover records need to be cleaned up in the database. Please provide the course code and the number of times it appears. ICT will remove the duplicate entries and ensure only one record remains.",
+                            "allowEscalation": true,
+                            "escalationTarget": "ICT",
+                            "requiredFields": [
+                                "student_id",
+                                "course_code"
+                            ]
+                        },
+                        {
+                            "id": "wrong_department_course",
+                            "label": "A course from another department appears on my list",
+                            "type": "leaf",
+                            "actionType": "escalate",
+                            "responseText": "Stray course records from other departments need to be removed. Please provide the course code and the department it belongs to. ICT will remove the incorrect course from your registration.",
+                            "allowEscalation": true,
+                            "escalationTarget": "ICT",
+                            "requiredFields": [
+                                "student_id",
+                                "course_code"
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "id": "unit_limits_issue",
+                    "label": "I cannot register because of unit limits",
+                    "type": "question",
+                    "children": [
+                        {
+                            "id": "max_credit_exceeded",
+                            "label": "I have exceeded the maximum credit units",
+                            "type": "leaf",
+                            "actionType": "auto_response",
+                            "responseText": "The portal enforces maximum credit unit limits per semester. To resolve this: (1) Review your registered courses and identify any you can drop. (2) Contact your Exam Officer to drop excess courses. (3) If you believe the unit calculation is wrong (e.g., a course is counted twice), escalate to ICT with your course list.",
+                            "allowEscalation": true,
+                            "escalationTarget": "Exam Officer",
+                            "requiredFields": [
+                                "student_id",
+                                "total_units"
+                            ]
+                        },
+                        {
+                            "id": "minimum_units_not_met",
+                            "label": "I have not met the minimum credit units",
+                            "type": "leaf",
+                            "actionType": "auto_response",
+                            "responseText": "You need to add more courses to meet the minimum required units. Check your curriculum for available courses in your current level and semester. If required courses are not available on the portal, escalate to ICT with the missing course codes.",
+                            "allowEscalation": true,
+                            "escalationTarget": "ICT",
+                            "requiredFields": [
+                                "student_id",
+                                "total_units"
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "id": "registered_courses_disappeared",
+                    "label": "My registered courses disappeared from my dashboard",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "Disappearing courses are usually caused by a portal rollback or sync issue. This is urgent — please escalate immediately with your student ID and the date you last saw your courses. ICT will check the database logs and restore your registration.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id"
+                    ]
+                },
+                {
+                    "id": "no_curriculum_provided",
+                    "label": "My course form says 'No Curriculum Provided'",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "This error means your department's curriculum has not been set up in the portal for your programme and level. ICT needs to work with your department to upload the curriculum. Please provide your department, programme, and current level. This may take a few days to resolve.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id",
+                        "department"
+                    ]
+                },
+                {
+                    "id": "course_form_not_generating",
+                    "label": "My course form is not generating or is blank",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "Course form generation issues can be caused by incomplete registration, missing curriculum, or payment issues. Please verify: (1) All courses are registered, (2) School fees are paid, (3) Curriculum is available. If all these are in order, escalate to ICT.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id"
+                    ]
+                },
+                {
+                    "id": "course_registration_carryovers_other",
+                    "label": "Other / Not listed above",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "Your issue is related to \"Course Registration & Carryovers\" but does not match any of the listed options. Please describe your issue in detail in the complaint box below and ICT will review and respond as soon as possible.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id"
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "payments_fees",
+            "label": "Payments & Fees",
+            "type": "category",
+            "children": [
+                {
+                    "id": "payment_not_reflecting",
+                    "label": "I made a payment but it is not reflecting on my portal",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "Payment sync issues are common and usually resolve within 24-48 hours. If your payment is not reflecting after 48 hours: (1) Confirm the payment was successful with your bank. (2) Provide your RRR (Remita Retrieval Reference) or transaction ID. (3) Upload your payment receipt. ICT will sync the payment manually.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id",
+                        "transaction_id",
+                        "rrr"
+                    ]
+                },
+                {
+                    "id": "wrong_balance",
+                    "label": "My portal shows an outstanding balance even though I paid in full",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "Outstanding balance issues can be caused by fee mapping errors, indigene/non-indigene status mismatches, or hidden charges. Please provide your payment receipt and the amount shown as outstanding. ICT will investigate the fee structure applied to your account.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id"
+                    ]
+                },
+                {
+                    "id": "convocation_fee_still_shown",
+                    "label": "Convocation fee still appears after graduation",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "Post-graduation fee flags need to be removed from your account. Please provide your matric number and graduation year. ICT will remove the convocation fee flag from your portal.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id"
+                    ]
+                },
+                {
+                    "id": "paid_twice_refund",
+                    "label": "I paid twice or need a refund",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "Duplicate payments require manual financial adjustment by the Bursary. Please provide both payment receipts or transaction IDs. ICT will forward your case to the Bursary for a refund or credit. Note: refunds may take 2-4 weeks to process.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id"
+                    ]
+                },
+                {
+                    "id": "nelfund_payment_issue",
+                    "label": "NELFUND payment is not showing or was duplicated",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "NELFUND payment issues require verification with the NELFUND portal. Please provide your NELFUND transaction ID and the date of payment. ICT will verify the payment sync between NELFUND and the university portal.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id",
+                        "transaction_id"
+                    ]
+                },
+                {
+                    "id": "id_card_payment_issue",
+                    "label": "I paid for ID card but it is not reflecting",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "ID card payment issues require verification of the payment module. Please provide your transaction ID or RRR for the ID card payment. ICT will confirm the payment and activate your ID card printing access.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id",
+                        "transaction_id"
+                    ]
+                },
+                {
+                    "id": "acceptance_fee_issue",
+                    "label": "Acceptance fee payment issue",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "Acceptance fee issues can prevent portal activation. Please provide your JAMB registration number and acceptance fee receipt. ICT will verify the payment and activate your portal account.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id",
+                        "jamb_number"
+                    ]
+                },
+                {
+                    "id": "payments_fees_other",
+                    "label": "Other / Not listed above",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "Your issue is related to \"Payments & Fees\" but does not match any of the listed options. Please describe your issue in detail in the complaint box below and ICT will review and respond as soon as possible.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id"
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "printing_documents",
+            "label": "Printing & Document Generation",
+            "type": "category",
+            "children": [
+                {
+                    "id": "course_form_printing",
+                    "label": "I cannot print my course form",
+                    "type": "question",
+                    "children": [
+                        {
+                            "id": "course_form_unit_issue",
+                            "label": "Printing is blocked due to credit unit issues",
+                            "type": "leaf",
+                            "actionType": "auto_response",
+                            "responseText": "Course form printing is blocked because your registered units do not meet the required minimum or exceed the maximum. Please review your course registration: (1) Add courses if below minimum units, (2) Drop courses if above maximum units. Contact your Exam Officer for assistance.",
+                            "allowEscalation": true,
+                            "escalationTarget": "Exam Officer",
+                            "requiredFields": [
+                                "student_id"
+                            ]
+                        },
+                        {
+                            "id": "course_form_payment_issue",
+                            "label": "Printing is blocked due to payment status",
+                            "type": "leaf",
+                            "actionType": "escalate",
+                            "responseText": "Your course form printing is blocked because your school fees payment has not been confirmed on the portal. Please verify your payment is reflected on the portal. If payment is confirmed but printing is still blocked, escalate to ICT with your payment receipt.",
+                            "allowEscalation": true,
+                            "escalationTarget": "ICT",
+                            "requiredFields": [
+                                "student_id"
+                            ]
+                        },
+                        {
+                            "id": "course_form_curriculum_issue",
+                            "label": "Printing is blocked due to missing curriculum",
+                            "type": "leaf",
+                            "actionType": "escalate",
+                            "responseText": "Your course form cannot be generated because your department's curriculum is not set up in the portal. ICT needs to work with your department to upload the curriculum. Please provide your department, programme, and level. Escalate urgently if this is close to the exam period.",
+                            "allowEscalation": true,
+                            "escalationTarget": "ICT",
+                            "requiredFields": [
+                                "student_id"
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "id": "exam_card_printing",
+                    "label": "I cannot print my exam card",
+                    "type": "question",
+                    "children": [
+                        {
+                            "id": "exam_card_biometrics_missing",
+                            "label": "I have not done biometrics yet",
+                            "type": "leaf",
+                            "actionType": "auto_response",
+                            "responseText": "Biometrics are required before you can print your exam card. Please visit the ICT Biometrics Unit during working hours (Monday-Friday, 8am-4pm). Bring your student ID card or matric number. Biometrics are usually done once and remain valid throughout your studies.",
+                            "allowEscalation": false,
+                            "requiredFields": [
+                                "student_id"
+                            ]
+                        },
+                        {
+                            "id": "exam_card_biometrics_done",
+                            "label": "I have done biometrics but still cannot print",
+                            "type": "leaf",
+                            "actionType": "escalate",
+                            "responseText": "If biometrics are done but exam card printing is still blocked, there may be a sync issue or a payment/registration problem. ICT will check your biometrics record and exam card generation status. Please provide your student ID and the error message you see.",
+                            "allowEscalation": true,
+                            "escalationTarget": "ICT",
+                            "requiredFields": [
+                                "student_id"
+                            ]
+                        },
+                        {
+                            "id": "exam_card_payment_blocked",
+                            "label": "Exam card printing is blocked due to payment",
+                            "type": "leaf",
+                            "actionType": "escalate",
+                            "responseText": "Exam card printing requires confirmed school fees payment. Please verify your payment is reflected on the portal. If payment is confirmed but printing is still blocked, escalate to ICT with your payment receipt and student ID.",
+                            "allowEscalation": true,
+                            "escalationTarget": "ICT",
+                            "requiredFields": [
+                                "student_id"
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "id": "transcript_issue",
+                    "label": "Transcript application error or not processing",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "Transcript application errors usually require curriculum mapping or module review. Please provide your matric number and the specific error message. Note: transcripts require all fees to be cleared and all results to be uploaded before they can be processed.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id"
+                    ]
+                },
+                {
+                    "id": "admission_letter_printing",
+                    "label": "I cannot print my admission letter",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "Admission letter printing issues are usually caused by incomplete portal setup or payment issues. Please ensure your acceptance fee is paid and your portal is fully activated. If the issue persists, escalate to ICT with your JAMB registration number.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id",
+                        "jamb_number"
+                    ]
+                },
+                {
+                    "id": "other_print_error",
+                    "label": "Other printing or document generation error",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "Please describe the specific document you are trying to print and the exact error message you see. ICT will investigate the print service or document generation issue and resolve it.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id"
+                    ]
+                },
+                {
+                    "id": "printing_documents_other",
+                    "label": "Other / Not listed above",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "Your issue is related to \"Printing & Document Generation\" but does not match any of the listed options. Please describe your issue in detail in the complaint box below and ICT will review and respond as soon as possible.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id"
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "results_grades_records",
+            "label": "Results, Grades & Academic Records",
+            "type": "category",
+            "children": [
+                {
+                    "id": "fa_for_course_taken",
+                    "label": "I have Fail Absent (FA) for a course I sat for",
+                    "type": "leaf",
+                    "actionType": "auto_response",
+                    "responseText": "FA (Fail Absent) means the portal shows you did not sit for the exam. First step: Visit your department and speak to your Exam Officer. They will verify your attendance and initiate a result correction if needed. If the department confirms you sat for the exam but the result is still FA after departmental verification, escalate to ICT with your course code and department confirmation.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id",
+                        "course_code"
+                    ]
+                },
+                {
+                    "id": "incorrect_grade",
+                    "label": "I have an incorrect grade for a course",
+                    "type": "leaf",
+                    "actionType": "auto_response",
+                    "responseText": "Grade corrections must go through the official academic channel: (1) Contact your course lecturer to verify the grade. (2) If the lecturer confirms an error, they will submit a grade correction form to the Exam Officer. (3) The Exam Officer forwards to the Faculty Board for approval. (4) After Faculty Board approval, ICT uploads the corrected grade. This process can take 2-6 weeks.",
+                    "allowEscalation": true,
+                    "escalationTarget": "Exam Officer",
+                    "requiredFields": [
+                        "student_id",
+                        "course_code",
+                        "expected_grade"
+                    ]
+                },
+                {
+                    "id": "result_not_approved",
+                    "label": "My result says 'Not yet approved by Senate'",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "Results pending Senate approval are in the final stage of the academic approval process. This is usually resolved after the next Senate meeting. If this has been pending for more than one semester, escalate to ICT who will check the approval status with Exams & Records.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id"
+                    ]
+                },
+                {
+                    "id": "cgpa_wrong",
+                    "label": "My CGPA or CPA seems wrong",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "CGPA calculation errors can be caused by duplicate course records, missing grades, or incorrect credit unit assignments. Please provide your expected CGPA and the courses you believe are causing the discrepancy. ICT will audit your academic record.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id"
+                    ]
+                },
+                {
+                    "id": "siwes_summer_missing",
+                    "label": "My SIWES or summer school result is missing",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "SIWES and summer school results are uploaded separately from regular semester results. Please confirm with your department that the result has been submitted to Exams & Records. If submitted but not reflecting, escalate to ICT with your SIWES/summer school completion certificate.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id"
+                    ]
+                },
+                {
+                    "id": "result_verification",
+                    "label": "I need result verification for a specific course",
+                    "type": "leaf",
+                    "actionType": "auto_response",
+                    "responseText": "Result verification starts at the departmental level. Please visit your department's Exam Officer with your course form and the specific course(s) in question. The Exam Officer will verify the result against the original score sheet. If the department confirms a discrepancy, they will initiate the correction process through ICT.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id",
+                        "course_code"
+                    ]
+                },
+                {
+                    "id": "missing_result_semester",
+                    "label": "My results for an entire semester are missing",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "Missing semester results are a serious issue that requires urgent attention. Please escalate immediately with your student ID, the affected semester, and your academic session. ICT will check with Exams & Records to determine if results were uploaded.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id"
+                    ]
+                },
+                {
+                    "id": "results_grades_records_other",
+                    "label": "Other / Not listed above",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "Your issue is related to \"Results, Grades & Academic Records\" but does not match any of the listed options. Please describe your issue in detail in the complaint box below and ICT will review and respond as soon as possible.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id"
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "biometrics_id_transcript",
+            "label": "Biometrics, ID Card & Transcript",
+            "type": "category",
+            "children": [
+                {
+                    "id": "biometrics_not_captured",
+                    "label": "Biometrics not captured or portal shows 'Visit ICT'",
+                    "type": "leaf",
+                    "actionType": "auto_response",
+                    "responseText": "Please visit the ICT Biometrics Unit to have your biometrics captured. Working hours: Monday to Friday, 8:00am to 4:00pm. Bring your student ID or matric number. Biometrics are required for exam card printing and other portal functions.",
+                    "allowEscalation": false,
+                    "requiredFields": [
+                        "student_id"
+                    ]
+                },
+                {
+                    "id": "id_card_not_printing",
+                    "label": "I cannot print my ID card",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "ID card printing issues can be caused by unpaid ID card fees, incomplete biometrics, or a portal module issue. Please verify: (1) ID card fee is paid, (2) Biometrics are captured. If both are done and printing is still blocked, escalate to ICT with your student ID and payment receipt.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id"
+                    ]
+                },
+                {
+                    "id": "passport_signature_update",
+                    "label": "I need to update my passport photo or signature",
+                    "type": "leaf",
+                    "actionType": "auto_response",
+                    "responseText": "You can update your passport photo and signature from the Profile section of the student portal. If the update option is not available or the update fails, escalate to ICT. Please note that passport photos must be recent, clear, and on a white background.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id"
+                    ]
+                },
+                {
+                    "id": "transcript_error",
+                    "label": "Transcript application error",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "Transcript application errors require curriculum mapping or module review. Ensure all fees are cleared and all results are uploaded before applying. If the error persists, escalate to ICT with your matric number and the specific error message.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id"
+                    ]
+                },
+                {
+                    "id": "other_identity_document_issue",
+                    "label": "Other identity or document issue",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "Please describe the specific document issue you are experiencing. ICT will review and resolve it. Provide your student ID and any relevant details about the document in question.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id"
+                    ]
+                },
+                {
+                    "id": "biometrics_id_transcript_other",
+                    "label": "Other / Not listed above",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "Your issue is related to \"Biometrics, ID Card & Transcript\" but does not match any of the listed options. Please describe your issue in detail in the complaint box below and ICT will review and respond as soon as possible.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id"
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "portal_technical_issues",
+            "label": "Portal Technical Issues & Errors",
+            "type": "category",
+            "children": [
+                {
+                    "id": "portal_slow_not_loading",
+                    "label": "The portal is very slow or not loading",
+                    "type": "leaf",
+                    "actionType": "auto_response",
+                    "responseText": "Portal slowness is often caused by high traffic during peak periods (e.g., registration periods). Try: (1) Use the portal during off-peak hours (early morning or late evening). (2) Clear your browser cache and cookies. (3) Try a different browser (Chrome or Firefox recommended). (4) Check your internet connection. If the portal is completely down, ICT is likely already aware and working on it.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id"
+                    ]
+                },
+                {
+                    "id": "portal_error_message",
+                    "label": "I see an error message on the portal",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "Please take a screenshot of the exact error message and escalate to ICT. Include your student ID, the page where the error occurs, and what you were trying to do when the error appeared. This helps ICT diagnose and fix the issue quickly.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id"
+                    ]
+                },
+                {
+                    "id": "data_not_saving",
+                    "label": "Changes I make on the portal are not saving",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "Data not saving can be caused by session timeouts, browser issues, or server errors. Try: (1) Log out and log back in. (2) Clear browser cache. (3) Use a different browser. If the issue persists, escalate to ICT with details of what you are trying to save.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id"
+                    ]
+                },
+                {
+                    "id": "portal_access_new_student",
+                    "label": "I am a new student and cannot access the portal at all",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "New student portal access requires: (1) Acceptance fee payment, (2) JAMB admission confirmation, (3) Portal activation by ICT. If you have completed all these steps and still cannot access the portal, escalate to ICT with your JAMB registration number and admission letter.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id",
+                        "jamb_number"
+                    ]
+                },
+                {
+                    "id": "portal_technical_issues_other",
+                    "label": "Other / Not listed above",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "Your issue is related to \"Portal Technical Issues & Errors\" but does not match any of the listed options. Please describe your issue in detail in the complaint box below and ICT will review and respond as soon as possible.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id"
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "staff_specific_admin",
+            "label": "Staff-Specific or Departmental Admin Complaints",
+            "type": "category",
+            "children": [
+                {
+                    "id": "departmental_curriculum_issue",
+                    "label": "Departmental curriculum issue affecting students",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "Curriculum issues affecting multiple students require coordination between ICT and the department. Please provide the department name, programme, level, and the specific curriculum issue. ICT will work with the department to upload or correct the curriculum.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "staff_id",
+                        "department"
+                    ]
+                },
+                {
+                    "id": "bulk_student_data_update",
+                    "label": "Bulk student data update needed",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "Bulk data updates require administrative processing and proper authorization. Please provide the department, the type of update needed, and the number of students affected. ICT will process bulk updates after receiving proper authorization from the relevant authority.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "staff_id",
+                        "department"
+                    ]
+                },
+                {
+                    "id": "course_mapping_many_students",
+                    "label": "Course mapping issue affecting many students",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "Department-wide course mapping issues need to be reviewed as a batch. Please provide the course code(s), the programme(s) affected, and the nature of the mapping issue. ICT will review and correct the course mapping for all affected students.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "staff_id",
+                        "department"
+                    ]
+                },
+                {
+                    "id": "other_staff_admin_issue",
+                    "label": "Other administrative correction needed",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "Please provide the relevant administrative details including the type of correction needed, the students or records affected, and any supporting documentation. ICT will review and process the request.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "staff_id"
+                    ]
+                },
+                {
+                    "id": "staff_specific_admin_other",
+                    "label": "Other / Not listed above",
+                    "type": "leaf",
+                    "actionType": "escalate",
+                    "responseText": "Your issue is related to \"Staff-Specific or Departmental Admin Complaints\" but does not match any of the listed options. Please describe your issue in detail in the complaint box below and ICT will review and respond as soon as possible.",
+                    "allowEscalation": true,
+                    "escalationTarget": "ICT",
+                    "requiredFields": [
+                        "student_id"
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "other_not_listed",
+            "label": "Other / Not Listed Above",
+            "type": "leaf",
+            "actionType": "free_text",
+            "responseText": "Please describe your issue in as much detail as possible. Include: (1) What you were trying to do, (2) What happened instead, (3) Any error messages you saw, (4) When the issue started. The more detail you provide, the faster ICT can resolve your complaint.",
+            "allowEscalation": true,
+            "escalationTarget": "ICT",
+            "requiredFields": [
+                "student_id",
+                "complaint_description"
+            ],
+            "aiClassificationEnabled": true,
+            "aiClassificationTargets": [
+                "account_login_profile",
+                "portal_session_level_status",
+                "course_registration_carryovers",
+                "payments_fees",
+                "printing_documents",
+                "results_grades_records",
+                "biometrics_id_transcript",
+                "portal_technical_issues",
+                "staff_specific_admin"
+            ]
+        }
+    ]
+}
