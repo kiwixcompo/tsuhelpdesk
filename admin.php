@@ -578,7 +578,7 @@ foreach ($complaints as $c) {
         }
         /* Prevent content overflow */
         .card-body {
-            overflow-x: hidden;
+            overflow-x: visible;
         }
         /* Ensure buttons stay visible */
         .btn-sm {
@@ -596,24 +596,47 @@ foreach ($complaints as $c) {
         }
         /* Let the browser size columns naturally */
         .table {
-            table-layout: auto;
+            table-layout: fixed;
             width: 100%;
+            min-width: 700px; /* ensures horizontal scroll kicks in before columns collapse */
         }
-        /* Complaint text column wraps; everything else stays on one line */
+        /* All cells: no wrap by default, middle-aligned */
         .table td {
             white-space: nowrap;
             vertical-align: middle;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
-        .table td:nth-child(4) {
+        /* Student ID column — truncate long matric lists */
+        .table th:nth-child(3), .table td:nth-child(3) {
+            max-width: 130px;
+            width: 130px;
+        }
+        /* Complaint text column — wraps and gets the most space */
+        .table th:nth-child(4), .table td:nth-child(4) {
             white-space: normal;
             word-break: break-word;
-            max-width: 220px;
+            max-width: 200px;
+            width: 200px;
         }
-        /* Keep action column compact */
-        .table td:last-child {
+        /* Status, Priority — compact */
+        .table th:nth-child(5), .table td:nth-child(5),
+        .table th:nth-child(6), .table td:nth-child(6) {
+            width: 90px;
+            text-align: center;
+        }
+        /* Lodged By, Handler */
+        .table th:nth-child(7), .table td:nth-child(7),
+        .table th:nth-child(8), .table td:nth-child(8) {
+            max-width: 100px;
+            width: 100px;
+        }
+        /* Action column — just wide enough for the button */
+        .table td:last-child, .table th:last-child {
             white-space: nowrap;
-            width: 1%;
-            max-width: none;
+            width: 50px;
+            text-align: center;
+            overflow: visible;
         }
         /* Ensure form controls inside modals are never clipped */
         .modal select,
@@ -965,14 +988,15 @@ foreach ($complaints as $c) {
                                     <small class="text-muted ml-2">Select complaints using checkboxes</small>
                                 </div>
                                 
+                                <div class="table-responsive">
                                 <table class="table table-sm table-hover">
                                     <thead class="thead-light">
                                         <tr>
-                                            <th><input type="checkbox" id="selectAll" title="Select All"></th>
-                                            <th>Date</th>
-                                            <th>Student ID</th>
+                                            <th style="width:40px"><input type="checkbox" id="selectAll" title="Select All"></th>
+                                            <th style="width:90px">Date</th>
+                                            <th style="width:130px">Student ID</th>
                                             <th>Complaint</th>
-                                            <th>Status</th>
+                                            <th style="width:90px">Status</th>
                                             <th>Priority</th>
                                             <th>Lodged By</th>
                                             <th>Handler</th>
@@ -986,7 +1010,13 @@ foreach ($complaints as $c) {
                                                 <input type="checkbox" name="complaint_ids[]" value="<?php echo $complaint['complaint_id']; ?>" class="complaint-checkbox">
                                             </td>
                                             <td><?php echo date('M d, Y', strtotime($complaint['created_at'])); ?></td>
-                                            <td><?php echo htmlspecialchars($complaint['student_id'] ?? ''); ?></td>
+                                            <?php
+                                                $sid_full = htmlspecialchars($complaint['student_id'] ?? '');
+                                                $sid_display = mb_strlen($sid_full) > 20
+                                                    ? mb_substr($sid_full, 0, 20) . '…'
+                                                    : $sid_full;
+                                            ?>
+                                            <td title="<?php echo $sid_full; ?>" style="cursor:default"><?php echo $sid_display; ?></td>
                                         <td>
                                             <?php echo substr($complaint['complaint_text'], 0, 50); ?>...
                                             <!-- MODIFIED: Enhanced attachment display -->
@@ -1127,6 +1157,7 @@ foreach ($complaints as $c) {
                                     <?php endforeach; ?>
                                 </tbody>
                             </table>
+                            </div><!-- /.table-responsive -->
                         </form>
                         
                         <!-- Select All JavaScript -->
