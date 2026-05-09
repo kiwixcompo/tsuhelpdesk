@@ -671,7 +671,6 @@ if ($notif_count_result && $notif_row = mysqli_fetch_assoc($notif_count_result))
                                             <h5 class="modal-title">ICT Complaint Details</h5>
                                             <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
                                         </div>
-                                        <?php include_once(''); // modal body rendered inline below ?>
                                         <div class="modal-body">
                                             <?php
                                             $extra = [];

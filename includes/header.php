@@ -10,6 +10,7 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true){
 
 // Include database connection and fetch app settings
 require_once "config.php";
+require_once "includes/notification_prefs.php";
 
 // Fetch app settings for header use
 $app_name = 'TSU ICT Help Desk'; // Default value
