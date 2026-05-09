@@ -86,6 +86,30 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["delete_user"]) && $_SES
     }
 }
 
+// Process user edit (super admin only)
+if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["edit_user"]) && $_SESSION["is_super_admin"]){
+    $edit_user_id  = intval($_POST["edit_user_id"]);
+    $full_name     = trim($_POST["edit_full_name"]);
+    $username      = trim($_POST["edit_username"]);
+    $email         = trim($_POST["edit_email"]);
+    $role_id       = intval($_POST["edit_role_id"]);
+
+    if(!empty($full_name) && !empty($username)){
+        $sql = "UPDATE users SET full_name = ?, username = ?, email = ?, role_id = ? WHERE user_id = ?";
+        if($stmt = mysqli_prepare($conn, $sql)){
+            mysqli_stmt_bind_param($stmt, "sssii", $full_name, $username, $email, $role_id, $edit_user_id);
+            if(mysqli_stmt_execute($stmt)){
+                $success_message = "User updated successfully.";
+            } else {
+                $error_message = "Failed to update user: " . mysqli_error($conn);
+            }
+            mysqli_stmt_close($stmt);
+        }
+    } else {
+        $error_message = "Full name and username are required.";
+    }
+}
+
 // Process user password reset (super admin only)
 if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reset_password"]) && $_SESSION["is_super_admin"]){
     $user_id = $_POST["user_id"];
@@ -150,7 +174,8 @@ if ($records_per_page === 'all') {
 
 // Fetch users with pagination limit
 $users = [];
-$sql = "SELECT u.*, r.role_name FROM users u 
+$sql = "SELECT u.user_id, u.username, u.full_name, u.email, u.role_id, u.created_at, r.role_name 
+        FROM users u 
         JOIN roles r ON u.role_id = r.role_id 
         ORDER BY u.created_at DESC 
         $limit_clause";
@@ -487,6 +512,14 @@ while($row = mysqli_fetch_assoc($result)){
                                             <td data-label="Created"><?php echo date('M d, Y', strtotime($user['created_at'])); ?></td>
                                             <?php if($_SESSION["is_super_admin"] && $user['user_id'] != $_SESSION["user_id"]): ?>
                                             <td data-label="Actions" class="action-col">
+                                                <button type="button" class="btn btn-sm btn-primary btn-edit-user"
+                                                        data-id="<?php echo $user['user_id']; ?>"
+                                                        data-name="<?php echo htmlspecialchars($user['full_name'], ENT_QUOTES); ?>"
+                                                        data-username="<?php echo htmlspecialchars($user['username'], ENT_QUOTES); ?>"
+                                                        data-email="<?php echo htmlspecialchars($user['email'] ?? '', ENT_QUOTES); ?>"
+                                                        data-role="<?php echo intval($user['role_id']); ?>">
+                                                    <i class="fas fa-edit"></i> <span class="d-none d-md-inline">Edit</span>
+                                                </button>
                                                 <button type="button" class="btn btn-sm btn-warning btn-reset-pw"
                                                         data-id="<?php echo $user['user_id']; ?>"
                                                         data-name="<?php echo htmlspecialchars($user['full_name'], ENT_QUOTES); ?>">
@@ -554,6 +587,55 @@ while($row = mysqli_fetch_assoc($result)){
 
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit User Modal -->
+    <div class="modal fade" id="editUserModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-user-edit mr-2"></i>Edit User</h5>
+                    <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                </div>
+                <form method="post">
+                    <div class="modal-body">
+                        <input type="hidden" name="edit_user_id" id="editUserId">
+                        <div class="form-group">
+                            <label class="font-weight-bold">Full Name <span class="text-danger">*</span></label>
+                            <input type="text" name="edit_full_name" id="editFullName" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="font-weight-bold">Username <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <div class="input-group-prepend">
+                                    <span class="input-group-text">@</span>
+                                </div>
+                                <input type="text" name="edit_username" id="editUsername" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="font-weight-bold">Email Address</label>
+                            <input type="email" name="edit_email" id="editEmail" class="form-control" placeholder="e.g. user@tsuniversity.ng">
+                            <small class="form-text text-muted">Used for email notifications. Leave blank if not applicable.</small>
+                        </div>
+                        <div class="form-group">
+                            <label class="font-weight-bold">Role <span class="text-danger">*</span></label>
+                            <select name="edit_role_id" id="editRoleId" class="form-control" required>
+                                <?php foreach($roles as $role): ?>
+                                    <option value="<?php echo $role['role_id']; ?>"><?php echo htmlspecialchars($role['role_name']); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="submit" name="edit_user" class="btn btn-primary">
+                            <i class="fas fa-save mr-1"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -757,6 +839,21 @@ while($row = mysqli_fetch_assoc($result)){
             processBulkPasswordReset();
         });
         
+        // Shared Edit User button
+        $(document).on('click', '.btn-edit-user', function() {
+            const id       = $(this).data('id');
+            const name     = $(this).data('name');
+            const username = $(this).data('username');
+            const email    = $(this).data('email');
+            const role     = $(this).data('role');
+            $('#editUserId').val(id);
+            $('#editFullName').val(name);
+            $('#editUsername').val(username);
+            $('#editEmail').val(email);
+            $('#editRoleId').val(role);
+            $('#editUserModal').modal('show');
+        });
+
         // Shared Reset Password button
         $(document).on('click', '.btn-reset-pw', function() {
             const id   = $(this).data('id');
@@ -1236,6 +1333,9 @@ while($row = mysqli_fetch_assoc($result)){
             <hr>
             
             <div class="text-center action-buttons d-flex flex-wrap justify-content-center">
+                <button class="btn btn-success" onclick="openEditUserModal(${user.user_id}, '${escapeHtml(user.full_name)}', '${escapeHtml(user.username)}', '${escapeHtml(user.email || '')}', ${user.role_id})">
+                    <i class="fas fa-user-edit"></i> Edit User
+                </button>
                 <button class="btn btn-primary" onclick="openDirectMessage(${user.user_id}, '${escapeHtml(user.full_name)}')">
                     <i class="fas fa-envelope"></i> Send Message
                 </button>
@@ -1257,6 +1357,17 @@ while($row = mysqli_fetch_assoc($result)){
         loadLoginActivities(user.user_id);
     }
     
+    function openEditUserModal(userId, fullName, username, email, roleId) {
+        $('#userDetailModal').modal('hide');
+        $('#editUserId').val(userId);
+        $('#editFullName').val(fullName);
+        $('#editUsername').val(username);
+        $('#editEmail').val(email);
+        $('#editRoleId').val(roleId);
+        // Small delay so the detail modal fully closes first
+        setTimeout(function() { $('#editUserModal').modal('show'); }, 300);
+    }
+
     function openDirectMessage(userId, userName) {
         $('#userDetailModal').modal('hide');
         
