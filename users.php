@@ -110,11 +110,50 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reset_password"]) && $_
     }
 }
 
-// Fetch all users
+// --- Dynamic Pagination Logic Setup ---
+$default_limit = 10;
+$allowed_limits = [10, 25, 50, 100, 'all'];
+
+$records_per_page = isset($_GET['limit']) ? $_GET['limit'] : $default_limit;
+
+// Validate limit parameter
+if (!in_array($records_per_page, $allowed_limits)) {
+    $records_per_page = $default_limit;
+}
+
+// Get total number of users
+$total_users_query = "SELECT COUNT(*) as total FROM users";
+$total_result = mysqli_query($conn, $total_users_query);
+$total_row = mysqli_fetch_assoc($total_result);
+$total_records = $total_row['total'];
+
+// Set up pagination parameters based on user choice
+if ($records_per_page === 'all') {
+    $total_pages = 1;
+    $page = 1;
+    $limit_clause = "";
+} else {
+    $records_per_page = (int)$records_per_page;
+    $total_pages = ceil($total_records / $records_per_page);
+    
+    // Get current page
+    $page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
+    if ($page < 1) $page = 1;
+    if ($page > $total_pages && $total_pages > 0) $page = $total_pages;
+    
+    // Calculate the offset for the query
+    $offset = ($page - 1) * $records_per_page;
+    if ($offset < 0) $offset = 0;
+    
+    $limit_clause = "LIMIT $records_per_page OFFSET $offset";
+}
+
+// Fetch users with pagination limit
 $users = [];
 $sql = "SELECT u.*, r.role_name FROM users u 
         JOIN roles r ON u.role_id = r.role_id 
-        ORDER BY u.created_at DESC";
+        ORDER BY u.created_at DESC 
+        $limit_clause";
 $result = mysqli_query($conn, $sql);
 if($result){
     while($row = mysqli_fetch_assoc($result)){
@@ -138,7 +177,6 @@ while($row = mysqli_fetch_assoc($result)){
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Management - <?php echo htmlspecialchars($app_name); ?></title>
     
-    <!-- Dynamic Favicon -->
     <?php if($app_favicon && file_exists($app_favicon)): ?>
         <link rel="icon" type="image/x-icon" href="<?php echo htmlspecialchars($app_favicon); ?>">
         <link rel="shortcut icon" type="image/x-icon" href="<?php echo htmlspecialchars($app_favicon); ?>">
@@ -149,6 +187,8 @@ while($row = mysqli_fetch_assoc($result)){
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/responsive-fix.css">
+    
     <style>
         .app-branding {
             display: flex;
@@ -253,49 +293,6 @@ while($row = mysqli_fetch_assoc($result)){
             font-style: italic;
         }
         
-        /* Performance optimizations for Chrome */
-        .table {
-            table-layout: fixed;
-            width: 100%;
-        }
-        /* Ensure form controls inside modals are never clipped */
-        .modal select,
-        .modal .form-control,
-        .modal input,
-        .modal textarea {
-            width: 100% !important;
-            max-width: 100% !important;
-            overflow: visible !important;
-            text-overflow: unset !important;
-            white-space: normal !important;
-        }
-        .modal select option {
-            white-space: normal !important;
-        }
-        
-        .table td, .table th {
-            word-wrap: break-word;
-            vertical-align: middle;
-        }
-        
-        /* Prevent layout shifts */
-        .search-results {
-            will-change: transform;
-            transform: translateZ(0);
-        }
-        
-        /* Fix modal flicker - disable animation on small modals */
-        .modal.fade .modal-dialog {
-            transition: none !important;
-        }
-        body.modal-open {
-            overflow: auto !important;
-            padding-right: 0 !important;
-        }
-        .modal-dialog {
-            margin: 5vh auto;
-        }
-        
         /* Smooth transitions */
         .user-checkbox {
             transition: none;
@@ -317,6 +314,19 @@ while($row = mysqli_fetch_assoc($result)){
             font-weight: bold;
             color: #007bff;
         }
+        
+        /* Pagination Styling Fixes */
+        .pagination {
+            margin-bottom: 0;
+        }
+        .page-link {
+            color: var(--primary-blue);
+            padding: 0.5rem 0.75rem;
+        }
+        .page-item.active .page-link {
+            background-color: var(--primary-blue);
+            border-color: var(--primary-blue);
+        }
     </style>
 </head>
 <body>
@@ -336,7 +346,7 @@ while($row = mysqli_fetch_assoc($result)){
     include 'includes/dashboard_header.php';
     ?>
 
-    <div class="container-fluid">
+    <div class="container-fluid px-3 px-md-4 px-xl-5">
         <?php if(isset($success_message)): ?>
             <div class="alert alert-success"><?php echo $success_message; ?></div>
         <?php endif; ?>
@@ -346,7 +356,7 @@ while($row = mysqli_fetch_assoc($result)){
 
         <div class="row">
             <?php if(isset($_SESSION["is_super_admin"]) && $_SESSION["is_super_admin"]): ?>
-            <div class="col-md-4">
+            <div class="col-12 col-lg-4 order-last order-lg-first mt-4 mt-lg-0">
                 <div class="card">
                     <div class="card-header">
                         <h4>Create New User</h4>
@@ -373,20 +383,20 @@ while($row = mysqli_fetch_assoc($result)){
                                 <?php endforeach; ?>
                                 </select>
                             </div>
-                            <button type="submit" name="create_user" class="btn btn-primary">Create User</button>
+                            <button type="submit" name="create_user" class="btn btn-primary w-100">Create User</button>
                         </form>
                     </div>
                 </div>
             </div>
             <?php endif; ?>
 
-            <div class="col-md-<?php echo $_SESSION["is_super_admin"] ? '8' : '12'; ?>">
+            <div class="col-12 col-lg-<?php echo $_SESSION["is_super_admin"] ? '8' : '12'; ?> order-first order-lg-last">
                 <div class="card">
                     <div class="card-header">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h4>User Management</h4>
+                        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center">
+                            <h4 class="mb-2 mb-md-0">User Management</h4>
                             <?php if($_SESSION["is_super_admin"]): ?>
-                            <div class="search-container" style="position: relative; width: 300px;">
+                            <div class="search-container w-100" style="max-width: 300px; position: relative;">
                                 <div class="input-group">
                                     <input type="text" id="userSearch" class="form-control" placeholder="Search users..." autocomplete="off">
                                     <div class="input-group-append">
@@ -399,12 +409,11 @@ while($row = mysqli_fetch_assoc($result)){
                         </div>
                     </div>
                     <div class="card-body">
-                        <!-- Bulk Actions -->
                         <?php if($_SESSION["is_super_admin"]): ?>
                         <div class="mb-3">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="btn-group" role="group">
+                            <div class="row align-items-center">
+                                <div class="col-12 col-md-4 mb-2 mb-md-0">
+                                    <div class="btn-group w-100 w-md-auto" role="group">
                                         <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAllUsers()">
                                             <i class="fas fa-check-square"></i> Select All
                                         </button>
@@ -413,10 +422,22 @@ while($row = mysqli_fetch_assoc($result)){
                                         </button>
                                     </div>
                                 </div>
-                                <div class="col-md-6 text-right">
-                                    <div class="btn-group" role="group">
+                                <div class="col-12 col-md-4 mb-2 mb-md-0 d-flex justify-content-center justify-content-md-start">
+                                    <div class="d-flex align-items-center">
+                                        <label class="mr-2 mb-0 font-weight-bold text-muted" style="white-space: nowrap;">Show:</label>
+                                        <select class="form-control form-control-sm" style="width: auto; cursor: pointer;" onchange="window.location.href='?limit='+this.value">
+                                            <option value="10" <?php echo $records_per_page == 10 ? 'selected' : ''; ?>>10 entries</option>
+                                            <option value="25" <?php echo $records_per_page == 25 ? 'selected' : ''; ?>>25 entries</option>
+                                            <option value="50" <?php echo $records_per_page == 50 ? 'selected' : ''; ?>>50 entries</option>
+                                            <option value="100" <?php echo $records_per_page == 100 ? 'selected' : ''; ?>>100 entries</option>
+                                            <option value="all" <?php echo $records_per_page === 'all' ? 'selected' : ''; ?>>All entries</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-12 col-md-4 text-md-right">
+                                    <div class="btn-group w-100 w-md-auto" role="group">
                                         <button type="button" class="btn btn-sm btn-warning" onclick="bulkResetPasswords()" disabled id="bulkResetBtn">
-                                            <i class="fas fa-key"></i> Reset Selected Passwords
+                                            <i class="fas fa-key"></i> Reset Selected
                                         </button>
                                         <button type="button" class="btn btn-sm btn-danger" onclick="bulkDeleteUsers()" disabled id="bulkDeleteBtn">
                                             <i class="fas fa-trash"></i> Delete Selected
@@ -424,7 +445,7 @@ while($row = mysqli_fetch_assoc($result)){
                                     </div>
                                 </div>
                             </div>
-                            <div class="mt-2">
+                            <div class="mt-2 text-center text-md-left">
                                 <small class="text-muted">
                                     <span id="selectedCount">0</span> user(s) selected
                                 </small>
@@ -432,12 +453,12 @@ while($row = mysqli_fetch_assoc($result)){
                         </div>
                         <?php endif; ?>
                         
-                        <div class="table-responsive">
-                            <table class="table table-hover">
+                        <div class="table-responsive mb-3">
+                            <table class="table table-hover table-mobile-cards">
                                 <thead>
                                     <tr>
                                         <?php if($_SESSION["is_super_admin"]): ?>
-                                        <th width="40">
+                                        <th style="width: 40px;">
                                             <input type="checkbox" id="selectAllCheckbox" onchange="toggleAllUsers(this)">
                                         </th>
                                         <?php endif; ?>
@@ -446,7 +467,7 @@ while($row = mysqli_fetch_assoc($result)){
                                         <th>Role</th>
                                         <th>Created</th>
                                         <?php if($_SESSION["is_super_admin"]): ?>
-                                        <th>Actions</th>
+                                        <th style="width: 200px;">Actions</th>
                                         <?php endif; ?>
                                     </tr>
                                 </thead>
@@ -454,42 +475,89 @@ while($row = mysqli_fetch_assoc($result)){
                                     <?php foreach($users as $user): ?>
                                         <tr>
                                             <?php if($_SESSION["is_super_admin"]): ?>
-                                            <td>
+                                            <td data-label="Select">
                                                 <?php if($user['user_id'] != $_SESSION["user_id"]): ?>
                                                 <input type="checkbox" class="user-checkbox" value="<?php echo $user['user_id']; ?>" onchange="updateBulkActions()">
                                                 <?php endif; ?>
                                             </td>
                                             <?php endif; ?>
-                                            <td><?php echo htmlspecialchars($user['full_name']); ?></td>
-                                            <td><?php echo htmlspecialchars($user['username']); ?></td>
-                                            <td><?php echo htmlspecialchars($user['role_name']); ?></td>
-                                            <td><?php echo date('M d, Y', strtotime($user['created_at'])); ?></td>
+                                            <td data-label="Full Name" class="font-weight-bold"><?php echo htmlspecialchars($user['full_name']); ?></td>
+                                            <td data-label="Username">@<?php echo htmlspecialchars($user['username']); ?></td>
+                                            <td data-label="Role"><span class="badge badge-info"><?php echo htmlspecialchars($user['role_name']); ?></span></td>
+                                            <td data-label="Created"><?php echo date('M d, Y', strtotime($user['created_at'])); ?></td>
                                             <?php if($_SESSION["is_super_admin"] && $user['user_id'] != $_SESSION["user_id"]): ?>
-                                            <td>
+                                            <td data-label="Actions" class="action-col">
                                                 <button type="button" class="btn btn-sm btn-warning btn-reset-pw"
                                                         data-id="<?php echo $user['user_id']; ?>"
                                                         data-name="<?php echo htmlspecialchars($user['full_name'], ENT_QUOTES); ?>">
-                                                    <i class="fas fa-key mr-1"></i>Reset Password
+                                                    <i class="fas fa-key"></i> <span class="d-none d-md-inline">Reset</span>
                                                 </button>
                                                 <button type="button" class="btn btn-sm btn-danger btn-delete-user"
                                                         data-id="<?php echo $user['user_id']; ?>"
                                                         data-name="<?php echo htmlspecialchars($user['full_name'], ENT_QUOTES); ?>">
-                                                    <i class="fas fa-trash mr-1"></i>Delete
+                                                    <i class="fas fa-trash"></i> <span class="d-none d-md-inline">Delete</span>
                                                 </button>
                                             </td>
                                             <?php endif; ?>
                                         </tr>
                                     <?php endforeach; ?>
+                                    <?php if(empty($users)): ?>
+                                        <tr>
+                                            <td colspan="6" class="text-center text-muted py-4">No users found.</td>
+                                        </tr>
+                                    <?php endif; ?>
                                 </tbody>
                             </table>
                         </div>
+
+                        <?php if($total_pages > 1): ?>
+                        <nav aria-label="Page navigation" class="mt-4">
+                            <ul class="pagination justify-content-center flex-wrap">
+                                <li class="page-item <?php echo ($page <= 1) ? 'disabled' : ''; ?>">
+                                    <a class="page-link" href="?page=<?php echo $page - 1; ?>&limit=<?php echo $records_per_page; ?>" tabindex="-1">Previous</a>
+                                </li>
+                                
+                                <?php 
+                                // Limit the number of visible page buttons to prevent overflow on mobile
+                                $start_page = max(1, $page - 2);
+                                $end_page = min($total_pages, $page + 2);
+                                
+                                if($start_page > 1) {
+                                    echo '<li class="page-item"><a class="page-link" href="?page=1&limit='.$records_per_page.'">1</a></li>';
+                                    if($start_page > 2) {
+                                        echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                                    }
+                                }
+                                
+                                for($i = $start_page; $i <= $end_page; $i++): 
+                                ?>
+                                    <li class="page-item <?php echo ($page == $i) ? 'active' : ''; ?>">
+                                        <a class="page-link" href="?page=<?php echo $i; ?>&limit=<?php echo $records_per_page; ?>"><?php echo $i; ?></a>
+                                    </li>
+                                <?php endfor; ?>
+                                
+                                <?php 
+                                if($end_page < $total_pages) {
+                                    if($end_page < $total_pages - 1) {
+                                        echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                                    }
+                                    echo '<li class="page-item"><a class="page-link" href="?page='.$total_pages.'&limit='.$records_per_page.'">'.$total_pages.'</a></li>';
+                                }
+                                ?>
+                                
+                                <li class="page-item <?php echo ($page >= $total_pages) ? 'disabled' : ''; ?>">
+                                    <a class="page-link" href="?page=<?php echo $page + 1; ?>&limit=<?php echo $records_per_page; ?>">Next</a>
+                                </li>
+                            </ul>
+                        </nav>
+                        <?php endif; ?>
+
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Shared Reset Password Modal (outside table — no flicker) -->
     <div class="modal fade" id="sharedResetPasswordModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -508,7 +576,7 @@ while($row = mysqli_fetch_assoc($result)){
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
                         <button type="submit" name="reset_password" class="btn btn-warning">
-                            <i class="fas fa-key mr-1"></i>Reset Password
+                            <i class="fas fa-key mr-1"></i> Reset Password
                         </button>
                     </div>
                 </form>
@@ -516,7 +584,6 @@ while($row = mysqli_fetch_assoc($result)){
         </div>
     </div>
 
-    <!-- Shared Delete User Modal (outside table — no flicker) -->
     <div class="modal fade" id="sharedDeleteUserModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -533,7 +600,7 @@ while($row = mysqli_fetch_assoc($result)){
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
                         <button type="submit" name="delete_user" class="btn btn-danger">
-                            <i class="fas fa-trash mr-1"></i>Delete User
+                            <i class="fas fa-trash mr-1"></i> Delete User
                         </button>
                     </div>
                 </form>
@@ -541,7 +608,6 @@ while($row = mysqli_fetch_assoc($result)){
         </div>
     </div>
 
-    <!-- User Detail Modal -->
     <div class="modal fade" id="userDetailModal" tabindex="-1" role="dialog">
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
@@ -552,13 +618,11 @@ while($row = mysqli_fetch_assoc($result)){
                     </button>
                 </div>
                 <div class="modal-body" id="userDetailContent">
-                    <!-- Content will be loaded dynamically -->
-                </div>
+                    </div>
             </div>
         </div>
     </div>
 
-    <!-- Direct Message Modal -->
     <div class="modal fade" id="directMessageModal" tabindex="-1" role="dialog">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
@@ -595,7 +659,6 @@ while($row = mysqli_fetch_assoc($result)){
         </div>
     </div>
 
-    <!-- Bulk Reset Password Modal -->
     <div class="modal fade" id="bulkResetPasswordModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -626,7 +689,6 @@ while($row = mysqli_fetch_assoc($result)){
         </div>
     </div>
 
-    <!-- Bulk Delete Modal -->
     <div class="modal fade" id="bulkDeleteModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -791,9 +853,11 @@ while($row = mysqli_fetch_assoc($result)){
         let usersList = '<ul class="list-group">';
         selectedCheckboxes.forEach(checkbox => {
             const row = checkbox.closest('tr');
-            const fullName = row.cells[1].textContent; // Adjust index based on checkbox column
-            const username = row.cells[2].textContent;
-            usersList += `<li class="list-group-item">${fullName} (@${username})</li>`;
+            // Check for flex elements if running on mobile view, otherwise standard TD
+            const isMobile = window.innerWidth <= 767;
+            const fullName = isMobile ? row.cells[1].childNodes[1].textContent : row.cells[1].textContent; 
+            const username = isMobile ? row.cells[2].childNodes[1].textContent : row.cells[2].textContent;
+            usersList += `<li class="list-group-item">${fullName} (${username})</li>`;
         });
         usersList += '</ul>';
         
@@ -1081,35 +1145,35 @@ while($row = mysqli_fetch_assoc($result)){
             const stats = user.activity_stats;
             statsHtml = `
                 <div class="row text-center mb-3">
-                    <div class="col">
-                        <div class="card bg-light">
+                    <div class="col-6 col-md-3 mb-2 mb-md-0">
+                        <div class="card bg-light h-100">
                             <div class="card-body py-2">
                                 <h6 class="card-title mb-1">${stats.messages_sent || 0}</h6>
                                 <small class="text-muted">Messages Sent</small>
                             </div>
                         </div>
                     </div>
-                    <div class="col">
-                        <div class="card bg-light">
+                    <div class="col-6 col-md-3 mb-2 mb-md-0">
+                        <div class="card bg-light h-100">
                             <div class="card-body py-2">
                                 <h6 class="card-title mb-1">${stats.messages_received || 0}</h6>
                                 <small class="text-muted">Messages Received</small>
                             </div>
                         </div>
                     </div>
-                    <div class="col">
-                        <div class="card bg-light">
+                    <div class="col-6 col-md-3">
+                        <div class="card bg-light h-100">
                             <div class="card-body py-2">
                                 <h6 class="card-title mb-1">${stats.replies_sent || 0}</h6>
                                 <small class="text-muted">Replies Sent</small>
                             </div>
                         </div>
                     </div>
-                    <div class="col">
-                        <div class="card bg-light">
+                    <div class="col-6 col-md-3">
+                        <div class="card bg-light h-100">
                             <div class="card-body py-2">
                                 <h6 class="card-title mb-1">${stats.unread_notifications || 0}</h6>
-                                <small class="text-muted">Unread Notifications</small>
+                                <small class="text-muted">Unread Alerts</small>
                             </div>
                         </div>
                     </div>
@@ -1119,7 +1183,7 @@ while($row = mysqli_fetch_assoc($result)){
         
         const userDetailContent = `
             <div class="row">
-                <div class="col-md-4 text-center">
+                <div class="col-md-4 text-center mb-4 mb-md-0">
                     <div class="user-avatar">${initials}</div>
                     <h5>${escapeHtml(user.full_name)}</h5>
                     <p class="text-muted">@${escapeHtml(user.username)}</p>
@@ -1171,7 +1235,7 @@ while($row = mysqli_fetch_assoc($result)){
             
             <hr>
             
-            <div class="text-center action-buttons">
+            <div class="text-center action-buttons d-flex flex-wrap justify-content-center">
                 <button class="btn btn-primary" onclick="openDirectMessage(${user.user_id}, '${escapeHtml(user.full_name)}')">
                     <i class="fas fa-envelope"></i> Send Message
                 </button>
@@ -1316,62 +1380,6 @@ while($row = mysqli_fetch_assoc($result)){
         return div.innerHTML;
     }
     
-    function checkSession() {
-        $.ajax({
-            url: 'api/check_session.php',
-            type: 'GET',
-            dataType: 'json',
-            success: function(response) {
-                alert('Session Status:\n' + JSON.stringify(response, null, 2));
-            },
-            error: function(xhr, status, error) {
-                alert('Session check failed:\nStatus: ' + status + '\nError: ' + error);
-            }
-        });
-    }
-    
-    function testBasicAPI() {
-        $.ajax({
-            url: 'api/test_basic.php',
-            type: 'GET',
-            dataType: 'json',
-            success: function(response) {
-                alert('Basic API Test:\n' + JSON.stringify(response, null, 2));
-            },
-            error: function(xhr, status, error) {
-                alert('Basic API test failed:\nStatus: ' + status + '\nError: ' + error + '\nResponse: ' + xhr.responseText);
-            }
-        });
-    }
-    
-    function testConfigAPI() {
-        $.ajax({
-            url: 'api/test_config.php',
-            type: 'GET',
-            dataType: 'json',
-            success: function(response) {
-                alert('Config API Test:\n' + JSON.stringify(response, null, 2));
-            },
-            error: function(xhr, status, error) {
-                alert('Config API test failed:\nStatus: ' + status + '\nError: ' + error + '\nResponse: ' + xhr.responseText);
-            }
-        });
-    }
-    
-    function testMessagesTable() {
-        $.ajax({
-            url: 'api/test_messages_table.php',
-            type: 'GET',
-            dataType: 'json',
-            success: function(response) {
-                alert('Messages Table Test:\n' + JSON.stringify(response, null, 2));
-            },
-            error: function(xhr, status, error) {
-                alert('Messages table test failed:\nStatus: ' + status + '\nError: ' + error + '\nResponse: ' + xhr.responseText);
-            }
-        });
-    }
-    
     function loadLoginActivities(userId) {
         $.ajax({
             url: 'api/get_login_activities.php',
@@ -1417,32 +1425,32 @@ while($row = mysqli_fetch_assoc($result)){
         if (stats && stats.total_logins > 0) {
             html += `
                 <div class="row text-center mb-3">
-                    <div class="col-3">
-                        <div class="card bg-light">
+                    <div class="col-6 col-md-3 mb-2 mb-md-0">
+                        <div class="card bg-light h-100">
                             <div class="card-body py-2">
                                 <h6 class="card-title mb-1">${stats.total_logins || 0}</h6>
                                 <small class="text-muted">Total Logins</small>
                             </div>
                         </div>
                     </div>
-                    <div class="col-3">
-                        <div class="card bg-light">
+                    <div class="col-6 col-md-3 mb-2 mb-md-0">
+                        <div class="card bg-light h-100">
                             <div class="card-body py-2">
                                 <h6 class="card-title mb-1">${stats.successful_logins || 0}</h6>
                                 <small class="text-muted">Successful</small>
                             </div>
                         </div>
                     </div>
-                    <div class="col-3">
-                        <div class="card bg-light">
+                    <div class="col-6 col-md-3">
+                        <div class="card bg-light h-100">
                             <div class="card-body py-2">
                                 <h6 class="card-title mb-1">${stats.failed_logins || 0}</h6>
                                 <small class="text-muted">Failed</small>
                             </div>
                         </div>
                     </div>
-                    <div class="col-3">
-                        <div class="card bg-light">
+                    <div class="col-6 col-md-3">
+                        <div class="card bg-light h-100">
                             <div class="card-body py-2">
                                 <h6 class="card-title mb-1">${Math.round(stats.avg_session_duration || 0)}m</h6>
                                 <small class="text-muted">Avg Session</small>
@@ -1514,6 +1522,3 @@ while($row = mysqli_fetch_assoc($result)){
     </script>
 </body>
 </html>
-
-<?php
-?>
