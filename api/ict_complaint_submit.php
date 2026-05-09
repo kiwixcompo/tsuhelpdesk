@@ -200,10 +200,10 @@ if (mysqli_stmt_execute($stmt)) {
                  . "https://helpdesk.tsuniversity.ng/ict_complaints_admin.php\n\n"
                  . "-- TSU ICT Help Desk (automated notification)";
 
-        // Send to every active admin whose on_new_student_complaint pref is ON
+        // Send to every admin who has an email set and on_new_student_complaint pref is ON
         $admin_res = mysqli_query($conn,
             "SELECT user_id, email FROM users
-             WHERE role_id = 1 AND is_active = 1 AND email IS NOT NULL AND email != ''");
+             WHERE role_id = 1 AND email IS NOT NULL AND email != ''");
         if ($admin_res) {
             while ($admin = mysqli_fetch_assoc($admin_res)) {
                 sendEmailIfAllowed(

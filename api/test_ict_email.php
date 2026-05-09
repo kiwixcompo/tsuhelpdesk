@@ -19,7 +19,7 @@ echo "=== ICT Email Notification Diagnostic ===\n\n";
 
 // 1. Show all admins and their email + prefs
 $res = mysqli_query($conn,
-    "SELECT u.user_id, u.full_name, u.email, u.is_active,
+    "SELECT u.user_id, u.full_name, u.email,
             unp.on_new_student_complaint, unp.on_new_complaint
      FROM users u
      LEFT JOIN user_notification_prefs unp ON u.user_id = unp.user_id

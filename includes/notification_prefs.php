@@ -1,7 +1,7 @@
-﻿<?php
+<?php
 /**
  * Notification Preferences Helper
- * ─────────────────────────────────────────────────────────────────────────────
+ * -----------------------------------------------------------------------------
  * Provides functions to:
  *   - Ensure the prefs table exists
  *   - Read a user's preferences (with sensible role-based defaults)
@@ -14,15 +14,15 @@
  *   5 = I4CUS Staff
  *   6 = Payment Admin
  *   7 = Department
- * ─────────────────────────────────────────────────────────────────────────────
+ * -----------------------------------------------------------------------------
  */
 
-// ── Table bootstrap ──────────────────────────────────────────────────────────
+// -- Table bootstrap ----------------------------------------------------------
 
 /**
  * Create the prefs table if it doesn't exist, then ALTER to add any columns
  * that were introduced after the table was first created on the server.
- * This makes the schema self-healing — no manual SQL migration needed.
+ * This makes the schema self-healing � no manual SQL migration needed.
  */
 function ensureNotifPrefsTable($conn): void {
     // Create with the original minimal set of columns (always safe)
@@ -51,7 +51,7 @@ function ensureNotifPrefsTable($conn): void {
     }
 
     // Fix: ensure every admin has on_new_student_complaint = 1 and on_new_complaint = 1
-    // UPDATE existing rows where the admin has opted out (value = 0) — only if they
+    // UPDATE existing rows where the admin has opted out (value = 0) � only if they
     // haven't explicitly changed it themselves (we can't tell, so we just ensure ON for admins)
     mysqli_query($conn,
         "UPDATE user_notification_prefs unp
@@ -61,9 +61,9 @@ function ensureNotifPrefsTable($conn): void {
          WHERE u.role_id = 1"
     );
 
-    // Ensure every active admin has a prefs row (INSERT IGNORE = skip if already exists)
+    // Ensure every admin has a prefs row (INSERT IGNORE = skip if already exists)
     $admin_res = mysqli_query($conn,
-        "SELECT user_id FROM users WHERE role_id = 1 AND is_active = 1");
+        "SELECT user_id FROM users WHERE role_id = 1");
     if ($admin_res) {
         while ($admin = mysqli_fetch_assoc($admin_res)) {
             mysqli_query($conn,
@@ -76,7 +76,7 @@ function ensureNotifPrefsTable($conn): void {
     }
 }
 
-// ── Read preferences ─────────────────────────────────────────────────────────
+// -- Read preferences ---------------------------------------------------------
 
 /**
  * Return the notification preferences for a user.
@@ -99,13 +99,13 @@ function getUserNotifPrefs($conn, int $user_id, int $role_id = 0): array {
         'on_feedback_received'     => 1,
     ];
 
-    // Query all columns — by the time we get here ensureNotifPrefsTable() has
+    // Query all columns � by the time we get here ensureNotifPrefsTable() has
     // already added any missing columns, so this SELECT is safe.
     $stmt = mysqli_prepare($conn,
         "SELECT on_forwarded, on_ict_response, on_status_change,
                 on_new_student_complaint, on_new_complaint, on_feedback_received
          FROM user_notification_prefs WHERE user_id = ?");
-    if (!$stmt) return $defaults;   // DB error — return safe defaults
+    if (!$stmt) return $defaults;   // DB error � return safe defaults
 
     mysqli_stmt_bind_param($stmt, 'i', $user_id);
     mysqli_stmt_execute($stmt);
@@ -115,7 +115,7 @@ function getUserNotifPrefs($conn, int $user_id, int $role_id = 0): array {
     return $row ? array_merge($defaults, $row) : $defaults;
 }
 
-// ── Core send helper ─────────────────────────────────────────────────────────
+// -- Core send helper ---------------------------------------------------------
 
 /**
  * Send an email to a user only if their preference for $pref_key is enabled
@@ -155,7 +155,7 @@ function sendDeptEmailIfAllowed($conn, int $user_id, string $pref_key,
     sendEmailIfAllowed($conn, $user_id, 7, $pref_key, $to, $subject, $body);
 }
 
-// ── Event-level helpers ───────────────────────────────────────────────────────
+// -- Event-level helpers -------------------------------------------------------
 // Call these from the places where events actually happen.
 
 /**
@@ -163,7 +163,7 @@ function sendDeptEmailIfAllowed($conn, int $user_id, string $pref_key,
  */
 function notifyAdminsNewComplaint($conn, int $complaint_id, string $lodger_name,
                                    string $complaint_preview): void {
-    $subject = "New Complaint Submitted — #{$complaint_id}";
+    $subject = "New Complaint Submitted � #{$complaint_id}";
     $body    = "A new complaint has been submitted.\n\n"
              . "Complaint ID : #{$complaint_id}\n"
              . "Submitted by : {$lodger_name}\n"
@@ -171,7 +171,7 @@ function notifyAdminsNewComplaint($conn, int $complaint_id, string $lodger_name,
              . "Login to review: https://helpdesk.tsuniversity.ng/\n\n"
              . "-- TSU ICT Help Desk";
 
-    $res = mysqli_query($conn, "SELECT user_id, email, role_id FROM users WHERE role_id = 1 AND is_active = 1");
+    $res = mysqli_query($conn, "SELECT user_id, email, role_id FROM users WHERE role_id = 1");
     if (!$res) return;
     while ($u = mysqli_fetch_assoc($res)) {
         sendEmailIfAllowed($conn, (int)$u['user_id'], 1,
@@ -185,7 +185,7 @@ function notifyAdminsNewComplaint($conn, int $complaint_id, string $lodger_name,
 function notifyAdminsNewStudentIctComplaint($conn, int $complaint_id,
                                              string $student_name,
                                              string $category): void {
-    $subject = "New Student ICT Complaint — #{$complaint_id}";
+    $subject = "New Student ICT Complaint � #{$complaint_id}";
     $body    = "A new student ICT complaint has been submitted.\n\n"
              . "Complaint ID : #{$complaint_id}\n"
              . "Student      : {$student_name}\n"
@@ -193,7 +193,7 @@ function notifyAdminsNewStudentIctComplaint($conn, int $complaint_id,
              . "Login to review: https://helpdesk.tsuniversity.ng/ict_complaints_admin.php\n\n"
              . "-- TSU ICT Help Desk";
 
-    $res = mysqli_query($conn, "SELECT user_id, email FROM users WHERE role_id = 1 AND is_active = 1");
+    $res = mysqli_query($conn, "SELECT user_id, email FROM users WHERE role_id = 1");
     if (!$res) return;
     while ($u = mysqli_fetch_assoc($res)) {
         sendEmailIfAllowed($conn, (int)$u['user_id'], 1,
@@ -210,7 +210,7 @@ function notifyAdminsNewStudentIctComplaint($conn, int $complaint_id,
 function notifyForwarded($conn, int $complaint_id, string $student_name,
                           string $category, string $node_label,
                           int $recipient_user_id, int $recipient_role_id = 0): void {
-    $subject = "Complaint Forwarded to You — #{$complaint_id}";
+    $subject = "Complaint Forwarded to You � #{$complaint_id}";
     $body    = "A student ICT complaint has been forwarded to you.\n\n"
              . "Complaint ID : #{$complaint_id}\n"
              . "Student      : {$student_name}\n"
@@ -226,7 +226,7 @@ function notifyForwarded($conn, int $complaint_id, string $student_name,
     } else {
         // All users with the given role
         $res = mysqli_query($conn,
-            "SELECT user_id, email FROM users WHERE role_id = $recipient_role_id AND is_active = 1");
+            "SELECT user_id, email FROM users WHERE role_id = $recipient_role_id");
         if (!$res) return;
         while ($u = mysqli_fetch_assoc($res)) {
             sendEmailIfAllowed($conn, (int)$u['user_id'], $recipient_role_id,
@@ -241,7 +241,7 @@ function notifyForwarded($conn, int $complaint_id, string $student_name,
 function notifyIctResponse($conn, int $complaint_id, string $student_name,
                              string $response_preview,
                              int $recipient_user_id, int $recipient_role_id = 0): void {
-    $subject = "ICT Response Added — Complaint #{$complaint_id}";
+    $subject = "ICT Response Added � Complaint #{$complaint_id}";
     $body    = "ICT has added a response to a complaint forwarded to you.\n\n"
              . "Complaint ID : #{$complaint_id}\n"
              . "Student      : {$student_name}\n"
@@ -254,7 +254,7 @@ function notifyIctResponse($conn, int $complaint_id, string $student_name,
             'on_ict_response', '', $subject, $body);
     } else {
         $res = mysqli_query($conn,
-            "SELECT user_id, email FROM users WHERE role_id = $recipient_role_id AND is_active = 1");
+            "SELECT user_id, email FROM users WHERE role_id = $recipient_role_id");
         if (!$res) return;
         while ($u = mysqli_fetch_assoc($res)) {
             sendEmailIfAllowed($conn, (int)$u['user_id'], $recipient_role_id,
@@ -269,7 +269,7 @@ function notifyIctResponse($conn, int $complaint_id, string $student_name,
 function notifyStatusChange($conn, int $complaint_id, string $student_name,
                               string $new_status,
                               int $recipient_user_id, int $recipient_role_id = 0): void {
-    $subject = "Complaint Status Updated — #{$complaint_id}";
+    $subject = "Complaint Status Updated � #{$complaint_id}";
     $body    = "The status of a complaint has been updated.\n\n"
              . "Complaint ID : #{$complaint_id}\n"
              . "Student      : {$student_name}\n"
@@ -282,7 +282,7 @@ function notifyStatusChange($conn, int $complaint_id, string $student_name,
             'on_status_change', '', $subject, $body);
     } else {
         $res = mysqli_query($conn,
-            "SELECT user_id, email FROM users WHERE role_id = $recipient_role_id AND is_active = 1");
+            "SELECT user_id, email FROM users WHERE role_id = $recipient_role_id");
         if (!$res) return;
         while ($u = mysqli_fetch_assoc($res)) {
             sendEmailIfAllowed($conn, (int)$u['user_id'], $recipient_role_id,
@@ -296,7 +296,7 @@ function notifyStatusChange($conn, int $complaint_id, string $student_name,
  */
 function notifyFeedbackReceived($conn, int $complaint_id, int $lodger_user_id,
                                   string $status, string $feedback_preview): void {
-    $subject = "Feedback on Your Complaint — #{$complaint_id}";
+    $subject = "Feedback on Your Complaint � #{$complaint_id}";
     $body    = "Your complaint has received a response.\n\n"
              . "Complaint ID : #{$complaint_id}\n"
              . "Status       : {$status}\n"
@@ -314,7 +314,7 @@ function notifyFeedbackReceived($conn, int $complaint_id, int $lodger_user_id,
         'on_feedback_received', $u['email'] ?? '', $subject, $body);
 }
 
-// ── Reusable UI snippet ───────────────────────────────────────────────────────
+// -- Reusable UI snippet -------------------------------------------------------
 
 /**
  * Render the notification preferences card.
