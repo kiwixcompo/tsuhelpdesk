@@ -720,7 +720,7 @@ if ($_SESSION["role_id"] == 1) { // Admin only
         (SELECT COUNT(*) FROM student_ict_complaints) AS total";
     $result = mysqli_query($conn, $sql);
     if($row = mysqli_fetch_assoc($result)){
-        $total_complaints = $row['total'];
+        $total_complaints = (int)$row['total'];
     }
 
     // Count pending complaints across all complaint tables
@@ -731,18 +731,18 @@ if ($_SESSION["role_id"] == 1) { // Admin only
         (SELECT COUNT(*) FROM student_ict_complaints WHERE status = 'Pending') AS total";
     $result = mysqli_query($conn, $sql);
     if($row = mysqli_fetch_assoc($result)){
-        $pending_complaints = $row['total'];
+        $pending_complaints = (int)$row['total'];
     }
 
     // Count treated/resolved complaints across all complaint tables
     $treated_complaints_count = 0;
     $sql = "SELECT
         (SELECT COUNT(*) FROM complaints WHERE status = 'Treated') +
-        (SELECT COUNT(*) FROM student_complaints WHERE status IN ('Treated','Resolved')) +
-        (SELECT COUNT(*) FROM student_ict_complaints WHERE status IN ('Treated','Resolved')) AS total";
+        (SELECT COUNT(*) FROM student_complaints WHERE status IN ('Resolved','Rejected')) +
+        (SELECT COUNT(*) FROM student_ict_complaints WHERE status IN ('Resolved','Rejected','Auto-Resolved')) AS total";
     $result = mysqli_query($conn, $sql);
     if($row = mysqli_fetch_assoc($result)){
-        $treated_complaints_count = $row['total'];
+        $treated_complaints_count = (int)$row['total'];
     }
 
     // Set up quick stats
