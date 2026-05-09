@@ -283,43 +283,55 @@ if(isset($_GET['success'])) {
     }
 }
 
-// Initialize complaints array
-$complaints = [];
 
-// Fetch all complaints based on view
+// Build WHERE clause based on filters
 $view = isset($_GET['view']) ? $_GET['view'] : 'all';
 $filter_date = isset($_GET['filter_date']) ? $_GET['filter_date'] : '';
 $search_id = isset($_GET['search']) ? trim($_GET['search']) : '';
 $filter_user = isset($_GET['filter_user']) ? intval($_GET['filter_user']) : 0;
-$where_clause = "";
+$type = isset($_GET['type']) ? $_GET['type'] : 'all';
+$sort = isset($_GET['sort']) ? $_GET['sort'] : 'desc';
 
-// Build WHERE clause based on filters
 $where_conditions = [];
 
-// Check if filtering by specific user
+// Apply specific view rules if not searching
 if ($filter_user > 0) {
     $where_conditions[] = "c.lodged_by = " . $filter_user;
 } elseif ($search_id) {
-    // Search by student ID - show all statuses when searching
     $where_conditions[] = "(c.student_id LIKE '%" . mysqli_real_escape_string($conn, $search_id) . "%' OR c.complaint_text LIKE '%" . mysqli_real_escape_string($conn, $search_id) . "%')";
 } else {
-    // Default: show only pending complaints
-    $where_conditions[] = "c.status = 'Pending'";
+    // Default base view filter
+    switch($view) {
+        case 'resolved':
+            $where_conditions[] = "(c.status = 'Treated' OR c.feedback_type = 'resolved')";
+            break;
+        case 'incomplete':
+            $where_conditions[] = "(c.status = 'Needs More Info' OR c.feedback_type = 'incomplete')";
+            break;
+        case 'payment':
+            $where_conditions[] = "c.is_payment_related = 1";
+            break;
+        case 'i4cus':
+            $where_conditions[] = "c.is_i4cus = 1";
+            break;
+        case 'feedback':
+            $where_conditions[] = "(c.feedback IS NOT NULL AND c.feedback != '')";
+            break;
+        case 'all':
+        default:
+            $where_conditions[] = "c.status = 'Pending'";
+            break;
+    }
 }
 
 // Combine conditions
 $where_clause = !empty($where_conditions) ? "WHERE " . implode(" AND ", $where_conditions) : "";
 
-// Add date filter if specified
 if ($filter_date) {
     $where_clause .= ($where_clause ? ' AND ' : 'WHERE ') . "DATE(c.created_at) = '" . mysqli_real_escape_string($conn, $filter_date) . "'";
 }
 
-// In PHP, update the $where_clause and $order_by based on GET params:
-$type = isset($_GET['type']) ? $_GET['type'] : 'all';
-$sort = isset($_GET['sort']) ? $_GET['sort'] : 'desc';
-
-// ... after $where_clause is built ...
+// Add Type filtering overriding some views
 if ($type == 'payment') {
     $where_clause .= ($where_clause ? ' AND ' : 'WHERE ') . "c.is_payment_related = 1";
 } elseif ($type == 'i4cus') {
@@ -329,14 +341,54 @@ if ($type == 'payment') {
 } elseif ($type == 'neither') {
     $where_clause .= ($where_clause ? ' AND ' : 'WHERE ') . "c.is_payment_related = 0 AND c.is_i4cus = 0";
 }
+
 $order_by = "c.created_at " . ($sort == 'asc' ? 'ASC' : 'DESC');
 
+// --- Dynamic Pagination Logic Setup ---
+$default_limit = 20;
+$allowed_limits = [10, 20, 50, 100, 'all'];
+$per_page = isset($_GET['limit']) ? $_GET['limit'] : $default_limit;
+
+if (!in_array($per_page, $allowed_limits)) {
+    $per_page = $default_limit;
+}
+
+// Get total number of complaints for the CURRENT VIEW to calculate pagination
+$count_sql = "SELECT COUNT(*) as total FROM complaints c $where_clause";
+$total_view_complaints = 0;
+if($count_result = mysqli_query($conn, $count_sql)){
+    if($row = mysqli_fetch_assoc($count_result)){
+        $total_view_complaints = $row['total'];
+    }
+}
+
+if ($per_page === 'all') {
+    $total_pages = 1;
+    $page = 1;
+    $limit_clause = "";
+} else {
+    $per_page = (int)$per_page;
+    $total_pages = ceil($total_view_complaints / $per_page);
+    
+    $page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
+    if ($page < 1) $page = 1;
+    if ($page > $total_pages && $total_pages > 0) $page = $total_pages;
+    
+    $offset = ($page - 1) * $per_page;
+    if ($offset < 0) $offset = 0;
+    
+    $limit_clause = "LIMIT $per_page OFFSET $offset";
+}
+
+// Fetch complaints based on view with pagination limit
+$complaints = [];
 $sql = "SELECT c.*, u.full_name as handler_name, u1.full_name as lodged_by_name 
         FROM complaints c 
         LEFT JOIN users u ON c.handled_by = u.user_id 
         LEFT JOIN users u1 ON c.lodged_by = u1.user_id 
         $where_clause
-        ORDER BY $order_by";
+        ORDER BY $order_by 
+        $limit_clause";
 
 if($stmt = mysqli_prepare($conn, $sql)){
     if(mysqli_stmt_execute($stmt)){
@@ -347,6 +399,24 @@ if($stmt = mysqli_prepare($conn, $sql)){
     }
     mysqli_stmt_close($stmt);
 }
+
+// Fetch pending complaints for the SIDEBAR (decoupled from pagination)
+$pending_previous_days = [];
+$pending_today = [];
+$today = date('Y-m-d');
+
+$pending_sql = "SELECT * FROM complaints WHERE status = 'Pending' ORDER BY created_at DESC";
+if($pending_result = mysqli_query($conn, $pending_sql)){
+    while($c = mysqli_fetch_assoc($pending_result)){
+        $created_date = date('Y-m-d', strtotime($c['created_at']));
+        if ($created_date < $today) {
+            $pending_previous_days[] = $c;
+        } else {
+            $pending_today[] = $c;
+        }
+    }
+}
+
 
 // Fetch all users
 $users = [];
@@ -435,30 +505,12 @@ function getImagePath($image) {
     $image = trim($image);
     if ($image === '') return '';
     
-    // Extract just the filename if it contains a path
     if (strpos($image, '/') !== false) {
         $image = basename($image);
     }
-    
-    // Return the path to public_image.php with the encoded filename
-    // Use 'img' parameter as expected by public_image.php
     return 'public_image.php?img=' . urlencode($image);
 }
 
-// In the sidebar, show the number of pending complaints from previous days
-$pending_previous_days = [];
-$pending_today = [];
-$today = date('Y-m-d');
-foreach ($complaints as $c) {
-    $created_date = date('Y-m-d', strtotime($c['created_at']));
-    if ($c['status'] == 'Pending') {
-        if ($created_date < $today) {
-            $pending_previous_days[] = $c;
-        } else {
-            $pending_today[] = $c;
-        }
-    }
-}
 ?>
 
 <!DOCTYPE html>
@@ -516,6 +568,11 @@ foreach ($complaints as $c) {
         /* Keep body scrollable when modal open */
         body.modal-open { overflow: auto !important; padding-right: 0 !important; }
         .modal-dialog { margin: 5vh auto; }
+        
+        /* Pagination fix */
+        .pagination { margin-bottom: 0; }
+        .page-link { color: var(--primary-blue); padding: 0.5rem 0.75rem; }
+        .page-item.active .page-link { background-color: var(--primary-blue); border-color: var(--primary-blue); }
     </style>
 </head>
 <body>
@@ -528,22 +585,16 @@ foreach ($complaints as $c) {
     $page_icon = 'fas fa-cogs';
     $show_breadcrumb = false;
     
-    // Get quick stats for admin header
-    $total_complaints = count($complaints);
-    $total_users = count($users);
-    $pending_complaints = 0;
-    
-    foreach($complaints as $complaint) {
-        if($complaint['status'] == 'Pending') {
-            $pending_complaints++;
-        }
-    }
+    // Get absolute stats for admin header (decoupled from active filters/pagination)
+    $header_total_complaints = mysqli_query($conn, "SELECT COUNT(*) as c FROM complaints")->fetch_assoc()['c'] ?? 0;
+    $header_total_users = count($users);
+    $header_pending_complaints = count($pending_today) + count($pending_previous_days);
     
     // Set up quick stats
     $quick_stats = [
-        ['number' => $total_complaints, 'label' => 'Total Complaints'],
-        ['number' => $pending_complaints, 'label' => 'Pending'],
-        ['number' => $total_users, 'label' => 'Users']
+        ['number' => $header_total_complaints, 'label' => 'Total Complaints'],
+        ['number' => $header_pending_complaints, 'label' => 'Pending'],
+        ['number' => $header_total_users, 'label' => 'Users']
     ];
     
     include 'includes/dashboard_header.php';
@@ -560,23 +611,23 @@ foreach ($complaints as $c) {
 
 
         <div class="mb-4">
-            <div class="btn-group w-100">
-                <a href="?view=all" class="btn btn-<?php echo (!isset($_GET['view']) || $_GET['view'] == 'all') ? 'primary' : 'secondary'; ?>">
+            <div class="btn-group w-100 flex-wrap">
+                <a href="?view=all" class="btn btn-<?php echo (!isset($_GET['view']) || $_GET['view'] == 'all') ? 'primary' : 'secondary'; ?> mb-1">
                     All Complaints
                 </a>
-                <a href="?view=payment" class="btn btn-<?php echo (isset($_GET['view']) && $_GET['view'] == 'payment') ? 'primary' : 'secondary'; ?>">
+                <a href="?view=payment" class="btn btn-<?php echo (isset($_GET['view']) && $_GET['view'] == 'payment') ? 'primary' : 'secondary'; ?> mb-1">
                     Payment-Related
                 </a>
-                <a href="?view=i4cus" class="btn btn-<?php echo (isset($_GET['view']) && $_GET['view'] == 'i4cus') ? 'primary' : 'secondary'; ?>">
+                <a href="?view=i4cus" class="btn btn-<?php echo (isset($_GET['view']) && $_GET['view'] == 'i4cus') ? 'primary' : 'secondary'; ?> mb-1">
                     i4Cus Issues
                 </a>
-                <a href="?view=feedback" class="btn btn-<?php echo (isset($_GET['view']) && $_GET['view'] == 'feedback') ? 'primary' : 'secondary'; ?>">
+                <a href="?view=feedback" class="btn btn-<?php echo (isset($_GET['view']) && $_GET['view'] == 'feedback') ? 'primary' : 'secondary'; ?> mb-1">
                     With Feedback
                 </a>
-                <a href="?view=incomplete" class="btn btn-<?php echo (isset($_GET['view']) && $_GET['view'] == 'incomplete') ? 'primary' : 'secondary'; ?>">
+                <a href="?view=incomplete" class="btn btn-<?php echo (isset($_GET['view']) && $_GET['view'] == 'incomplete') ? 'primary' : 'secondary'; ?> mb-1">
                     More Info Required
                 </a>
-                <a href="?view=resolved" class="btn btn-<?php echo (isset($_GET['view']) && $_GET['view'] == 'resolved') ? 'primary' : 'secondary'; ?>">
+                <a href="?view=resolved" class="btn btn-<?php echo (isset($_GET['view']) && $_GET['view'] == 'resolved') ? 'primary' : 'secondary'; ?> mb-1">
                     Response Only
                 </a>
             </div>
@@ -590,7 +641,7 @@ foreach ($complaints as $c) {
                             <h6 class="mb-0"><i class="fas fa-chart-bar mr-2"></i>Student Complaints Reporting</h6>
                             <small class="text-muted">Generate comprehensive reports for result verification complaints</small>
                         </div>
-                        <div class="col-md-4 text-right">
+                        <div class="col-md-4 text-right mt-2 mt-md-0">
                             <a href="student_complaints_report.php" class="btn btn-info btn-sm">
                                 <i class="fas fa-chart-bar mr-1"></i> View Reports
                             </a>
@@ -608,7 +659,7 @@ foreach ($complaints as $c) {
                             <h6 class="mb-0"><i class="fas fa-user-graduate mr-2"></i>Student Management</h6>
                             <small class="text-muted">View, edit, and manage student accounts and information</small>
                         </div>
-                        <div class="col-md-4 text-right">
+                        <div class="col-md-4 text-right mt-2 mt-md-0">
                             <a href="manage_students.php" class="btn btn-success btn-sm">
                                 <i class="fas fa-users mr-1"></i> Manage Students
                             </a>
@@ -626,7 +677,7 @@ foreach ($complaints as $c) {
                             <h6 class="mb-0"><i class="fas fa-clipboard-list mr-2"></i>Student Complaints Management</h6>
                             <small class="text-muted">Comprehensive management of student result verification complaints with filtering, status updates, and export capabilities</small>
                         </div>
-                        <div class="col-md-4 text-right">
+                        <div class="col-md-4 text-right mt-2 mt-md-0">
                             <a href="enhanced_student_complaints_report.php" class="btn btn-primary btn-sm">
                                 <i class="fas fa-cogs mr-1"></i> Manage Complaints
                             </a>
@@ -644,7 +695,7 @@ foreach ($complaints as $c) {
                             <h6 class="mb-0"><i class="fas fa-headset mr-2"></i>ICT & Portal Complaints</h6>
                             <small class="text-muted">Student ICT complaints submitted via the decision tree wizard — login issues, payments, course registration, printing and more</small>
                         </div>
-                        <div class="col-md-4 text-right">
+                        <div class="col-md-4 text-right mt-2 mt-md-0">
                             <?php
                             // Show pending count badge — only if table exists
                             $ict_pending = 0;
@@ -666,8 +717,8 @@ foreach ($complaints as $c) {
             </div>
         </div>
 
-        <div class="row mb-3">
-            <div class="col-md-6">
+        <div class="row mb-3 align-items-end">
+            <div class="col-md-6 mb-3 mb-md-0">
                 <form method="get" class="form-inline">
                     <div class="input-group w-100">
                         <input type="text" name="search" class="form-control" placeholder="Search by Student ID or Complaint Text" value="<?php echo htmlspecialchars($search_id); ?>">
@@ -684,34 +735,40 @@ foreach ($complaints as $c) {
                     </div>
                 </form>
             </div>
-            <div class="col-md-6 d-flex justify-content-md-end mt-3 mt-md-0">
-                <form method="get" class="form-inline">
+            <div class="col-md-6 d-flex justify-content-md-end">
+                <form method="get" class="form-inline w-100 justify-content-md-end">
                     <input type="hidden" name="view" value="<?php echo htmlspecialchars($view); ?>">
                     <?php if($search_id): ?>
                         <input type="hidden" name="search" value="<?php echo htmlspecialchars($search_id); ?>">
                     <?php endif; ?>
-                    <label class="mr-2 font-weight-bold">Sort:</label>
-                    <select name="sort" class="form-control form-control-sm mr-2" onchange="this.form.submit()">
-                        <option value="desc" <?php if(!isset($_GET['sort']) || $_GET['sort'] == 'desc') echo 'selected'; ?>>Newest First</option>
-                        <option value="asc" <?php if(isset($_GET['sort']) && $_GET['sort'] == 'asc') echo 'selected'; ?>>Oldest First</option>
-                    </select>
-                    <label class="mr-2 font-weight-bold ml-2">Type:</label>
-                    <select name="type" class="form-control form-control-sm ml-2" onchange="this.form.submit()">
-                        <option value="all" <?php if(!isset($_GET['type']) || $_GET['type'] == 'all') echo 'selected'; ?>>All</option>
-                        <option value="payment" <?php if(isset($_GET['type']) && $_GET['type'] == 'payment') echo 'selected'; ?>>Payment Related</option>
-                        <option value="i4cus" <?php if(isset($_GET['type']) && $_GET['type'] == 'i4cus') echo 'selected'; ?>>i4Cus Issues</option>
-                        <option value="incomplete" <?php if(isset($_GET['type']) && $_GET['type'] == 'incomplete') echo 'selected'; ?>>More Info Required</option>
-                        <option value="neither" <?php if(isset($_GET['type']) && $_GET['type'] == 'neither') echo 'selected'; ?>>Neither Payment nor i4Cus</option>
-                    </select>
+                    
+                    <div class="d-flex w-100 w-md-auto align-items-center mb-2 mb-md-0">
+                        <label class="mr-2 font-weight-bold text-muted">Sort:</label>
+                        <select name="sort" class="form-control form-control-sm flex-grow-1 mr-md-3" onchange="this.form.submit()">
+                            <option value="desc" <?php if(!isset($_GET['sort']) || $_GET['sort'] == 'desc') echo 'selected'; ?>>Newest First</option>
+                            <option value="asc" <?php if(isset($_GET['sort']) && $_GET['sort'] == 'asc') echo 'selected'; ?>>Oldest First</option>
+                        </select>
+                    </div>
+                    
+                    <div class="d-flex w-100 w-md-auto align-items-center">
+                        <label class="mr-2 font-weight-bold text-muted">Type:</label>
+                        <select name="type" class="form-control form-control-sm flex-grow-1" onchange="this.form.submit()">
+                            <option value="all" <?php if(!isset($_GET['type']) || $_GET['type'] == 'all') echo 'selected'; ?>>All</option>
+                            <option value="payment" <?php if(isset($_GET['type']) && $_GET['type'] == 'payment') echo 'selected'; ?>>Payment Related</option>
+                            <option value="i4cus" <?php if(isset($_GET['type']) && $_GET['type'] == 'i4cus') echo 'selected'; ?>>i4Cus Issues</option>
+                            <option value="incomplete" <?php if(isset($_GET['type']) && $_GET['type'] == 'incomplete') echo 'selected'; ?>>More Info Required</option>
+                            <option value="neither" <?php if(isset($_GET['type']) && $_GET['type'] == 'neither') echo 'selected'; ?>>Neither Payment nor i4Cus</option>
+                        </select>
+                    </div>
                 </form>
             </div>
         </div>
 
         <div class="row">
-            <div class="col-12 col-md-8 admin-main-col">
+            <div class="col-12 col-lg-8 admin-main-col">
                 <div class="card">
-                    <div class="card-header">
-                        <h4>
+                    <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center">
+                        <h4 class="mb-2 mb-md-0">
                             <?php
                             if ($filter_user > 0) {
                                 // Get user name for the filter
@@ -728,7 +785,7 @@ foreach ($complaints as $c) {
                                     mysqli_stmt_close($user_stmt);
                                 }
                                 echo 'Complaints by ' . htmlspecialchars($user_name);
-                                echo ' <a href="admin.php" class="btn btn-sm btn-outline-secondary ml-2"><i class="fas fa-times"></i> Clear Filter</a>';
+                                echo ' <a href="admin.php" class="btn btn-sm btn-outline-light ml-2 text-dark"><i class="fas fa-times"></i> Clear Filter</a>';
                             } else {
                                 switch($view) {
                                     case 'payment':
@@ -751,10 +808,11 @@ foreach ($complaints as $c) {
                                 }
                             }
                             ?>
+                            <span class="badge badge-light text-primary ml-2"><?php echo $total_view_complaints; ?></span>
                         </h4>
                         <?php if ($_SESSION["role_id"] == 1 || $_SESSION["role_id"] == 3): // Super Admin or Director ?>
-                            <div class="float-right">
-                                <button type="button" class="btn btn-success btn-sm" data-toggle="modal" data-target="#exportModal">
+                            <div>
+                                <button type="button" class="btn btn-success btn-sm w-100" data-toggle="modal" data-target="#exportModal">
                                     <i class="fas fa-download"></i> Export Complaints
                                 </button>
                             </div>
@@ -764,9 +822,9 @@ foreach ($complaints as $c) {
                         <?php if ($filter_user > 0): ?>
                             <div class="alert alert-info">
                                 <i class="fas fa-info-circle"></i> 
-                                Showing <?php echo count($complaints); ?> complaint(s) submitted by this user.
-                                <?php if (count($complaints) > 0): ?>
-                                    <small class="d-block mt-1">This includes all complaints (pending, in progress, and treated).</small>
+                                Showing <?php echo $total_view_complaints; ?> complaint(s) submitted by this user.
+                                <?php if ($total_view_complaints > 0): ?>
+                                    <small class="d-block mt-1">This includes all complaints (pending, in progress, and treated) up to the limit.</small>
                                 <?php endif; ?>
                             </div>
                         <?php endif; ?>
@@ -789,193 +847,253 @@ foreach ($complaints as $c) {
                             </div>
                         <?php else: ?>
                             <form method="post" id="bulkActionsForm">
-                                <div class="mb-3">
-                                    <button type="submit" name="bulk_delete" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete the selected complaints?');">
-                                        <i class="fas fa-trash"></i> Delete Selected
-                                    </button>
-                                    <small class="text-muted ml-2">Select complaints using checkboxes</small>
+                                <div class="mb-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center">
+                                    <div class="mb-2 mb-md-0">
+                                        <button type="submit" name="bulk_delete" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete the selected complaints?');">
+                                            <i class="fas fa-trash"></i> Delete Selected
+                                        </button>
+                                        <small class="text-muted ml-2 d-none d-md-inline">Select complaints using checkboxes</small>
+                                    </div>
+                                    <div class="d-flex align-items-center">
+                                        <label class="mr-2 mb-0 font-weight-bold text-muted" style="white-space: nowrap;">Show:</label>
+                                        <select class="form-control form-control-sm" style="width: auto; cursor: pointer;" 
+                                                onchange="window.location.href='?<?php echo http_build_query(array_merge($_GET, ['page' => 1])); ?>&limit='+this.value">
+                                            <option value="10" <?php echo $per_page == 10 ? 'selected' : ''; ?>>10 entries</option>
+                                            <option value="20" <?php echo $per_page == 20 ? 'selected' : ''; ?>>20 entries</option>
+                                            <option value="50" <?php echo $per_page == 50 ? 'selected' : ''; ?>>50 entries</option>
+                                            <option value="100" <?php echo $per_page == 100 ? 'selected' : ''; ?>>100 entries</option>
+                                            <option value="all" <?php echo $per_page === 'all' ? 'selected' : ''; ?>>All entries</option>
+                                        </select>
+                                    </div>
                                 </div>
                                 
                                 <div class="table-responsive">
-                                <table class="table table-sm table-hover">
-                                    <thead class="thead-light">
-                                        <tr>
-                                            <th style="width:40px"><input type="checkbox" id="selectAll" title="Select All"></th>
-                                            <th style="width:90px">Date</th>
-                                            <th style="width:130px">Student ID</th>
-                                            <th>Complaint</th>
-                                            <th style="width:90px">Status</th>
-                                            <th>Priority</th>
-                                            <th>Lodged By</th>
-                                            <th>Handler</th>
-                                            <th>Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php foreach($complaints as $complaint): ?>
-                                        <tr class="<?php echo $complaint['is_urgent'] ? 'table-danger' : ''; ?>">
-                                            <td>
-                                                <input type="checkbox" name="complaint_ids[]" value="<?php echo $complaint['complaint_id']; ?>" class="complaint-checkbox">
-                                            </td>
-                                            <td><?php echo date('M d, Y', strtotime($complaint['created_at'])); ?></td>
-                                            <?php
-                                                $sid_full = htmlspecialchars($complaint['student_id'] ?? '');
-                                                $sid_display = mb_strlen($sid_full) > 20
-                                                    ? mb_substr($sid_full, 0, 20) . '…'
-                                                    : $sid_full;
-                                            ?>
-                                            <td title="<?php echo $sid_full; ?>" style="cursor:default"><?php echo $sid_display; ?></td>
-                                        <td>
-                                            <?php echo substr($complaint['complaint_text'], 0, 50); ?>...
-                                            <?php if($complaint['image_path']): ?>
-                                                <?php 
-                                                $images = array_filter(explode(",", $complaint['image_path'])); 
-                                                $img_count = count($images);
-                                                $processed_images = array_map('getImagePath', $images);
+                                    <table class="table table-sm table-hover table-mobile-cards" id="complaintsTable">
+                                        <thead class="thead-light">
+                                            <tr>
+                                                <th style="width:40px"><input type="checkbox" id="selectAll" title="Select All"></th>
+                                                <th style="width:95px">Date</th>
+                                                <th style="width:140px">Student ID</th>
+                                                <th>Complaint</th>
+                                                <th style="width:95px">Status</th>
+                                                <th style="width:85px">Priority</th>
+                                                <th style="width:110px">Lodged By</th>
+                                                <th style="width:110px">Handler</th>
+                                                <th style="width:70px">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach($complaints as $complaint): ?>
+                                            <tr class="<?php echo $complaint['is_urgent'] ? 'table-danger' : ''; ?>" data-complaint-id="<?php echo $complaint['complaint_id']; ?>">
+                                                <td data-label="Select">
+                                                    <input type="checkbox" name="complaint_ids[]" value="<?php echo $complaint['complaint_id']; ?>" class="complaint-checkbox">
+                                                </td>
+                                                <td data-label="Date"><?php echo date('M d, Y', strtotime($complaint['created_at'])); ?></td>
+                                                <?php
+                                                    $sid_full = htmlspecialchars($complaint['student_id'] ?? '');
+                                                    $sid_display = mb_strlen($sid_full) > 20
+                                                        ? mb_substr($sid_full, 0, 20) . '…'
+                                                        : $sid_full;
                                                 ?>
-                                                <div class="mt-2">
-                                                    <button type="button" class="btn btn-link p-0 attachment-btn" onclick="showGalleryModal(<?php echo htmlspecialchars(json_encode($processed_images)); ?>)">
-                                                        <i class="fas fa-paperclip"></i> <?php echo $img_count; ?> Attachment<?php echo $img_count > 1 ? 's' : ''; ?>
-                                                    </button>
-                                                </div>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td>
-                                            <span class="complaint-status status-<?php echo strtolower($complaint['status']); ?>">
-                                                <?php echo $complaint['status']; ?>
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <?php if($complaint['is_urgent']): ?>
-                                                <span class="badge badge-danger">Urgent</span>
-                                            <?php else: ?>
-                                                <span class="badge badge-secondary">Normal</span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td><strong><?php echo $complaint['lodged_by_name'] ?? '-'; ?></strong></td>
-                                        <td><?php echo $complaint['handler_name'] ?? 'Not assigned'; ?></td>
-                                        <td>
-                                            <button type="button" class="btn btn-outline-primary btn-sm p-1" data-toggle="modal" 
-                                                    data-target="#updateModal<?php echo $complaint['complaint_id']; ?>" title="Update Complaint">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
+                                                <td data-label="Student ID" title="<?php echo $sid_full; ?>" style="cursor:default"><?php echo $sid_display; ?></td>
+                                            <td data-label="Complaint">
+                                                <?php echo substr($complaint['complaint_text'], 0, 50); ?>...
+                                                <?php if($complaint['image_path']): ?>
+                                                    <?php 
+                                                    $images = array_filter(explode(",", $complaint['image_path'])); 
+                                                    $img_count = count($images);
+                                                    $processed_images = array_map('getImagePath', $images);
+                                                    ?>
+                                                    <div class="mt-2">
+                                                        <button type="button" class="btn btn-link p-0 attachment-btn" onclick="showGalleryModal(<?php echo htmlspecialchars(json_encode($processed_images)); ?>)">
+                                                            <i class="fas fa-paperclip"></i> <?php echo $img_count; ?> Attachment<?php echo $img_count > 1 ? 's' : ''; ?>
+                                                        </button>
+                                                    </div>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td data-label="Status">
+                                                <span class="complaint-status status-<?php echo strtolower($complaint['status']); ?>">
+                                                    <?php echo $complaint['status']; ?>
+                                                </span>
+                                            </td>
+                                            <td data-label="Priority">
+                                                <?php if($complaint['is_urgent']): ?>
+                                                    <span class="badge badge-danger">Urgent</span>
+                                                <?php else: ?>
+                                                    <span class="badge badge-secondary">Normal</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td data-label="Lodged By"><strong><?php echo $complaint['lodged_by_name'] ?? '-'; ?></strong></td>
+                                            <td data-label="Handler"><?php echo $complaint['handler_name'] ?? 'Not assigned'; ?></td>
+                                            <td data-label="Action" class="action-col">
+                                                <button type="button" class="btn btn-outline-primary btn-sm p-1" data-toggle="modal" 
+                                                        data-target="#updateModal<?php echo $complaint['complaint_id']; ?>" title="Update Complaint">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
 
-                                    <div class="modal fade" id="updateModal<?php echo $complaint['complaint_id']; ?>" tabindex="-1" data-backdrop="false" data-keyboard="true">
-                                        <div class="modal-dialog">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    <h5 class="modal-title">Update Complaint</h5>
-                                                    <button type="button" class="close" data-dismiss="modal">
-                                                        <span>&times;</span>
-                                                    </button>
+                                        <div class="modal fade" id="updateModal<?php echo $complaint['complaint_id']; ?>" tabindex="-1" data-backdrop="false" data-keyboard="true">
+                                            <div class="modal-dialog">
+                                                <div class="modal-content">
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title">Update Complaint</h5>
+                                                        <button type="button" class="close text-white" data-dismiss="modal">
+                                                            <span>&times;</span>
+                                                        </button>
+                                                    </div>
+                                                    <form method="post" enctype="multipart/form-data">
+                                                        <div class="modal-body">
+                                                            <input type="hidden" name="complaint_id" value="<?php echo $complaint['complaint_id']; ?>">
+                                                            <div class="form-group">
+                                                                <label>Student ID</label>
+                                                                <p class="form-control-plaintext font-weight-bold border-bottom pb-2"><?php echo $complaint['student_id']; ?></p>
+                                                            </div>
+                                                            <div class="form-group">
+                                                                <label>Complaint Details</label>
+                                                                <p class="form-control-plaintext bg-light p-2 rounded"><?php echo $complaint['complaint_text']; ?></p>
+                                                            </div>
+                                                            <?php if($complaint['image_path']): ?>
+                                                            <div class="form-group">
+                                                                <label>Attached Images</label>
+                                                                <div class="mt-2 d-flex flex-wrap">
+                                                                    <?php foreach(explode(",", $complaint['image_path']) as $image): ?>
+                                                                        <div class="mr-2 mb-2">
+                                                                            <img src="<?php echo htmlspecialchars(getImagePath($image)); ?>" 
+                                                                                 class="img-thumbnail" alt="Complaint Image"
+                                                                                 style="max-height: 100px; cursor: pointer;"
+                                                                                 onclick="showImageModal('<?php echo htmlspecialchars(getImagePath($image)); ?>')">
+                                                                        </div>
+                                                                    <?php endforeach; ?>
+                                                                </div>
+                                                            </div>
+                                                            <?php endif; ?>
+                                                            <div class="form-group">
+                                                                <label>Priority</label>
+                                                                <div class="custom-control custom-checkbox">
+                                                                    <input type="checkbox" class="custom-control-input" id="urgentCheck<?php echo $complaint['complaint_id']; ?>" 
+                                                                           name="is_urgent" <?php echo $complaint['is_urgent'] ? 'checked' : ''; ?>>
+                                                                    <label class="custom-control-label text-danger font-weight-bold" for="urgentCheck<?php echo $complaint['complaint_id']; ?>">
+                                                                        Mark as Urgent
+                                                                    </label>
+                                                                </div>
+                                                            </div>
+                                                            <div class="form-group">
+                                                                <label>Status</label>
+                                                                <select name="status" class="form-control" required>
+                                                                    <option value="Pending" <?php echo $complaint['status'] == 'Pending' ? 'selected' : ''; ?>>Pending</option>
+                                                                    <option value="Treated" <?php echo $complaint['status'] == 'Treated' ? 'selected' : ''; ?>>Treated</option>
+                                                                    <option value="Needs More Info" <?php echo $complaint['status'] == 'Needs More Info' ? 'selected' : ''; ?>>Needs More Info</option>
+                                                                </select>
+                                                            </div>
+                                                            <div class="form-group">
+                                                                <label>Feedback Type</label>
+                                                                <select name="feedback_type" class="form-control">
+                                                                    <option value="">No Feedback</option>
+                                                                    <option value="resolved" <?php echo $complaint['feedback_type'] == 'resolved' ? 'selected' : ''; ?>>Resolved (Response Only)</option>
+                                                                    <option value="incomplete" <?php echo $complaint['feedback_type'] == 'incomplete' ? 'selected' : ''; ?>>Incomplete Information</option>
+                                                                </select>
+                                                            </div>
+                                                            <div class="form-group">
+                                                                <label>Feedback</label>
+                                                                <textarea name="feedback" class="form-control" rows="3"><?php echo $complaint['feedback']; ?></textarea>
+                                                            </div>
+                                                            <div class="form-group">
+                                                                <label for="admin_feedback_images_<?php echo $complaint['complaint_id']; ?>">Attach Images to Feedback (Optional)</label>
+                                                                <input type="file" id="admin_feedback_images_<?php echo $complaint['complaint_id']; ?>" name="admin_feedback_images[]" class="form-control-file" accept="image/*" multiple>
+                                                                <small class="form-text text-muted">Supported formats: JPG, JPEG, PNG, GIF (Max size: 5MB per image)<br>
+                                                                <strong>💡 Tip:</strong> Paste screenshots with Ctrl+V or drag & drop images!</small>
+                                                            </div>
+                                                            <div class="form-group">
+                                                                <div class="custom-control custom-checkbox">
+                                                                    <input type="checkbox" class="custom-control-input" id="paymentCheck<?php echo $complaint['complaint_id']; ?>" 
+                                                                           name="is_payment_related" <?php echo $complaint['is_payment_related'] ? 'checked' : ''; ?>>
+                                                                    <label class="custom-control-label" for="paymentCheck<?php echo $complaint['complaint_id']; ?>">
+                                                                        Mark as Payment-Related
+                                                                    </label>
+                                                                </div>
+                                                            </div>
+                                                            <div class="form-group">
+                                                                <div class="custom-control custom-checkbox">
+                                                                    <input type="checkbox" class="custom-control-input" id="i4cusCheck<?php echo $complaint['complaint_id']; ?>" 
+                                                                           name="is_i4cus" <?php echo $complaint['is_i4cus'] ? 'checked' : ''; ?>>
+                                                                    <label class="custom-control-label" for="i4cusCheck<?php echo $complaint['complaint_id']; ?>">
+                                                                        Mark as i4Cus Issue
+                                                                    </label>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="modal-footer bg-light">
+                                                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                                            <button type="submit" name="update_complaint" class="btn btn-primary">Update</button>
+                                                        </div>
+                                                    </form>
                                                 </div>
-                                                <form method="post" enctype="multipart/form-data">
-                                                    <div class="modal-body">
-                                                        <input type="hidden" name="complaint_id" value="<?php echo $complaint['complaint_id']; ?>">
-                                                        <div class="form-group">
-                                                            <label>Student ID</label>
-                                                            <p class="form-control-plaintext"><?php echo $complaint['student_id']; ?></p>
-                                                        </div>
-                                                        <div class="form-group">
-                                                            <label>Complaint Details</label>
-                                                            <p class="form-control-plaintext"><?php echo $complaint['complaint_text']; ?></p>
-                                                        </div>
-                                                        <?php if($complaint['image_path']): ?>
-                                                        <div class="form-group">
-                                                            <label>Attached Images</label>
-                                                            <div class="mt-2 d-flex flex-wrap">
-                                                                <?php foreach(explode(",", $complaint['image_path']) as $image): ?>
-                                                                    <div class="mr-2 mb-2">
-                                                                        <img src="<?php echo htmlspecialchars(getImagePath($image)); ?>" 
-                                                                             class="img-thumbnail" alt="Complaint Image"
-                                                                             style="max-height: 100px; cursor: pointer;"
-                                                                             onclick="showImageModal('<?php echo htmlspecialchars(getImagePath($image)); ?>')">
-                                                                    </div>
-                                                                <?php endforeach; ?>
-                                                            </div>
-                                                        </div>
-                                                        <?php endif; ?>
-                                                        <div class="form-group">
-                                                            <label>Priority</label>
-                                                            <div class="custom-control custom-checkbox">
-                                                                <input type="checkbox" class="custom-control-input" id="urgentCheck<?php echo $complaint['complaint_id']; ?>" 
-                                                                       name="is_urgent" <?php echo $complaint['is_urgent'] ? 'checked' : ''; ?>>
-                                                                <label class="custom-control-label" for="urgentCheck<?php echo $complaint['complaint_id']; ?>">
-                                                                    Mark as Urgent
-                                                                </label>
-                                                            </div>
-                                                        </div>
-                                                        <div class="form-group">
-                                                            <label>Status</label>
-                                                            <select name="status" class="form-control" required>
-                                                                <option value="Pending" <?php echo $complaint['status'] == 'Pending' ? 'selected' : ''; ?>>Pending</option>
-                                                                <option value="Treated" <?php echo $complaint['status'] == 'Treated' ? 'selected' : ''; ?>>Treated</option>
-                                                                <option value="Needs More Info" <?php echo $complaint['status'] == 'Needs More Info' ? 'selected' : ''; ?>>Needs More Info</option>
-                                                            </select>
-                                                        </div>
-                                                        <div class="form-group">
-                                                            <label>Feedback Type</label>
-                                                            <select name="feedback_type" class="form-control">
-                                                                <option value="">No Feedback</option>
-                                                                <option value="resolved" <?php echo $complaint['feedback_type'] == 'resolved' ? 'selected' : ''; ?>>Resolved (Response Only)</option>
-                                                                <option value="incomplete" <?php echo $complaint['feedback_type'] == 'incomplete' ? 'selected' : ''; ?>>Incomplete Information</option>
-                                                            </select>
-                                                        </div>
-                                                        <div class="form-group">
-                                                            <label>Feedback</label>
-                                                            <textarea name="feedback" class="form-control" rows="3"><?php echo $complaint['feedback']; ?></textarea>
-                                                        </div>
-                                                        <div class="form-group">
-                                                            <label for="admin_feedback_images_<?php echo $complaint['complaint_id']; ?>">Attach Images to Feedback (Optional)</label>
-                                                            <input type="file" id="admin_feedback_images_<?php echo $complaint['complaint_id']; ?>" name="admin_feedback_images[]" class="form-control-file" accept="image/*" multiple>
-                                                            <small class="form-text text-muted">Supported formats: JPG, JPEG, PNG, GIF (Max size: 5MB per image)<br>
-                                                            <strong>💡 Tip:</strong> Paste screenshots with Ctrl+V or drag & drop images!</small>
-                                                        </div>
-                                                        <div class="form-group">
-                                                            <div class="custom-control custom-checkbox">
-                                                                <input type="checkbox" class="custom-control-input" id="paymentCheck<?php echo $complaint['complaint_id']; ?>" 
-                                                                       name="is_payment_related" <?php echo $complaint['is_payment_related'] ? 'checked' : ''; ?>>
-                                                                <label class="custom-control-label" for="paymentCheck<?php echo $complaint['complaint_id']; ?>">
-                                                                    Mark as Payment-Related
-                                                                </label>
-                                                            </div>
-                                                        </div>
-                                                        <div class="form-group">
-                                                            <div class="custom-control custom-checkbox">
-                                                                <input type="checkbox" class="custom-control-input" id="i4cusCheck<?php echo $complaint['complaint_id']; ?>" 
-                                                                       name="is_i4cus" <?php echo $complaint['is_i4cus'] ? 'checked' : ''; ?>>
-                                                                <label class="custom-control-label" for="i4cusCheck<?php echo $complaint['complaint_id']; ?>">
-                                                                    Mark as i4Cus Issue
-                                                                </label>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div class="modal-footer">
-                                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                                                        <button type="submit" name="update_complaint" class="btn btn-primary">Update</button>
-                                                    </div>
-                                                </form>
                                             </div>
                                         </div>
-                                    </div>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                            </div></form>
-                        
-                        <script>
-                        document.getElementById('selectAll').addEventListener('change', function() {
-                            const checkboxes = document.querySelectorAll('.complaint-checkbox');
-                            checkboxes.forEach(checkbox => checkbox.checked = this.checked);
-                        });
-                        </script>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                                </div></form>
+                            
+                            <?php if($total_pages > 1): ?>
+                            <nav aria-label="Page navigation" class="mt-4">
+                                <ul class="pagination justify-content-center flex-wrap">
+                                    <?php 
+                                        $page_params = $_GET;
+                                        if(isset($page_params['page'])) unset($page_params['page']);
+                                        $qs = http_build_query($page_params);
+                                        $qs = $qs ? '&' . $qs : '';
+                                    ?>
+                                    <li class="page-item <?php echo ($page <= 1) ? 'disabled' : ''; ?>">
+                                        <a class="page-link" href="?page=<?php echo $page - 1 . $qs; ?>" tabindex="-1">Previous</a>
+                                    </li>
+                                    
+                                    <?php 
+                                    $start_page = max(1, $page - 2);
+                                    $end_page = min($total_pages, $page + 2);
+                                    
+                                    if($start_page > 1) {
+                                        echo '<li class="page-item"><a class="page-link" href="?page=1'.$qs.'">1</a></li>';
+                                        if($start_page > 2) {
+                                            echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                                        }
+                                    }
+                                    
+                                    for($i = $start_page; $i <= $end_page; $i++): 
+                                    ?>
+                                        <li class="page-item <?php echo ($page == $i) ? 'active' : ''; ?>">
+                                            <a class="page-link" href="?page=<?php echo $i . $qs; ?>"><?php echo $i; ?></a>
+                                        </li>
+                                    <?php endfor; ?>
+                                    
+                                    <?php 
+                                    if($end_page < $total_pages) {
+                                        if($end_page < $total_pages - 1) {
+                                            echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                                        }
+                                        echo '<li class="page-item"><a class="page-link" href="?page='.$total_pages.$qs.'">'.$total_pages.'</a></li>';
+                                    }
+                                    ?>
+                                    
+                                    <li class="page-item <?php echo ($page >= $total_pages) ? 'disabled' : ''; ?>">
+                                        <a class="page-link" href="?page=<?php echo $page + 1 . $qs; ?>">Next</a>
+                                    </li>
+                                </ul>
+                            </nav>
+                            <?php endif; ?>
+
+                            <script>
+                            document.getElementById('selectAll').addEventListener('change', function() {
+                                const checkboxes = document.querySelectorAll('.complaint-checkbox');
+                                checkboxes.forEach(checkbox => checkbox.checked = this.checked);
+                            });
+                            </script>
                         <?php endif; ?>
                     </div>
                 </div>
             </div>
-            <div class="col-12 col-md-4 admin-sidebar-col sidebar-col">
+            <div class="col-12 col-lg-4 admin-sidebar-col sidebar-col">
                 <div class="card sidebar-card">
                     <div class="card-header">
                         <h4>Complaint Statistics</h4>
@@ -1006,16 +1124,16 @@ foreach ($complaints as $c) {
                         
                         $stats_result = mysqli_query($conn, $stats_sql);
                         $staff_names = [];
-                        $total_complaints = [];
+                        $total_complaints_arr = [];
                         $treated_complaints = [];
-                        $pending_complaints = [];
+                        $pending_complaints_arr = [];
                         
                         if($stats_result){
                             while($row = mysqli_fetch_assoc($stats_result)){
                                 $staff_names[] = $row['full_name'];
-                                $total_complaints[] = $row['total_complaints'];
+                                $total_complaints_arr[] = $row['total_complaints'];
                                 $treated_complaints[] = $row['treated_complaints'];
-                                $pending_complaints[] = $row['pending_complaints'];
+                                $pending_complaints_arr[] = $row['pending_complaints'];
                             }
                         }
                         ?>
@@ -1049,7 +1167,7 @@ foreach ($complaints as $c) {
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            <button type="submit" name="create_user" class="btn btn-primary">Create User</button>
+                            <button type="submit" name="create_user" class="btn btn-primary w-100">Create User</button>
                         </form>
                     </div>
                 </div>
@@ -1065,19 +1183,18 @@ foreach ($complaints as $c) {
                         <?php if(!empty($staff_stats)): ?>
                             <div class="list-group mb-4">
                                 <?php foreach($staff_stats as $staff): ?>
-                                    <div class="list-group-item">
+                                    <div class="list-group-item px-3">
                                         <div class="d-flex justify-content-between align-items-center">
                                             <div>
                                                 <h6 class="mb-1"><?php echo htmlspecialchars($staff['full_name']); ?></h6>
-                                                <div>
-                                                    <span class="badge badge-primary">Total: <?php echo $staff['total_complaints']; ?></span>
-                                                    <span class="badge badge-info">Today: <?php echo $staff['today_count']; ?></span>
-                                                    <span class="badge badge-success">This Week: <?php echo $staff['week_count']; ?></span>
-                                                    <span class="badge badge-warning">This Month: <?php echo $staff['month_count']; ?></span>
+                                                <div class="d-flex flex-wrap gap-1">
+                                                    <span class="badge badge-primary mr-1">Total: <?php echo $staff['total_complaints']; ?></span>
+                                                    <span class="badge badge-info mr-1">Today: <?php echo $staff['today_count']; ?></span>
+                                                    <span class="badge badge-success mr-1">Week: <?php echo $staff['week_count']; ?></span>
                                                 </div>
                                             </div>
-                                            <a href="?staff_id=<?php echo $staff['user_id']; ?>" class="btn btn-sm btn-info">
-                                                View Complaints
+                                            <a href="?staff_id=<?php echo $staff['user_id']; ?>" class="btn btn-sm btn-info text-nowrap ml-2">
+                                                View
                                             </a>
                                         </div>
                                     </div>
@@ -1090,24 +1207,23 @@ foreach ($complaints as $c) {
                         <?php if(!empty($staff_complaints)): ?>
                             <h5 class="mb-3">Staff Member's Complaints</h5>
                             <div class="table-responsive">
-                                <table class="table table-hover">
-                                    <thead>
+                                <table class="table table-hover table-mobile-cards">
+                                    <thead class="thead-light">
                                         <tr>
                                             <th>Date</th>
                                             <th>Student ID</th>
                                             <th>Complaint</th>
                                             <th>Status</th>
-                                            <th>Handled By</th>
                                             <th>Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <?php foreach($staff_complaints as $complaint): ?>
                                             <tr>
-                                                <td><?php echo date('M d, Y h:i A', strtotime($complaint['created_at'])); ?></td>
-                                                <td><?php echo htmlspecialchars($complaint['student_id']); ?></td>
-                                                <td>
-                                                    <?php echo substr(htmlspecialchars($complaint['complaint_text']), 0, 50) . '...'; ?>
+                                                <td data-label="Date"><?php echo date('M d, y', strtotime($complaint['created_at'])); ?></td>
+                                                <td data-label="Student ID"><?php echo htmlspecialchars($complaint['student_id']); ?></td>
+                                                <td data-label="Complaint">
+                                                    <?php echo substr(htmlspecialchars($complaint['complaint_text']), 0, 40) . '...'; ?>
                                                     <?php if($complaint['image_path']): ?>
                                                         <?php 
                                                         $images = array_filter(explode(",", $complaint['image_path'])); 
@@ -1116,12 +1232,12 @@ foreach ($complaints as $c) {
                                                         ?>
                                                         <div class="mt-2">
                                                             <button type="button" class="btn btn-link p-0 attachment-btn" onclick="showGalleryModal(<?php echo htmlspecialchars(json_encode($processed_images)); ?>)">
-                                                                <i class="fas fa-paperclip"></i> <?php echo $img_count; ?> Attachment<?php echo $img_count > 1 ? 's' : ''; ?>
+                                                                <i class="fas fa-paperclip"></i> <?php echo $img_count; ?>
                                                             </button>
                                                         </div>
                                                     <?php endif; ?>
                                                 </td>
-                                                <td>
+                                                <td data-label="Status">
                                                     <span class="badge badge-<?php 
                                                         echo $complaint['status'] == 'Treated' ? 'success' : 
                                                             ($complaint['status'] == 'In Progress' ? 'warning' : 'secondary'); 
@@ -1129,8 +1245,7 @@ foreach ($complaints as $c) {
                                                         <?php echo $complaint['status']; ?>
                                                     </span>
                                                 </td>
-                                                <td><?php echo $complaint['handler_name'] ? htmlspecialchars($complaint['handler_name']) : 'Not assigned'; ?></td>
-                                                <td>
+                                                <td data-label="Action" class="action-col">
                                                     <a href="view_complaint.php?id=<?php echo $complaint['complaint_id']; ?>" 
                                                        class="btn btn-sm btn-info">View Details</a>
                                                 </td>
@@ -1149,19 +1264,19 @@ foreach ($complaints as $c) {
                     </div>
                     <div class="card-body">
                         <div class="mb-3">
-                            <span class="badge badge-primary">Total Pending: <?php echo count($pending_today) + count($pending_previous_days); ?></span>
-                            <span class="badge badge-warning" style="cursor:pointer;" data-toggle="collapse" data-target="#pendingPrevDaysList" aria-expanded="false" aria-controls="pendingPrevDaysList">
+                            <span class="badge badge-primary font-weight-normal py-1 px-2 mb-1 text-white">Total Pending: <?php echo count($pending_today) + count($pending_previous_days); ?></span>
+                            <span class="badge badge-warning font-weight-normal py-1 px-2 mb-1" style="cursor:pointer;" data-toggle="collapse" data-target="#pendingPrevDaysList" aria-expanded="false" aria-controls="pendingPrevDaysList">
                                 Pending from Previous Days: <?php echo count($pending_previous_days); ?>
                             </span>
                         </div>
                         <div class="collapse" id="pendingPrevDaysList">
-                            <div class="card card-body">
+                            <div class="card card-body p-0 border-0">
                                 <?php if(count($pending_previous_days) > 0): ?>
                                     <ul class="list-group mb-2">
                                         <?php foreach($pending_previous_days as $c): ?>
-                                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                <span>
-                                                    <?php echo date('M d, Y h:i A', strtotime($c['created_at'])); ?> - <?php echo htmlspecialchars($c['student_id'] ?? ''); ?>
+                                            <li class="list-group-item d-flex justify-content-between align-items-center p-2">
+                                                <span class="small">
+                                                    <?php echo date('M d, Y h:i A', strtotime($c['created_at'])); ?> - <strong><?php echo htmlspecialchars($c['student_id'] ?? ''); ?></strong>
                                                 </span>
                                                 <a href="#updateModal<?php echo $c['complaint_id']; ?>" data-toggle="modal" class="btn btn-sm btn-primary">Treat</a>
                                             </li>
@@ -1183,7 +1298,7 @@ foreach ($complaints as $c) {
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Attachments</h5>
-                    <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                    <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
                 </div>
                 <div class="modal-body text-center">
                     <div id="galleryImages" class="d-flex flex-wrap justify-content-center"></div>
@@ -1197,7 +1312,7 @@ foreach ($complaints as $c) {
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Image View</h5>
-                    <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                    <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
                 </div>
                 <div class="modal-body text-center">
                     <img id="modalImage" src="" class="img-fluid" alt="Complaint Image">
@@ -1214,9 +1329,9 @@ foreach ($complaints as $c) {
     <script>
     let myChart = null;
     const staffNames = <?php echo json_encode($staff_names); ?>;
-    const totalComplaints = <?php echo json_encode($total_complaints); ?>;
+    const totalComplaintsArr = <?php echo json_encode($total_complaints_arr); ?>;
     const treatedComplaints = <?php echo json_encode($treated_complaints); ?>;
-    const pendingComplaints = <?php echo json_encode($pending_complaints); ?>;
+    const pendingComplaintsArr = <?php echo json_encode($pending_complaints_arr); ?>;
 
     function createChart(type) {
         const ctx = document.getElementById('statsChart').getContext('2d');
@@ -1231,7 +1346,7 @@ foreach ($complaints as $c) {
                 labels: staffNames,
                 datasets: [{
                     label: 'Total Complaints',
-                    data: totalComplaints,
+                    data: totalComplaintsArr,
                     backgroundColor: 'rgba(255, 99, 132, 0.7)',
                     borderColor: 'rgba(255, 99, 132, 1)',
                     borderWidth: 1
@@ -1243,7 +1358,7 @@ foreach ($complaints as $c) {
                     borderWidth: 1
                 }, {
                     label: 'Pending Complaints',
-                    data: pendingComplaints,
+                    data: pendingComplaintsArr,
                     backgroundColor: 'rgba(255, 206, 86, 0.7)',
                     borderColor: 'rgba(255, 206, 86, 1)',
                     borderWidth: 1
@@ -1335,11 +1450,25 @@ foreach ($complaints as $c) {
                 imagesHtml = `<div class=\"mt-2\"><strong>Attached Images:</strong><div class=\"gallery-container\">${galleryItems}</div>${viewAllBtn}</div>`;
             }
             let checkbox = (userRoleId == 1 || complaint.lodged_by == userId) ? `<div class=\"form-check mr-3\"><input type=\"checkbox\" class=\"form-check-input complaint-checkbox\" name=\"complaint_ids[]\" value=\"${complaint.complaint_id}\"></div>` : '';
-            // For admin, assume complaints are in a table with id #complaintsTable
-            return `<tr class=\"new-complaint\"><td>${complaint.created_at_fmt}</td><td>${complaint.student_id}</td><td>${complaint.complaint_text.substring(0,50)}...</td><td>${complaint.status}</td><td>${complaint.is_urgent ? 'Urgent' : 'Normal'}</td><td><strong>${complaint.lodged_by_name || '-'}</strong></td><td><button type=\"button\" class=\"btn btn-outline-primary btn-sm p-1\" data-toggle=\"modal\" 
-                    data-target=\"#updateModal${complaint.complaint_id}\" title=\"Update Complaint\">
-                    <i class=\"fas fa-edit\"></i>
-                </button></td></tr>`;
+            // For admin, updated to include data-labels for mobile cards styling
+            return `<tr class=\"new-complaint\" data-complaint-id=\"${complaint.complaint_id}\">
+                        <td data-label=\"Select\">
+                            <input type=\"checkbox\" name=\"complaint_ids[]\" value=\"${complaint.complaint_id}\" class=\"complaint-checkbox\">
+                        </td>
+                        <td data-label=\"Date\">${complaint.created_at_fmt}</td>
+                        <td data-label=\"Student ID\">${complaint.student_id}</td>
+                        <td data-label=\"Complaint\">${complaint.complaint_text.substring(0,50)}... ${imagesHtml}</td>
+                        <td data-label=\"Status\"><span class=\"complaint-status status-${complaint.status.toLowerCase()}\">${complaint.status}</span></td>
+                        <td data-label=\"Priority\">${complaint.is_urgent ? '<span class=\"badge badge-danger\">Urgent</span>' : '<span class=\"badge badge-secondary\">Normal</span>'}</td>
+                        <td data-label=\"Lodged By\"><strong>${complaint.lodged_by_name || '-'}</strong></td>
+                        <td data-label=\"Handler\">${complaint.handler_name || 'Not assigned'}</td>
+                        <td data-label=\"Action\" class=\"action-col\">
+                            <button type=\"button\" class=\"btn btn-outline-primary btn-sm p-1\" data-toggle=\"modal\" 
+                                    data-target=\"#updateModal${complaint.complaint_id}\" title=\"Update Complaint\">
+                                <i class=\"fas fa-edit\"></i>
+                            </button>
+                        </td>
+                    </tr>`;
         }
         function getLastComplaintId() {
             let first = $('#complaintsTable tbody tr').first();
@@ -1360,7 +1489,7 @@ foreach ($complaints as $c) {
     });
     </script>
     
-    <div class="container mt-4 mb-4">
+    <div class="container-fluid mt-4 mb-4">
         <div class="row">
             <div class="col-md-12">
                 <div class="card">
@@ -1377,14 +1506,14 @@ foreach ($complaints as $c) {
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Export Complaints</h5>
-                    <button type="button" class="close" data-dismiss="modal">
+                    <button type="button" class="close text-white" data-dismiss="modal">
                         <span>&times;</span>
                     </button>
                 </div>
                 <form id="exportForm">
                     <div class="modal-body">
                         <div class="form-group">
-                            <label>Export Format</label>
+                            <label class="font-weight-bold text-muted">Export Format</label>
                             <select name="format" class="form-control">
                                 <option value="csv">CSV (Excel Compatible)</option>
                                 <option value="json">JSON (Developer Format)</option>
@@ -1392,9 +1521,9 @@ foreach ($complaints as $c) {
                         </div>
                         
                         <div class="form-group">
-                            <label>Date Range (Optional)</label>
+                            <label class="font-weight-bold text-muted">Date Range (Optional)</label>
                             <div class="row">
-                                <div class="col-md-6">
+                                <div class="col-md-6 mb-2 mb-md-0">
                                     <input type="date" name="date_from" class="form-control" placeholder="From Date">
                                     <small class="form-text text-muted">From Date</small>
                                 </div>
@@ -1406,7 +1535,7 @@ foreach ($complaints as $c) {
                         </div>
                         
                         <div class="form-group">
-                            <label>Status Filter</label>
+                            <label class="font-weight-bold text-muted">Status Filter</label>
                             <select name="status" class="form-control">
                                 <option value="all">All Statuses</option>
                                 <option value="Pending">Pending Only</option>
@@ -1416,7 +1545,7 @@ foreach ($complaints as $c) {
                         </div>
                         
                         <div class="form-group">
-                            <label>Type Filter</label>
+                            <label class="font-weight-bold text-muted">Type Filter</label>
                             <select name="type" class="form-control">
                                 <option value="all">All Types</option>
                                 <option value="payment">Payment Related Only</option>
@@ -1426,26 +1555,26 @@ foreach ($complaints as $c) {
                         </div>
                         
                         <?php if ($filter_user > 0): ?>
-                            <div class="alert alert-info">
-                                <i class="fas fa-info-circle"></i>
+                            <div class="alert alert-info py-2 px-3">
+                                <i class="fas fa-info-circle mr-1"></i>
                                 <strong>User Filter Active:</strong> Export will include only complaints from the currently filtered user.
                             </div>
                             <input type="hidden" name="filter_user" value="<?php echo $filter_user; ?>">
                         <?php endif; ?>
                         
-                        <div class="form-group">
-                            <div class="custom-control custom-checkbox">
+                        <div class="form-group mb-0">
+                            <div class="custom-control custom-checkbox mt-2">
                                 <input type="checkbox" class="custom-control-input" id="includePersonalData">
-                                <label class="custom-control-label" for="includePersonalData">
+                                <label class="custom-control-label text-muted" for="includePersonalData">
                                     I confirm that this export is for legitimate business purposes and will be handled according to data protection policies.
                                 </label>
                             </div>
                         </div>
                     </div>
-                    <div class="modal-footer">
+                    <div class="modal-footer bg-light">
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
                         <button type="submit" class="btn btn-success" id="exportBtn" disabled>
-                            <i class="fas fa-download"></i> Export Complaints
+                            <i class="fas fa-download mr-1"></i> Export Complaints
                         </button>
                     </div>
                 </form>
@@ -1485,7 +1614,7 @@ foreach ($complaints as $c) {
         const exportUrl = 'api/export_complaints.php?' + params.toString();
         
         // Show loading state
-        $('#exportBtn').html('<i class="fas fa-spinner fa-spin"></i> Exporting...').prop('disabled', true);
+        $('#exportBtn').html('<i class="fas fa-spinner fa-spin mr-1"></i> Exporting...').prop('disabled', true);
         
         // Create a temporary link to download the file
         const link = document.createElement('a');
@@ -1497,7 +1626,7 @@ foreach ($complaints as $c) {
         
         // Reset button after a delay
         setTimeout(function() {
-            $('#exportBtn').html('<i class="fas fa-download"></i> Export Complaints').prop('disabled', false);
+            $('#exportBtn').html('<i class="fas fa-download mr-1"></i> Export Complaints').prop('disabled', false);
             $('#exportModal').modal('hide');
         }, 2000);
     });
