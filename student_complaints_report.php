@@ -161,6 +161,7 @@ foreach ($complaints as $complaint) {
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/responsive-fix.css">
     <style>
         .report-header {
             background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
@@ -168,6 +169,7 @@ foreach ($complaints as $complaint) {
             padding: 2rem;
             border-radius: 15px;
             margin-bottom: 2rem;
+            box-shadow: 0 4px 15px rgba(30, 60, 114, 0.1);
         }
         .stats-card {
             background: white;
@@ -176,6 +178,10 @@ foreach ($complaints as $complaint) {
             box-shadow: 0 4px 15px rgba(30, 60, 114, 0.1);
             margin-bottom: 1rem;
             border-left: 4px solid #1e3c72;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }
         .stats-number {
             font-size: 2rem;
@@ -211,37 +217,44 @@ foreach ($complaints as $complaint) {
         .status-rejected { color: #dc3545; font-weight: 600; }
         .export-buttons {
             position: sticky;
-            top: 20px;
+            top: 70px; /* adjusted for sticky navbar */
             z-index: 100;
+        }
+        
+        @media (max-width: 767px) {
+            .export-buttons {
+                position: static;
+                margin-bottom: 1rem;
+            }
         }
     </style>
 </head>
 <body>
     <?php include 'includes/navbar.php'; ?>
 
-    <div class="container-fluid mt-4">
+    <div class="container-fluid px-3 px-md-4 px-xl-5 mt-4">
+        
         <div class="report-header text-center">
-            <h1><i class="fas fa-chart-bar mr-3"></i>Student Complaints Report</h1>
-            <p class="mb-0">Result Verification Complaints Analysis</p>
-            <small>Generated on <?php echo date('F j, Y \a\t g:i A'); ?></small>
+            <h1 class="h2 mb-2"><i class="fas fa-chart-bar mr-3"></i>Student Complaints Report</h1>
+            <p class="mb-2 text-white-50">Result Verification Complaints Analysis</p>
+            <small class="badge badge-light text-primary">Generated on <?php echo date('F j, Y \a\t g:i A'); ?></small>
         </div>
 
-        <!-- Filter Section -->
         <div class="filter-section">
-            <h4><i class="fas fa-filter mr-2"></i>Report Filters</h4>
-            <form method="GET" class="row">
-                <div class="col-md-3">
-                    <label for="date_from">From Date:</label>
+            <h4 class="mb-3"><i class="fas fa-filter mr-2"></i>Report Filters</h4>
+            <form method="GET" class="row align-items-end">
+                <div class="col-12 col-md-6 col-lg-3 mb-3">
+                    <label for="date_from" class="font-weight-bold text-muted">From Date:</label>
                     <input type="date" id="date_from" name="date_from" class="form-control" 
                            value="<?php echo htmlspecialchars($date_from); ?>">
                 </div>
-                <div class="col-md-3">
-                    <label for="date_to">To Date:</label>
+                <div class="col-12 col-md-6 col-lg-3 mb-3">
+                    <label for="date_to" class="font-weight-bold text-muted">To Date:</label>
                     <input type="date" id="date_to" name="date_to" class="form-control" 
                            value="<?php echo htmlspecialchars($date_to); ?>">
                 </div>
-                <div class="col-md-3">
-                    <label for="faculty_id">Faculty:</label>
+                <div class="col-12 col-md-6 col-lg-3 mb-3">
+                    <label for="faculty_id" class="font-weight-bold text-muted">Faculty:</label>
                     <select id="faculty_id" name="faculty_id" class="form-control">
                         <option value="">All Faculties</option>
                         <?php foreach ($faculties as $faculty): ?>
@@ -252,8 +265,8 @@ foreach ($complaints as $complaint) {
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="col-md-3">
-                    <label for="status">Status:</label>
+                <div class="col-12 col-md-6 col-lg-3 mb-3">
+                    <label for="status" class="font-weight-bold text-muted">Status:</label>
                     <select id="status" name="status" class="form-control">
                         <option value="">All Statuses</option>
                         <option value="Pending" <?php echo ($status_filter == 'Pending') ? 'selected' : ''; ?>>Pending</option>
@@ -262,114 +275,117 @@ foreach ($complaints as $complaint) {
                         <option value="Rejected" <?php echo ($status_filter == 'Rejected') ? 'selected' : ''; ?>>Rejected</option>
                     </select>
                 </div>
-                <div class="col-12 mt-3">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-search mr-2"></i>Apply Filters
-                    </button>
-                    <a href="student_complaints_report.php" class="btn btn-secondary ml-2">
-                        <i class="fas fa-times mr-2"></i>Clear Filters
-                    </a>
+                <div class="col-12 mt-2">
+                    <div class="d-flex flex-wrap gap-2">
+                        <button type="submit" class="btn btn-primary mr-2 mb-2">
+                            <i class="fas fa-search mr-2"></i>Apply Filters
+                        </button>
+                        <a href="student_complaints_report.php" class="btn btn-secondary mb-2">
+                            <i class="fas fa-times mr-2"></i>Clear Filters
+                        </a>
+                    </div>
                 </div>
             </form>
         </div>
 
-        <!-- Statistics Summary -->
         <div class="row mb-4">
-            <div class="col-md-2">
+            <div class="col-6 col-md-4 col-xl-2 mb-3">
                 <div class="stats-card text-center">
                     <div class="stats-number"><?php echo $stats['total_complaints'] ?? 0; ?></div>
-                    <div>Total Complaints</div>
+                    <div class="text-muted small text-uppercase font-weight-bold mt-1">Total</div>
                 </div>
             </div>
-            <div class="col-md-2">
-                <div class="stats-card text-center">
+            <div class="col-6 col-md-4 col-xl-2 mb-3">
+                <div class="stats-card text-center" style="border-left-color: #007bff;">
                     <div class="stats-number text-primary"><?php echo $stats['pending_count'] ?? 0; ?></div>
-                    <div>Pending</div>
+                    <div class="text-muted small text-uppercase font-weight-bold mt-1">Pending</div>
                 </div>
             </div>
-            <div class="col-md-2">
-                <div class="stats-card text-center">
+            <div class="col-6 col-md-4 col-xl-2 mb-3">
+                <div class="stats-card text-center" style="border-left-color: #17a2b8;">
                     <div class="stats-number text-info"><?php echo $stats['under_review_count'] ?? 0; ?></div>
-                    <div>Under Review</div>
+                    <div class="text-muted small text-uppercase font-weight-bold mt-1">Under Review</div>
                 </div>
             </div>
-            <div class="col-md-2">
-                <div class="stats-card text-center">
+            <div class="col-6 col-md-4 col-xl-2 mb-3">
+                <div class="stats-card text-center" style="border-left-color: #28a745;">
                     <div class="stats-number text-success"><?php echo $stats['resolved_count'] ?? 0; ?></div>
-                    <div>Resolved</div>
+                    <div class="text-muted small text-uppercase font-weight-bold mt-1">Resolved</div>
                 </div>
             </div>
-            <div class="col-md-2">
-                <div class="stats-card text-center">
+            <div class="col-6 col-md-4 col-xl-2 mb-3">
+                <div class="stats-card text-center" style="border-left-color: #dc3545;">
                     <div class="stats-number text-danger"><?php echo $stats['rejected_count'] ?? 0; ?></div>
-                    <div>Rejected</div>
+                    <div class="text-muted small text-uppercase font-weight-bold mt-1">Rejected</div>
                 </div>
             </div>
-            <div class="col-md-2">
-                <div class="stats-card text-center">
+            <div class="col-6 col-md-4 col-xl-2 mb-3">
+                <div class="stats-card text-center" style="border-left-color: #ffc107;">
                     <div class="stats-number text-warning"><?php echo count($complaints_by_dept); ?></div>
-                    <div>Departments</div>
+                    <div class="text-muted small text-uppercase font-weight-bold mt-1">Departments</div>
                 </div>
             </div>
         </div>
 
-        <!-- Complaint Type Breakdown -->
         <div class="row mb-4">
-            <div class="col-md-4">
-                <div class="stats-card text-center">
+            <div class="col-12 col-md-4 mb-3">
+                <div class="stats-card text-center" style="border-left-color: #dc3545;">
                     <div class="stats-number complaint-type-fa"><?php echo $stats['fa_count'] ?? 0; ?></div>
-                    <div>Fail Absent (FA)</div>
+                    <div class="text-muted small text-uppercase font-weight-bold mt-1">Fail Absent (FA)</div>
                 </div>
             </div>
-            <div class="col-md-4">
-                <div class="stats-card text-center">
+            <div class="col-12 col-md-4 mb-3">
+                <div class="stats-card text-center" style="border-left-color: #fd7e14;">
                     <div class="stats-number complaint-type-f"><?php echo $stats['f_count'] ?? 0; ?></div>
-                    <div>Fail (F)</div>
+                    <div class="text-muted small text-uppercase font-weight-bold mt-1">Fail (F)</div>
                 </div>
             </div>
-            <div class="col-md-4">
-                <div class="stats-card text-center">
+            <div class="col-12 col-md-4 mb-3">
+                <div class="stats-card text-center" style="border-left-color: #6f42c1;">
                     <div class="stats-number complaint-type-incorrect"><?php echo $stats['incorrect_grade_count'] ?? 0; ?></div>
-                    <div>Incorrect Grade</div>
+                    <div class="text-muted small text-uppercase font-weight-bold mt-1">Incorrect Grade</div>
                 </div>
             </div>
         </div>
 
-        <!-- Export Buttons -->
-        <div class="export-buttons">
-            <div class="card">
-                <div class="card-body text-center">
-                    <h5><i class="fas fa-download mr-2"></i>Export Options</h5>
-                    <a href="api/export_student_complaints.php?<?php echo http_build_query($_GET); ?>" 
-                       class="btn btn-success mr-2" target="_blank">
-                        <i class="fas fa-file-excel mr-2"></i>Export to Excel
-                    </a>
-                    <button onclick="window.print()" class="btn btn-info">
-                        <i class="fas fa-print mr-2"></i>Print Report
-                    </button>
+        <div class="export-buttons mb-4">
+            <div class="card shadow-sm border-0">
+                <div class="card-body d-flex flex-column flex-md-row justify-content-center align-items-center py-3">
+                    <h5 class="mb-3 mb-md-0 mr-md-4"><i class="fas fa-download mr-2 text-primary"></i>Export Options</h5>
+                    <div class="d-flex flex-wrap justify-content-center gap-2">
+                        <a href="api/export_student_complaints.php?<?php echo http_build_query($_GET); ?>" 
+                           class="btn btn-success mr-2 mb-2 mb-md-0" target="_blank">
+                            <i class="fas fa-file-excel mr-2"></i>Export to Excel
+                        </a>
+                        <button onclick="window.print()" class="btn btn-info mb-2 mb-md-0">
+                            <i class="fas fa-print mr-2"></i>Print Report
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Complaints by Department -->
         <?php if (empty($complaints_by_dept)): ?>
-            <div class="alert alert-info text-center">
-                <i class="fas fa-info-circle mr-2"></i>
-                No student complaints found matching the selected criteria.
+            <div class="alert alert-info text-center py-4">
+                <i class="fas fa-info-circle fa-2x mb-3 d-block"></i>
+                <h5>No student complaints found</h5>
+                <p class="mb-0">There are no complaints matching your selected criteria.</p>
             </div>
         <?php else: ?>
             <?php foreach ($complaints_by_dept as $dept_key => $dept_data): ?>
                 <div class="department-section">
-                    <div class="department-header">
-                        <h5 class="mb-0">
+                    <div class="department-header d-flex flex-column flex-md-row justify-content-between align-items-md-center">
+                        <h5 class="mb-2 mb-md-0">
                             <i class="fas fa-building mr-2"></i>
                             <?php echo htmlspecialchars($dept_data['faculty_name']); ?> - 
                             <?php echo htmlspecialchars($dept_data['department_name']); ?>
-                            <span class="badge badge-light ml-2"><?php echo count($dept_data['complaints']); ?> complaints</span>
                         </h5>
+                        <span class="badge badge-light text-primary py-2 px-3">
+                            <i class="fas fa-list mr-1"></i> <?php echo count($dept_data['complaints']); ?> complaints
+                        </span>
                     </div>
                     <div class="table-responsive">
-                        <table class="table table-striped mb-0">
+                        <table class="table table-striped table-hover table-mobile-cards mb-0">
                             <thead class="thead-light">
                                 <tr>
                                     <th>Student</th>
@@ -385,39 +401,43 @@ foreach ($complaints as $complaint) {
                             <tbody>
                                 <?php foreach ($dept_data['complaints'] as $complaint): ?>
                                     <tr>
-                                        <td>
+                                        <td data-label="Student">
                                             <strong><?php echo htmlspecialchars($complaint['full_name']); ?></strong><br>
-                                            <small class="text-muted"><?php echo htmlspecialchars($complaint['email']); ?></small>
+                                            <small class="text-muted"><i class="fas fa-envelope mr-1"></i><?php echo htmlspecialchars($complaint['email']); ?></small>
                                         </td>
-                                        <td>
+                                        <td data-label="Reg. Number">
                                             <code><?php echo htmlspecialchars($complaint['registration_number']); ?></code><br>
                                             <small class="text-muted">Year: <?php echo $complaint['year_of_entry']; ?></small>
                                         </td>
-                                        <td><?php echo htmlspecialchars($complaint['programme_name']); ?></td>
-                                        <td>
-                                            <strong><?php echo htmlspecialchars($complaint['course_code']); ?></strong><br>
-                                            <small><?php echo htmlspecialchars($complaint['course_title']); ?></small>
+                                        <td data-label="Programme">
+                                            <?php echo htmlspecialchars($complaint['programme_name']); ?>
                                         </td>
-                                        <td>
+                                        <td data-label="Course">
+                                            <strong><?php echo htmlspecialchars($complaint['course_code']); ?></strong><br>
+                                            <small class="text-muted"><?php echo htmlspecialchars($complaint['course_title']); ?></small>
+                                        </td>
+                                        <td data-label="Complaint Type">
                                             <span class="complaint-type-<?php echo strtolower(str_replace(' ', '-', $complaint['complaint_type'])); ?>">
-                                                <?php echo htmlspecialchars($complaint['complaint_type']); ?>
+                                                <i class="fas fa-tag mr-1"></i><?php echo htmlspecialchars($complaint['complaint_type']); ?>
                                             </span>
                                         </td>
-                                        <td>
-                                            <span class="status-<?php echo strtolower(str_replace(' ', '-', $complaint['status'])); ?>">
+                                        <td data-label="Status">
+                                            <span class="status-<?php echo strtolower(str_replace(' ', '-', $complaint['status'])); ?> badge badge-light border">
                                                 <?php echo htmlspecialchars($complaint['status']); ?>
                                             </span>
                                         </td>
-                                        <td>
-                                            <?php echo date('M j, Y', strtotime($complaint['created_at'])); ?><br>
-                                            <small class="text-muted"><?php echo date('g:i A', strtotime($complaint['created_at'])); ?></small>
+                                        <td data-label="Date Submitted">
+                                            <i class="far fa-calendar-alt mr-1 text-muted"></i><?php echo date('M j, Y', strtotime($complaint['created_at'])); ?><br>
+                                            <small class="text-muted"><i class="far fa-clock mr-1"></i><?php echo date('g:i A', strtotime($complaint['created_at'])); ?></small>
                                         </td>
-                                        <td>
+                                        <td data-label="Description">
                                             <?php if (!empty($complaint['description'])): ?>
-                                                <small><?php echo htmlspecialchars(substr($complaint['description'], 0, 100)); ?>
-                                                <?php if (strlen($complaint['description']) > 100): ?>...<?php endif; ?></small>
+                                                <small class="d-block" style="max-width: 250px; white-space: normal;">
+                                                    <?php echo htmlspecialchars(substr($complaint['description'], 0, 100)); ?>
+                                                    <?php if (strlen($complaint['description']) > 100): ?>...<?php endif; ?>
+                                                </small>
                                             <?php else: ?>
-                                                <em class="text-muted">No description</em>
+                                                <em class="text-muted small">No description</em>
                                             <?php endif; ?>
                                         </td>
                                     </tr>
@@ -429,11 +449,11 @@ foreach ($complaints as $complaint) {
             <?php endforeach; ?>
         <?php endif; ?>
 
-        <!-- Footer -->
-        <div class="text-center mt-4 mb-4">
-            <small class="text-muted">
-                Report generated by <?php echo htmlspecialchars($_SESSION['full_name']); ?> on <?php echo date('F j, Y \a\t g:i A'); ?>
-            </small>
+        <div class="text-center mt-4 mb-4 pb-4">
+            <hr>
+            <p class="text-muted small mb-0">
+                Report generated by <strong><?php echo htmlspecialchars($_SESSION['full_name']); ?></strong> on <?php echo date('F j, Y \a\t g:i A'); ?>
+            </p>
         </div>
     </div>
 
@@ -442,13 +462,12 @@ foreach ($complaints as $complaint) {
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     
     <script>
-        // Auto-submit form when filters change
-        $('#faculty_id, #status').change(function() {
-            // Optional: Auto-submit on change
-            // $(this).closest('form').submit();
-        });
+        // Auto-submit form when filters change (Optional)
+        // $('#faculty_id, #status').change(function() {
+        //     $(this).closest('form').submit();
+        // });
         
-        // Print styles
+        // Print styles: Hide export buttons when printing
         window.addEventListener('beforeprint', function() {
             document.querySelector('.export-buttons').style.display = 'none';
         });
