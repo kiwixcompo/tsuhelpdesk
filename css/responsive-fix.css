@@ -335,7 +335,7 @@ a.btn[href*="view_complaint"] {
 
 /* ── Admin.php sidebar fix ───────────────────────────────── */
 @media (max-width: 991px) {
-    /* Stack sidebar below main content on tablet/mobile */
+    /* Stack named sidebar elements below main content on tablet/mobile */
     .admin-sidebar,
     [class*="col-"][class*="sidebar"] {
         width: 100% !important;
@@ -348,15 +348,9 @@ a.btn[href*="view_complaint"] {
         max-width: 100%;
         overflow: hidden;
     }
-
-    /* Ensure all row children stack on mobile */
-    .row > .col-md-3,
-    .row > .col-md-4,
-    .row > .col-lg-3,
-    .row > .col-lg-4 {
-        flex: 0 0 100%;
-        max-width: 100%;
-    }
+    /* NOTE: Do NOT force col-md-* / col-lg-* to 100% here —
+       Bootstrap already stacks them below 768 px.
+       Overriding at 991 px breaks the desktop sidebar layout. */
 }
 
 @media (max-width: 767px) {
@@ -366,20 +360,11 @@ a.btn[href*="view_complaint"] {
         padding-right: 8px;
     }
 
-    /* Prevent any element from exceeding viewport */
-    * {
-        max-width: 100vw;
-    }
-
     /* Fix chart containers */
     canvas {
         max-width: 100% !important;
         height: auto !important;
     }
-
-    /* Admin page specific — make sidebar cards full width */
-    .col-md-3, .col-md-4, .col-lg-3, .col-lg-4 {
-        flex: 0 0 100%;
-        max-width: 100%;
-    }
+    /* NOTE: col-md-* / col-lg-* are intentionally NOT forced to 100% here;
+       Bootstrap 4 already makes them full-width on xs/sm screens. */
 }

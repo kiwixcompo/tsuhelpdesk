@@ -578,7 +578,7 @@ foreach ($complaints as $c) {
         }
         /* Prevent content overflow */
         .card-body {
-            overflow-x: visible;
+            overflow-x: hidden;
         }
         /* Ensure buttons stay visible */
         .btn-sm {
@@ -589,32 +589,31 @@ foreach ($complaints as $c) {
         .table td:last-child {
             padding-right: 1rem !important;
         }
-        /* Make table responsive without horizontal scroll */
+        /* Table must scroll horizontally inside its wrapper — never bleed into sidebar */
         .table-responsive {
-            overflow-x: visible;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
         }
-        /* Ensure table fits within container */
+        /* Let the browser size columns naturally */
         .table {
             table-layout: auto;
             width: 100%;
         }
-        /* Make table cells wrap text instead of forcing horizontal scroll */
+        /* Complaint text column wraps; everything else stays on one line */
         .table td {
-            word-wrap: break-word;
-            word-break: break-word;
+            white-space: nowrap;
+            vertical-align: middle;
+        }
+        .table td:nth-child(4) {
             white-space: normal;
-            max-width: 200px;
+            word-break: break-word;
+            max-width: 220px;
         }
         /* Keep action column compact */
         .table td:last-child {
             white-space: nowrap;
             width: 1%;
             max-width: none;
-        }
-        /* Remove specific column widths - let table auto-size */
-        .table {
-            table-layout: fixed;
-            width: 100%;
         }
         /* Ensure form controls inside modals are never clipped */
         .modal select,
@@ -638,40 +637,22 @@ foreach ($complaints as $c) {
         }
         /* Date column */
         .table th:nth-child(2), .table td:nth-child(2) { 
-            width: 90px;
             font-size: 0.85rem;
         }
         /* Student ID */
         .table th:nth-child(3), .table td:nth-child(3) { 
-            width: 110px;
             font-size: 0.85rem;
         }
-        /* Complaint - flexible width */
-        .table th:nth-child(4), .table td:nth-child(4) { 
-            width: auto;
-            min-width: 200px;
-        }
-        /* Status - fixed width to prevent wrapping */
+        /* Status - center aligned */
         .table th:nth-child(5), .table td:nth-child(5) { 
-            width: 100px;
             text-align: center;
         }
         /* Priority */
         .table th:nth-child(6), .table td:nth-child(6) { 
-            width: 80px;
             text-align: center;
-        }
-        /* Lodged By */
-        .table th:nth-child(7), .table td:nth-child(7) { 
-            width: 110px;
-        }
-        /* Handler */
-        .table th:nth-child(8), .table td:nth-child(8) { 
-            width: 110px;
         }
         /* Action */
         .table th:nth-child(9), .table td:nth-child(9) { 
-            width: 50px;
             text-align: center;
         }
         /* Status badge styling - prevent wrapping */
