@@ -108,33 +108,36 @@ $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
 $per_page = 10;
 $offset = ($page - 1) * $per_page;
 
-// Base WHERE conditions
-$where = ["is_i4cus = 1"];
+// Base WHERE conditions — i4cus complaints only
+$where_base = ["is_i4cus = 1"];
 if ($search_id) {
-    $where[] = "student_id LIKE '%" . mysqli_real_escape_string($conn, $search_id) . "%'";
-    // When searching by student ID, include all complaints regardless of status
-} else if ($filter_status) {
-    // Only apply status filter when not searching by student ID
-    $where[] = "status = '" . mysqli_real_escape_string($conn, $filter_status) . "'";
-} else {
-    // By default, only show non-treated complaints unless explicitly filtered
-    $where[] = "status != 'Treated'";
+    $where_base[] = "student_id LIKE '%" . mysqli_real_escape_string($conn, $search_id) . "%'";
 }
-
-// Add date filter if provided
 if ($filter_date) {
-    $where[] = "DATE(created_at) = '" . mysqli_real_escape_string($conn, $filter_date) . "'";
+    $where_base[] = "DATE(created_at) = '" . mysqli_real_escape_string($conn, $filter_date) . "'";
 }
 
-// Separate active and archived complaints
-$where_active = $where;
-$where_archived = $where;
-$where_active[] = "status != 'Treated'";
-$where_archived[] = "status = 'Treated'";
+// Archived = Treated OR Resolved (anything that has been handled)
+$archived_statuses = "'Treated','Resolved','Rejected'";
+
+// Active = everything NOT archived, unless a specific status filter is applied
+$where_active   = array_merge($where_base, ["status NOT IN ($archived_statuses)"]);
+$where_archived = array_merge($where_base, ["status IN ($archived_statuses)"]);
+
+// If a specific status filter is requested, apply it to the active list
+if ($filter_status) {
+    if (in_array($filter_status, ['Treated','Resolved','Rejected'])) {
+        // Searching for an archived status — show in archive tab
+        $where_archived = array_merge($where_base, ["status = '" . mysqli_real_escape_string($conn, $filter_status) . "'"]);
+        $where_active   = array_merge($where_base, ["status NOT IN ($archived_statuses)"]);
+    } else {
+        $where_active = array_merge($where_base, ["status = '" . mysqli_real_escape_string($conn, $filter_status) . "'"]);
+    }
+}
 
 // Build WHERE clauses
-$where_clause_active = $where_active ? 'WHERE ' . implode(' AND ', $where_active) : '';
-$where_clause_archived = $where_archived ? 'WHERE ' . implode(' AND ', $where_archived) : '';
+$where_clause_active   = 'WHERE ' . implode(' AND ', $where_active);
+$where_clause_archived = 'WHERE ' . implode(' AND ', $where_archived);
 
 // Fetch paginated active complaints with lodger name
 $sql_active = "SELECT c.*, u.full_name as lodged_by_name,
@@ -634,7 +637,7 @@ if (!empty($found_ids)):
                                 No archived i4Cus complaints found.
                             </div>
                         <?php else: ?>
-                            <h5 class="mb-3 text-success">Treated i4Cus Complaints</h5>
+                            <h5 class="mb-3 text-success"><i class="fas fa-archive mr-2"></i>Archived i4Cus Complaints (<?php echo count($archived_complaints); ?>)</h5>
                             <div class="table-responsive">
                                 <table class="table table-bordered table-hover">
                                     <thead>
@@ -650,14 +653,17 @@ if (!empty($found_ids)):
                                         </tr>
                                     </thead>
                                     <tbody>
-                                    <?php foreach($archived_complaints as $row): ?>
-                                        <tr class="table-success">
+                                    <?php foreach($archived_complaints as $row):
+                                        $arc_colors = ['Treated'=>'success','Resolved'=>'success','Rejected'=>'danger'];
+                                        $arc_badge  = $arc_colors[$row['status']] ?? 'secondary';
+                                    ?>
+                                        <tr>
                                             <td><?php echo $row['complaint_id']; ?></td>
                                             <td><?php echo htmlspecialchars($row['student_id']); ?></td>
                                             <td><?php echo htmlspecialchars($row['department_name']); ?></td>
                                             <td><?php echo htmlspecialchars($row['staff_name']); ?></td>
-                                            <td><?php echo htmlspecialchars($row['complaint_text']); ?></td>
-                                            <td><span class="badge badge-success">Treated</span></td>
+                                            <td><?php echo htmlspecialchars(mb_substr($row['complaint_text'], 0, 120)) . (mb_strlen($row['complaint_text']) > 120 ? '…' : ''); ?></td>
+                                            <td><span class="badge badge-<?php echo $arc_badge; ?>"><?php echo htmlspecialchars($row['status']); ?></span></td>
                                             <td><?php echo date('Y-m-d', strtotime($row['created_at'])); ?></td>
                                             <td>
                                                 <a href="view_complaint.php?id=<?php echo $row['complaint_id']; ?>&i4cus=1" class="btn btn-sm btn-info">View</a>
