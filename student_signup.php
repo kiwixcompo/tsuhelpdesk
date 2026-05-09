@@ -184,10 +184,10 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                                 $welcome_message .= "Programme: Registration numbers not applicable for this programme\n";
                                 $welcome_message .= "Email: " . $email . "\n\n";
                                 $welcome_message .= "You can now login to the student portal to:\n";
-                                $welcome_message .= "• Lodge result verification complaints\n";
-                                $welcome_message .= "• Track your complaint status\n";
-                                $welcome_message .= "• View admin responses\n";
-                                $welcome_message .= "• Change your password\n\n";
+                                $welcome_message .= "- Lodge academic and ICT complaints\n";
+                                $welcome_message .= "- Track your complaint status\n";
+                                $welcome_message .= "- Receive responses from the ICT Help Desk\n";
+                                $welcome_message .= "- Change your password\n\n";
                                 $welcome_message .= "Login URL: https://helpdesk.tsuniversity.ng/student_login.php\n\n";
                                 $welcome_message .= "Best regards,\nTSU ICT Help Desk Team";
                                 
@@ -250,16 +250,16 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                                             $welcome_message .= "Registration Number: " . $registration_number . "\n";
                                             $welcome_message .= "Email: " . $email . "\n\n";
                                             $welcome_message .= "You can now login to the student portal to:\n";
-                                            $welcome_message .= "• Lodge result verification complaints\n";
-                                            $welcome_message .= "• Track your complaint status\n";
-                                            $welcome_message .= "• View admin responses\n";
-                                            $welcome_message .= "• Change your password\n\n";
+                                            $welcome_message .= "- Lodge academic and ICT complaints\n";
+                                            $welcome_message .= "- Track your complaint status\n";
+                                            $welcome_message .= "- Receive responses from the ICT Help Desk\n";
+                                            $welcome_message .= "- Change your password\n\n";
                                             $welcome_message .= "Login URL: https://helpdesk.tsuniversity.ng/student_login.php\n\n";
                                             $welcome_message .= "IMPORTANT SECURITY TIPS:\n";
-                                            $welcome_message .= "• Keep your login credentials secure\n";
-                                            $welcome_message .= "• Change your password regularly\n";
-                                            $welcome_message .= "• Never share your account details with others\n\n";
-                                            $welcome_message .= "If you have any questions or need assistance, please don't hesitate to contact our support team.\n\n";
+                                            $welcome_message .= "- Keep your login credentials secure\n";
+                                            $welcome_message .= "- Never share your account details with others\n";
+                                            $welcome_message .= "- Contact support if you suspect unauthorized access\n\n";
+                                            $welcome_message .= "If you have any questions or need assistance, please contact our support team.\n\n";
                                             $welcome_message .= "Best regards,\nTSU ICT Help Desk Team\n";
                                             $welcome_message .= "Taraba State University\n";
                                             $welcome_message .= "Email: complaints@tsuniversity.edu.ng";
@@ -702,20 +702,35 @@ if($result){
                 updateRegNumberPreview();
                 
                 if(departmentId) {
+                    console.log('Fetching programmes for department_id:', departmentId);
                     $.ajax({
                         url: 'api/get_programmes.php',
                         type: 'POST',
                         data: {department_id: departmentId},
                         dataType: 'json',
                         success: function(response) {
+                            console.log('Programmes response:', response);
+
+                            if(response && response.error) {
+                                console.error('API Error:', response.error);
+                                $('#programme_id').html('<option value="">Error: ' + response.error + '</option>');
+                                return;
+                            }
+
                             let options = '<option value="">Select Programme</option>';
-                            response.forEach(function(prog) {
-                                options += `<option value="${prog.programme_id}" data-format="${prog.reg_number_format}">${prog.programme_name}</option>`;
-                            });
-                            $('#programme_id').html(options).prop('disabled', false);
+                            if(Array.isArray(response) && response.length > 0) {
+                                response.forEach(function(prog) {
+                                    options += `<option value="${prog.programme_id}" data-format="${prog.reg_number_format}">${prog.programme_name}</option>`;
+                                });
+                                $('#programme_id').html(options).prop('disabled', false);
+                            } else {
+                                $('#programme_id').html('<option value="">No programmes found</option>').prop('disabled', false);
+                            }
                         },
-                        error: function() {
-                            $('#programme_id').html('<option value="">Error loading programmes</option>');
+                        error: function(xhr, status, error) {
+                            console.error('AJAX Error loading programmes:', status, error);
+                            console.error('Response:', xhr.responseText);
+                            $('#programme_id').html('<option value="">Error loading programmes</option>').prop('disabled', false);
                         }
                     });
                 } else {

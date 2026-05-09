@@ -712,27 +712,39 @@ if ($_SESSION["role_id"] == 1) { // Admin only
     $pending_complaints = 0;
     $treated_complaints_header = 0;
     
-    // Count total complaints — always from DB, not filtered array
-    $sql = "SELECT COUNT(*) as total FROM complaints";
+    // Count total complaints across all complaint tables
+    $total_complaints = 0;
+    $sql = "SELECT
+        (SELECT COUNT(*) FROM complaints) +
+        (SELECT COUNT(*) FROM student_complaints) +
+        (SELECT COUNT(*) FROM student_ict_complaints) AS total";
     $result = mysqli_query($conn, $sql);
     if($row = mysqli_fetch_assoc($result)){
         $total_complaints = $row['total'];
     }
-    
-    // Count pending complaints
-    $sql = "SELECT COUNT(*) as total FROM complaints WHERE status = 'Pending'";
+
+    // Count pending complaints across all complaint tables
+    $pending_complaints = 0;
+    $sql = "SELECT
+        (SELECT COUNT(*) FROM complaints WHERE status = 'Pending') +
+        (SELECT COUNT(*) FROM student_complaints WHERE status = 'Pending') +
+        (SELECT COUNT(*) FROM student_ict_complaints WHERE status = 'Pending') AS total";
     $result = mysqli_query($conn, $sql);
     if($row = mysqli_fetch_assoc($result)){
         $pending_complaints = $row['total'];
     }
-    
-    // Count treated complaints
-    $sql = "SELECT COUNT(*) as total FROM complaints WHERE status = 'Treated'";
+
+    // Count treated/resolved complaints across all complaint tables
+    $treated_complaints_count = 0;
+    $sql = "SELECT
+        (SELECT COUNT(*) FROM complaints WHERE status = 'Treated') +
+        (SELECT COUNT(*) FROM student_complaints WHERE status IN ('Treated','Resolved')) +
+        (SELECT COUNT(*) FROM student_ict_complaints WHERE status IN ('Treated','Resolved')) AS total";
     $result = mysqli_query($conn, $sql);
     if($row = mysqli_fetch_assoc($result)){
         $treated_complaints_count = $row['total'];
     }
-    
+
     // Set up quick stats
     $quick_stats = [
         ['number' => $total_complaints, 'label' => 'Total Complaints'],
