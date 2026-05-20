@@ -209,6 +209,54 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
         mysqli_stmt_bind_param($upd, "ssiis", $status, $formatted_response, $_SESSION['user_id'], $cid, $dept_full_name);
         if(mysqli_stmt_execute($upd)) {
             $success_message = "Response submitted successfully.";
+
+            // Notify student via in-app + email
+            $st_q = mysqli_prepare($conn,
+                "SELECT c.student_id, c.node_label, s.email, s.first_name, s.last_name
+                 FROM student_ict_complaints c
+                 JOIN students s ON c.student_id = s.student_id
+                 WHERE c.complaint_id = ?");
+            if ($st_q) {
+                mysqli_stmt_bind_param($st_q, 'i', $cid);
+                mysqli_stmt_execute($st_q);
+                $st_row = mysqli_fetch_assoc(mysqli_stmt_get_result($st_q));
+                mysqli_stmt_close($st_q);
+                if ($st_row) {
+                    $sid     = $st_row['student_id'];
+                    $topic   = $st_row['node_label'];
+                    $s_email = $st_row['email'] ?? '';
+                    $s_name  = trim(($st_row['first_name'] ?? '') . ' ' . ($st_row['last_name'] ?? ''));
+
+                    // In-app notification
+                    $notif_tbl = mysqli_query($conn, "SHOW TABLES LIKE 'student_notifications'");
+                    if ($notif_tbl && mysqli_num_rows($notif_tbl) > 0) {
+                        $ns = mysqli_prepare($conn,
+                            "INSERT INTO student_notifications (student_id, complaint_id, title, message, created_at)
+                             VALUES (?,?,'Response on Your ICT Complaint',?,NOW())");
+                        if ($ns) {
+                            $nm = "Your complaint regarding \"$topic\" has received a response from the department.";
+                            mysqli_stmt_bind_param($ns, 'iis', $sid, $cid, $nm);
+                            mysqli_stmt_execute($ns);
+                            mysqli_stmt_close($ns);
+                        }
+                    }
+
+                    // Email notification
+                    if (!empty($s_email)) {
+                        require_once "includes/logger.php";
+                        $email_subject = "Response on Your ICT Complaint #$cid — TSU ICT Help Desk";
+                        $email_body    = "Dear $s_name,\n\n"
+                                       . "Your ICT complaint regarding \"$topic\" (ID: #$cid) has received a response from the department.\n\n"
+                                       . "Status  : $status\n"
+                                       . "Response: " . mb_substr($response, 0, 500) . "\n\n"
+                                       . "Please log in to your student portal to view the full details:\n"
+                                       . "https://helpdesk.tsuniversity.ng/student_dashboard.php\n\n"
+                                       . "-- TSU ICT Help Desk";
+                        @app_mail($s_email, $email_subject, $email_body);
+                    }
+                }
+            }
+
             // PRG redirect
             header("Location: department_dashboard.php");
             exit;

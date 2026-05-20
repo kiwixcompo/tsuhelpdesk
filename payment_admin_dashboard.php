@@ -373,6 +373,8 @@ function getImagePath($path) {
                                             data-email="<?php echo htmlspecialchars($fi['email'], ENT_QUOTES); ?>"
                                             data-date="<?php echo date('M d, Y', strtotime($fi['created_at'])); ?>"
                                             data-path="<?php echo htmlspecialchars($fi['path_summary'] ?? '', ENT_QUOTES); ?>"
+                                            data-desc="<?php echo htmlspecialchars($fi['description'] ?? '', ENT_QUOTES); ?>"
+                                            data-extra="<?php echo htmlspecialchars($fi['extra_fields'] ?? '{}', ENT_QUOTES); ?>"
                                             data-response="<?php echo htmlspecialchars($fi['admin_response'] ?? '', ENT_QUOTES); ?>">
                                         <i class="fas fa-eye mr-1"></i>View & Respond
                                     </button>
@@ -995,6 +997,23 @@ function getImagePath($path) {
                 </div>
             </div>
             ${d.path ? `<hr><h6 class="text-muted text-uppercase" style="font-size:.72rem">Decision Path</h6><p class="text-muted small">${esc(d.path)}</p>` : ''}
+            ${d.desc ? `<hr><h6 class="text-muted text-uppercase" style="font-size:.72rem">Additional Details from Student</h6><div class="p-3 bg-light rounded" style="white-space:pre-wrap;word-break:break-word">${esc(d.desc)}</div>` : ''}
+            ${(() => {
+                let extraHtml = '';
+                try {
+                    const ef = JSON.parse(d.extra || '{}');
+                    const filtered = Object.entries(ef).filter(([k,v]) => v !== '' && v !== null && k !== 'ai_category' && k !== 'jamb_login_password');
+                    if (filtered.length) {
+                        extraHtml = '<hr><h6 class="text-muted text-uppercase" style="font-size:.72rem">Information Provided by Student</h6><table class="table table-sm table-bordered mt-2">';
+                        filtered.forEach(([k,v]) => {
+                            const label = k.replace(/_/g,' ').replace(/\\b\\w/g, l => l.toUpperCase());
+                            extraHtml += '<tr><td class="font-weight-bold bg-light" style="width:40%">' + esc(label) + '</td><td>' + esc(String(v)) + '</td></tr>';
+                        });
+                        extraHtml += '</table>';
+                    }
+                } catch(e) {}
+                return extraHtml;
+            })()}
             ${respHtml}`;
         $('#vrfModalTitle').html('<i class="fas fa-credit-card mr-2"></i>ICT Complaint #' + d.id + ' — ' + esc(d.label));
         $('#vrfDetailsBody').html(body);

@@ -154,26 +154,44 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["update_complaint"])){
         mysqli_stmt_bind_param($stmt, "ssssiiiis", $status, $feedback, $feedback_type, $admin_feedback_images_str, $is_urgent, $is_payment_related, $is_i4cus, $handled_by, $complaint_id);
         
         if(mysqli_stmt_execute($stmt)){
-            // Create notification for the user who lodged the complaint if feedback is given
+            // Create notification and send email when feedback is given
             if (!empty($feedback)) {
                 require_once "includes/notifications.php";
-                
-                // Get the user who lodged the complaint
-                $user_sql = "SELECT lodged_by FROM complaints WHERE complaint_id = ?";
+                require_once "includes/logger.php";
+
+                // Get the user who lodged the complaint + their email
+                $user_sql = "SELECT u.user_id, u.email, u.full_name FROM complaints c JOIN users u ON c.lodged_by = u.user_id WHERE c.complaint_id = ?";
                 if ($user_stmt = mysqli_prepare($conn, $user_sql)) {
                     mysqli_stmt_bind_param($user_stmt, "i", $complaint_id);
                     mysqli_stmt_execute($user_stmt);
                     $user_result = mysqli_stmt_get_result($user_stmt);
                     if ($user_row = mysqli_fetch_assoc($user_result)) {
-                        $lodged_by = $user_row['lodged_by'];
+                        $lodged_by   = $user_row['user_id'];
+                        $lodger_name = $user_row['full_name'];
+                        $lodger_email = $user_row['email'] ?? '';
+
+                        // In-app notification
                         $notification_title = "Admin Feedback Given on Your Complaint";
                         $notification_message = "Your complaint #$complaint_id has received feedback from admin. Status: $status";
                         createNotification($conn, $lodged_by, $complaint_id, 'feedback_given', $notification_title, $notification_message);
+
+                        // Email notification
+                        if (!empty($lodger_email)) {
+                            $email_subject = "Response on Your Complaint #$complaint_id — TSU ICT Help Desk";
+                            $email_body    = "Dear $lodger_name,\n\n"
+                                           . "Your complaint (ID: #$complaint_id) has received a response.\n\n"
+                                           . "Status  : $status\n"
+                                           . "Response: " . mb_substr($feedback, 0, 500) . "\n\n"
+                                           . "Please log in to view the full details and reply if needed:\n"
+                                           . "https://helpdesk.tsuniversity.ng/\n\n"
+                                           . "-- TSU ICT Help Desk";
+                            @app_mail($lodger_email, $email_subject, $email_body);
+                        }
                     }
                     mysqli_stmt_close($user_stmt);
                 }
             }
-            
+
             // Redirect to prevent form resubmission
             header("Location: admin.php?success=complaint_updated&id=" . $complaint_id);
             exit();

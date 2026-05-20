@@ -358,34 +358,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['treat_payment_complain
             $notification_message = "Your payment complaint #$complaint_id has received feedback. Status: $status";
             createNotification($conn, $complaint['lodged_by'], $complaint_id, 'feedback_given', $notification_title, $notification_message);
             
-            // Send email notification if complaint is treated
-            if ($status == 'Treated') {
-                // Get user email
-                $user_email = '';
-                $user_sql = "SELECT u.email FROM users u WHERE u.user_id = ?";
-                if ($user_stmt = mysqli_prepare($conn, $user_sql)) {
-                    mysqli_stmt_bind_param($user_stmt, "i", $complaint['lodged_by']);
-                    mysqli_stmt_execute($user_stmt);
-                    $user_result = mysqli_stmt_get_result($user_stmt);
-                    if ($user_row = mysqli_fetch_assoc($user_result)) {
-                        $user_email = $user_row['email'];
+            // Always send email when feedback is given (not just when Treated)
+            $user_email_sql = "SELECT email, full_name FROM users WHERE user_id = ?";
+            if ($ue_stmt = mysqli_prepare($conn, $user_email_sql)) {
+                mysqli_stmt_bind_param($ue_stmt, "i", $complaint['lodged_by']);
+                mysqli_stmt_execute($ue_stmt);
+                $ue_result = mysqli_stmt_get_result($ue_stmt);
+                if ($ue_row = mysqli_fetch_assoc($ue_result)) {
+                    $user_email  = $ue_row['email'] ?? '';
+                    $lodger_name = $ue_row['full_name'] ?? 'User';
+                    if (!empty($user_email)) {
+                        $subject = "Response on Your Payment Complaint #$complaint_id — TSU ICT Help Desk";
+                        $message = "Dear $lodger_name,\n\n"
+                                 . "Your payment-related complaint (ID: #$complaint_id) has received a response.\n\n"
+                                 . "Status  : $status\n"
+                                 . "Response: " . mb_substr($feedback, 0, 500) . "\n\n"
+                                 . "Please log in to view the full details and reply if needed:\n"
+                                 . "https://helpdesk.tsuniversity.ng/\n\n"
+                                 . "-- TSU ICT Help Desk";
+                        @app_mail($user_email, $subject, $message);
                     }
-                    mysqli_stmt_close($user_stmt);
                 }
-                
-                if (!empty($user_email)) {
-                    $subject = "Your Payment-Related Complaint Has Been Treated";
-                    $message = "Dear User,\n\n";
-                    $message .= "Your payment-related complaint (ID: {$complaint_id}) has been treated.\n\n";
-                    $message .= "Status: {$status}\n";
-                    $message .= "Feedback: {$feedback}\n\n";
-                    $message .= "Please login to the system to view the details.\n\n";
-                    $message .= "Regards,\nTSU ICT Help Desk";
-                    
-                    $headers = "From: complaints@tsuniversity.edu.ng\r\n";
-                    
-                    app_mail($user_email, $subject, $message, $headers);
-                }
+                mysqli_stmt_close($ue_stmt);
             }
             
             // Redirect to prevent form resubmission

@@ -624,6 +624,35 @@ if (mysqli_num_rows($notif_table_check) > 0) {
         </div>
         <?php endif; ?>
 
+        <!-- Under Review prompt banner -->
+        <?php
+        $under_review_complaints = array_filter($ict_active, fn($c) => $c['status'] === 'Under Review');
+        if (!empty($under_review_complaints)):
+        ?>
+        <div class="alert alert-info border-left border-info shadow-sm mb-4" style="border-left-width:4px!important">
+            <div class="d-flex align-items-start">
+                <i class="fas fa-info-circle fa-lg mr-3 mt-1 text-info flex-shrink-0"></i>
+                <div>
+                    <strong>Action may be required on your complaint<?php echo count($under_review_complaints) > 1 ? 's' : ''; ?></strong><br>
+                    <span class="text-muted small">
+                        <?php echo count($under_review_complaints); ?> of your ICT complaint<?php echo count($under_review_complaints) > 1 ? 's are' : ' is'; ?> currently <strong>Under Review</strong>.
+                        Please check the details below — a response may be waiting for you, or additional information may be needed.
+                    </span>
+                    <div class="mt-2">
+                        <?php foreach ($under_review_complaints as $urc): ?>
+                        <button class="btn btn-sm btn-info mr-1 mb-1"
+                                data-toggle="modal"
+                                data-target="#ictModal<?php echo $urc['complaint_id']; ?>">
+                            <i class="fas fa-eye mr-1"></i>
+                            View: <?php echo htmlspecialchars($urc['node_label']); ?>
+                        </button>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <!-- My Active ICT Complaints -->
         <?php if (!empty($ict_active)): ?>
         <div class="card dashboard-card">

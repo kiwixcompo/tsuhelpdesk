@@ -122,8 +122,8 @@ if (!$stmt || !mysqli_stmt_execute($stmt)) {
 }
 mysqli_stmt_close($stmt);
 
-// Notify student
-$get = mysqli_prepare($conn, "SELECT student_id, node_label FROM student_ict_complaints WHERE complaint_id=?");
+// Notify student (in-app + email)
+$get = mysqli_prepare($conn, "SELECT c.student_id, c.node_label, s.email, s.first_name, s.last_name FROM student_ict_complaints c JOIN students s ON c.student_id = s.student_id WHERE c.complaint_id=?");
 if ($get) {
     mysqli_stmt_bind_param($get, 'i', $complaint_id);
     mysqli_stmt_execute($get);
@@ -131,11 +131,14 @@ if ($get) {
     mysqli_stmt_close($get);
 
     if ($grow) {
-        $sid   = $grow['student_id'];
-        $topic = $grow['node_label'];
-        $title = "Response on Your ICT Complaint";
-        $notif_msg = "A response has been added to your complaint regarding \"$topic\".";
+        $sid        = $grow['student_id'];
+        $topic      = $grow['node_label'];
+        $s_email    = $grow['email'] ?? '';
+        $s_name     = trim(($grow['first_name'] ?? '') . ' ' . ($grow['last_name'] ?? ''));
+        $title      = "Response on Your ICT Complaint";
+        $notif_msg  = "A response has been added to your complaint regarding \"$topic\".";
 
+        // In-app notification
         $ns = mysqli_prepare($conn,
             "INSERT INTO student_notifications (student_id, complaint_id, title, message, created_at)
              VALUES (?,?,?,?,NOW())");
@@ -143,6 +146,20 @@ if ($get) {
             mysqli_stmt_bind_param($ns, 'iiss', $sid, $complaint_id, $title, $notif_msg);
             mysqli_stmt_execute($ns);
             mysqli_stmt_close($ns);
+        }
+
+        // Email notification
+        if (!empty($s_email) && !empty($response)) {
+            require_once __DIR__ . '/../includes/logger.php';
+            $email_subject = "Response on Your ICT Complaint #$complaint_id — TSU ICT Help Desk";
+            $email_body    = "Dear $s_name,\n\n"
+                           . "Your ICT complaint regarding \"$topic\" (ID: #$complaint_id) has received a response.\n\n"
+                           . "Status  : $status\n"
+                           . "Response: " . mb_substr($response, 0, 500) . "\n\n"
+                           . "Please log in to your student portal to view the full details and reply if needed:\n"
+                           . "https://helpdesk.tsuniversity.ng/student_dashboard.php\n\n"
+                           . "-- TSU ICT Help Desk";
+            @app_mail($s_email, $email_subject, $email_body);
         }
     }
 }
