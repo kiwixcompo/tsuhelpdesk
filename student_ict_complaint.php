@@ -215,8 +215,17 @@ function renderLeaf(node, c) {
                         <textarea id="descField" class="form-control" rows="3" placeholder="Add any extra details...">${esc(state.description)}</textarea>
                     </div>
                     <div class="form-group mb-2">
-                        <label>Upload Supporting Document/Screenshot <span class="text-muted">(optional)</span></label>
+                        <label>Upload or Paste Screenshot <span class="text-muted">(optional)</span></label>
                         <input type="file" id="attachmentField" class="form-control-file text-muted" accept="image/*,.pdf,.doc,.docx" style="font-size:0.85rem;">
+                        <div id="pastePreview" style="display:none;margin-top:.5rem">
+                            <img id="pastePreviewImg" src="" style="max-height:120px;border-radius:6px;border:1px solid #dee2e6" alt="Pasted image">
+                            <button type="button" id="clearPasteBtn" class="btn btn-xs btn-outline-danger ml-2" style="font-size:.75rem;padding:.15rem .5rem">
+                                <i class="fas fa-times"></i> Remove
+                            </button>
+                        </div>
+                        <small class="form-text text-muted">
+                            <i class="fas fa-paste mr-1"></i> You can also <strong>paste (Ctrl+V)</strong> a screenshot directly.
+                        </small>
                     </div>
                  </div>`;
     }
@@ -352,7 +361,10 @@ async function submitComplaint(escalated, node, btn) {
         formData.append('payload', JSON.stringify(payload));
         
         const attachField = document.getElementById('attachmentField');
-        if (attachField && attachField.files.length > 0) {
+        const pastedFile  = window._pastedAttachment || null;
+        if (pastedFile) {
+            formData.append('attachment', pastedFile, 'pasted_screenshot.png');
+        } else if (attachField && attachField.files.length > 0) {
             formData.append('attachment', attachField.files[0]);
         }
 
@@ -455,6 +467,7 @@ function showSuccess(data, escalated, node) {
 
 function resetWizard() {
     state = { path:[], pathLabels:[], currentNode:TREE, extraFields:{}, description:'', depth:0 };
+    window._pastedAttachment = null;
     renderNode(TREE);
 }
 
@@ -502,6 +515,33 @@ function esc(str) {
     d.textContent = String(str);
     return d.innerHTML;
 }
+</script>
+<script>
+// Clipboard paste support for ICT complaint wizard
+document.addEventListener('paste', function(e) {
+    var items = (e.clipboardData || e.originalEvent.clipboardData).items;
+    for (var i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+            var blob = items[i].getAsFile();
+            window._pastedAttachment = blob;
+            var url = URL.createObjectURL(blob);
+            var preview = document.getElementById('pastePreview');
+            var img     = document.getElementById('pastePreviewImg');
+            if (preview && img) {
+                img.src = url;
+                preview.style.display = 'block';
+            }
+            break;
+        }
+    }
+});
+document.addEventListener('click', function(e) {
+    if (e.target && e.target.id === 'clearPasteBtn') {
+        window._pastedAttachment = null;
+        var preview = document.getElementById('pastePreview');
+        if (preview) preview.style.display = 'none';
+    }
+});
 </script>
 </body>
 </html>

@@ -220,6 +220,12 @@ if($stmt = mysqli_prepare($conn, $sql)){
     mysqli_stmt_close($stmt);
 }
 
+// ── Self-heal: add feedback_images column if missing ─────────────────────────
+$col_check = mysqli_query($conn, "SHOW COLUMNS FROM complaints LIKE 'feedback_images'");
+if ($col_check && mysqli_num_rows($col_check) === 0) {
+    mysqli_query($conn, "ALTER TABLE complaints ADD COLUMN feedback_images TEXT NULL DEFAULT NULL AFTER feedback");
+}
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['treat_complaint']) && 
     isset($_GET['i4cus']) && $_GET['i4cus'] == 1 && 
     ($_SESSION['role_id'] == 5 || $_SESSION['role_id'] == 8) && $complaint['status'] != 'Treated') {

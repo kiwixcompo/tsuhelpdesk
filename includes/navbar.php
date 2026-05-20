@@ -426,6 +426,23 @@ function nb_active(string $page, string $current): string {
             <a href="admin.php" class="<?php echo nb_active('admin.php', $current_page); ?>">
                 <i class="fas fa-cogs"></i> Admin Panel
             </a>
+            <a href="users.php" class="<?php echo nb_active('users.php', $current_page); ?>">
+                <i class="fas fa-users"></i> Staff Users
+            </a>
+            <a href="manage_students.php" class="<?php echo nb_active('manage_students.php', $current_page); ?>">
+                <i class="fas fa-user-graduate"></i> Students
+            </a>
+            <a href="student_complaints_report.php" class="<?php echo nb_active('student_complaints_report.php', $current_page); ?>">
+                <i class="fas fa-chart-bar"></i> Reports
+            </a>
+            <a href="ict_complaints_admin.php" class="<?php echo nb_active('ict_complaints_admin.php', $current_page); ?>">
+                <i class="fas fa-headset"></i> ICT Complaints
+            </a>
+            <?php endif; ?>
+            <?php if (in_array($role_id, [3, 8])): ?>
+            <a href="student_complaints_report.php" class="<?php echo nb_active('student_complaints_report.php', $current_page); ?>">
+                <i class="fas fa-chart-bar"></i> Reports
+            </a>
             <?php endif; ?>
         </div>
 

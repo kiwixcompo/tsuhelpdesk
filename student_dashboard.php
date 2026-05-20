@@ -147,6 +147,23 @@ if ($notif_count_result && $notif_row = mysqli_fetch_assoc($notif_count_result))
     $notification_count = (int) $notif_row['c'];
 }
 
+// Fetch unread student notifications for popup
+$unread_notifs = [];
+$notif_table_check = mysqli_query($conn, "SHOW TABLES LIKE 'student_notifications'");
+if (mysqli_num_rows($notif_table_check) > 0) {
+    $notif_sql = "SELECT * FROM student_notifications WHERE student_id = ? AND is_read = 0 ORDER BY created_at DESC LIMIT 5";
+    if ($notif_stmt = mysqli_prepare($conn, $notif_sql)) {
+        mysqli_stmt_bind_param($notif_stmt, "i", $_SESSION["student_id"]);
+        if (mysqli_stmt_execute($notif_stmt)) {
+            $notif_result = mysqli_stmt_get_result($notif_stmt);
+            while ($row = mysqli_fetch_assoc($notif_result)) {
+                $unread_notifs[] = $row;
+            }
+        }
+        mysqli_stmt_close($notif_stmt);
+    }
+}
+
 ?>
 
 <!DOCTYPE html>
@@ -694,7 +711,29 @@ if ($notif_count_result && $notif_row = mysqli_fetch_assoc($notif_count_result))
                                             <?php $desc=$ic['description']??''; $pos=strpos($desc,"\n\nAdditional details: "); $addDesc=$pos!==false?substr($desc,$pos+22):''; if($addDesc): ?><hr><p><strong>Additional Details:</strong></p><p class="text-muted"><?php echo nl2br(htmlspecialchars($addDesc)); ?></p><?php endif; ?>
                                             <?php if (!empty($ic['attachment_path'])): ?><hr><p><strong>Attachment:</strong></p><p><a href="<?php echo htmlspecialchars($ic['attachment_path']); ?>" target="_blank" class="btn btn-sm btn-info"><i class="fas fa-file-download mr-1"></i> View File</a></p><?php endif; ?>
                                             <?php if ($ic['auto_response'] && !$ic['escalated']): ?><hr><div class="alert alert-info"><strong><i class="fas fa-info-circle mr-1"></i>Suggested Resolution:</strong><br><?php echo nl2br(htmlspecialchars($ic['auto_response'])); ?></div><?php endif; ?>
-                                            <?php if ($ic['admin_response']): ?><hr><div class="alert alert-success"><strong><i class="fas fa-reply mr-1"></i>Response from ICT:</strong><br><?php echo nl2br(htmlspecialchars($ic['admin_response'])); ?></div><small class="text-muted">Responded by TSU ICT Help Desk</small><?php endif; ?>
+                                            <?php if ($ic['admin_response']): ?>
+<hr>
+<div class="alert alert-<?php echo in_array($ic['status'], ['Resolved','Auto-Resolved']) ? 'success' : 'info'; ?>">
+    <strong><i class="fas fa-reply mr-1"></i>Response from ICT:</strong><br>
+    <?php echo nl2br(htmlspecialchars($ic['admin_response'])); ?>
+</div>
+<small class="text-muted">Responded by TSU ICT Help Desk</small>
+<?php if (!in_array($ic['status'], ['Resolved', 'Auto-Resolved', 'Rejected'])): ?>
+<hr>
+<div class="mt-3">
+    <p class="font-weight-bold text-primary"><i class="fas fa-comment-dots mr-1"></i>Reply to this response:</p>
+    <form class="student-reply-form" data-complaint-id="<?php echo $ic['complaint_id']; ?>">
+        <div class="form-group">
+            <textarea class="form-control reply-text" rows="3" placeholder="Type your reply here..." required></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">
+            <i class="fas fa-paper-plane mr-1"></i> Send Reply
+        </button>
+        <span class="reply-status ml-2 small"></span>
+    </form>
+</div>
+<?php endif; ?>
+<?php endif; ?>
                                         </div>
                                         <div class="modal-footer">
                                             <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
@@ -1180,7 +1219,111 @@ if ($notif_count_result && $notif_row = mysqli_fetch_assoc($notif_count_result))
                 alert('Request failed. Please try again.');
             });
         });
+
+        // Student reply to ICT complaint
+        $(document).on('submit', '.student-reply-form', function(e) {
+            e.preventDefault();
+            var form = $(this);
+            var cid  = form.data('complaint-id');
+            var text = form.find('.reply-text').val().trim();
+            var btn  = form.find('button[type=submit]');
+            var status = form.find('.reply-status');
+            if (!text) return;
+            btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Sending...');
+            $.post('api/student_ict_reply.php', { complaint_id: cid, reply: text }, function(res) {
+                if (res.success) {
+                    status.css('color','green').text('Reply sent!');
+                    form.find('.reply-text').val('');
+                } else {
+                    status.css('color','red').text(res.message || 'Failed to send reply.');
+                }
+                btn.prop('disabled', false).html('<i class="fas fa-paper-plane mr-1"></i> Send Reply');
+                setTimeout(function(){ status.text(''); }, 4000);
+            }, 'json').fail(function() {
+                status.css('color','red').text('Network error.');
+                btn.prop('disabled', false).html('<i class="fas fa-paper-plane mr-1"></i> Send Reply');
+            });
+        });
     });
     </script>
+
+<?php if (!empty($unread_notifs)): ?>
+<!-- Feedback Notification Popup -->
+<div class="modal fade" id="feedbackNotifModal" tabindex="-1" data-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header" style="background:linear-gradient(135deg,#1e3c72,#2a5298);color:#fff;border-radius:.3rem .3rem 0 0">
+                <h5 class="modal-title"><i class="fas fa-bell mr-2"></i>You have new notifications</h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body p-0">
+                <?php foreach ($unread_notifs as $notif):
+                    // Fetch complaint status to determine message
+                    $comp_status = '';
+                    if ($notif['complaint_id']) {
+                        $cs = mysqli_query($conn, "SELECT status FROM student_ict_complaints WHERE complaint_id = " . intval($notif['complaint_id']));
+                        if ($cs && $crow = mysqli_fetch_assoc($cs)) $comp_status = $crow['status'];
+                    }
+                    $is_resolved = in_array($comp_status, ['Resolved', 'Auto-Resolved']);
+                ?>
+                <div class="p-3 border-bottom d-flex align-items-start gap-3" style="gap:.75rem">
+                    <div class="flex-shrink-0 mt-1">
+                        <span class="badge badge-<?php echo $is_resolved ? 'success' : 'primary'; ?> p-2" style="font-size:1rem">
+                            <i class="fas fa-<?php echo $is_resolved ? 'check-circle' : 'comment-dots'; ?>"></i>
+                        </span>
+                    </div>
+                    <div class="flex-grow-1">
+                        <?php if ($is_resolved): ?>
+                            <p class="mb-1 font-weight-bold text-success">Your issue has been resolved!</p>
+                            <p class="mb-2 text-muted small"><?php echo htmlspecialchars($notif['message']); ?></p>
+                        <?php else: ?>
+                            <p class="mb-1 font-weight-bold">You have a response on your complaint</p>
+                            <p class="mb-2 text-muted small"><?php echo htmlspecialchars($notif['message']); ?></p>
+                        <?php endif; ?>
+                        <?php if ($notif['complaint_id']): ?>
+                        <button class="btn btn-sm btn-<?php echo $is_resolved ? 'success' : 'primary'; ?> view-feedback-btn"
+                                data-id="<?php echo $notif['complaint_id']; ?>"
+                                data-notif-id="<?php echo $notif['notification_id']; ?>">
+                            <i class="fas fa-eye mr-1"></i>
+                            <?php echo $is_resolved ? 'View Resolution' : 'View Response'; ?>
+                        </button>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal" id="dismissNotifBtn">
+                    <i class="fas fa-times mr-1"></i> Dismiss All
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+$(document).ready(function() {
+    // Show popup after short delay
+    setTimeout(function() { $('#feedbackNotifModal').modal('show'); }, 800);
+
+    // Mark all as read when dismissed
+    $('#feedbackNotifModal').on('hide.bs.modal', function() {
+        var ids = <?php echo json_encode(array_column($unread_notifs, 'notification_id')); ?>;
+        if (ids.length) {
+            $.post('api/mark_student_notifications_read.php', { ids: ids });
+        }
+    });
+
+    // View feedback button — open the ICT complaint modal
+    $(document).on('click', '.view-feedback-btn', function() {
+        var cid = $(this).data('id');
+        $('#feedbackNotifModal').modal('hide');
+        setTimeout(function() {
+            var modal = $('#ictModal' + cid);
+            if (modal.length) modal.modal('show');
+        }, 400);
+    });
+});
+</script>
+<?php endif; ?>
 </body>
 </html>
