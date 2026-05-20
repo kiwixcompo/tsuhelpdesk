@@ -229,26 +229,32 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/responsive-fix.css">
     <link rel="stylesheet" href="css/navbar.css">
     <style>
         .department-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             color: white;
             padding: 2rem 0;
             margin-bottom: 2rem;
+            box-shadow: 0 4px 15px rgba(30, 60, 114, 0.1);
         }
         .stat-card {
             border: none;
             border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            transition: transform 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            height: 100%;
         }
         .stat-card:hover {
             transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
         }
         .complaint-card {
             border-left: 4px solid #007bff;
             margin-bottom: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border-radius: 8px;
         }
         .complaint-card.urgent {
             border-left-color: #dc3545;
@@ -257,119 +263,132 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
             border-left-color: #28a745;
         }
         .department-name {
-            font-size: 1.5rem;
-            line-height: 1.2;
+            font-size: 1.75rem;
+            line-height: 1.3;
             word-wrap: break-word;
             hyphens: auto;
+            font-weight: 700;
         }
         @media (max-width: 768px) {
             .department-name {
-                font-size: 1.2rem;
+                font-size: 1.35rem;
+            }
+            .header-actions {
+                margin-top: 1rem;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+                justify-content: flex-start !important;
+            }
+            .header-actions .btn {
+                flex: 1 1 auto;
+                margin-bottom: 0.5rem;
             }
         }
+        
+        /* Modal Fix */
+        body.modal-open { overflow: auto !important; padding-right: 0 !important; }
     </style>
 </head>
 <body>
     <?php include 'includes/navbar.php'; ?>
     
     <div class="department-header">
-        <div class="container">
+        <div class="container-fluid px-3 px-md-4 px-xl-5">
             <div class="row align-items-center">
-                <div class="col-md-8">
-                    <h1 class="mb-2">
-                        <i class="fas fa-building mr-3"></i>
+                <div class="col-md-7 col-lg-8">
+                    <h1 class="mb-2 d-flex align-items-center flex-wrap">
+                        <i class="fas fa-building mr-3 mb-2 mb-md-0"></i>
                         <span class="department-name"><?php echo htmlspecialchars($_SESSION["full_name"]); ?></span>
                     </h1>
-                    <p class="mb-0">Department Complaint Management System</p>
+                    <p class="mb-0 text-white-50">Department Complaint Management System</p>
                 </div>
-                <div class="col-md-4 text-right">
-                    <div class="btn-group">
-                        <a href="department_complaints.php" class="btn btn-light"><i class="fas fa-list-alt"></i> Manage Complaints</a>
-                        <a href="account.php" class="btn btn-outline-light"><i class="fas fa-user"></i> Profile</a>
-                        <a href="change_password.php" class="btn btn-outline-light"><i class="fas fa-key"></i> Change Password</a>
+                <div class="col-md-5 col-lg-4 text-left text-md-right header-actions">
+                    <div class="btn-group flex-wrap w-100 w-md-auto">
+                        <a href="department_complaints.php" class="btn btn-light btn-sm font-weight-bold"><i class="fas fa-list-alt mr-1"></i> Complaints</a>
+                        <a href="account.php" class="btn btn-outline-light btn-sm font-weight-bold"><i class="fas fa-user mr-1"></i> Profile</a>
+                        <a href="change_password.php" class="btn btn-outline-light btn-sm font-weight-bold"><i class="fas fa-key mr-1"></i> Password</a>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="container main-content">
-        <!-- Statistics Cards -->
+    <div class="container-fluid px-3 px-md-4 px-xl-5 main-content mb-5">
         <div class="row mb-4">
-            <div class="col-md-4">
-                <div class="card stat-card text-center">
-                    <div class="card-body">
+            <div class="col-12 col-md-4 mb-3 mb-md-0">
+                <div class="card stat-card text-center h-100">
+                    <div class="card-body d-flex flex-column justify-content-center">
                         <i class="fas fa-clipboard-list fa-2x text-primary mb-3"></i>
-                        <h3 class="text-primary"><?php echo $total_complaints; ?></h3>
-                        <p class="text-muted">Total Complaints</p>
+                        <h2 class="text-primary font-weight-bold"><?php echo $total_complaints; ?></h2>
+                        <p class="text-muted mb-0 font-weight-bold text-uppercase small">Total Complaints</p>
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
-                <div class="card stat-card text-center">
-                    <div class="card-body">
+            <div class="col-12 col-md-4 mb-3 mb-md-0">
+                <div class="card stat-card text-center h-100">
+                    <div class="card-body d-flex flex-column justify-content-center">
                         <i class="fas fa-clock fa-2x text-warning mb-3"></i>
-                        <h3 class="text-warning"><?php echo $pending_complaints; ?></h3>
-                        <p class="text-muted">Pending</p>
+                        <h2 class="text-warning font-weight-bold"><?php echo $pending_complaints; ?></h2>
+                        <p class="text-muted mb-0 font-weight-bold text-uppercase small">Pending</p>
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
-                <div class="card stat-card text-center">
-                    <div class="card-body">
+            <div class="col-12 col-md-4">
+                <div class="card stat-card text-center h-100">
+                    <div class="card-body d-flex flex-column justify-content-center">
                         <i class="fas fa-check-circle fa-2x text-success mb-3"></i>
-                        <h3 class="text-success"><?php echo $treated_complaints; ?></h3>
-                        <p class="text-muted">Resolved</p>
+                        <h2 class="text-success font-weight-bold"><?php echo $treated_complaints; ?></h2>
+                        <p class="text-muted mb-0 font-weight-bold text-uppercase small">Resolved</p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Email Notification Preferences -->
         <div class="row mb-4">
             <div class="col-12">
-                <div class="card shadow-sm">
+                <div class="card shadow-sm border-0">
                     <div class="card-header d-flex justify-content-between align-items-center"
-                         style="background:linear-gradient(135deg,#1e3c72,#2a5298);color:#fff;cursor:pointer"
+                         style="background:linear-gradient(135deg, var(--light-blue) 0%, #f0f8ff 100%); color: var(--primary-blue); cursor:pointer; border-radius: 10px;"
                          data-toggle="collapse" data-target="#notifPrefsBody">
-                        <h5 class="mb-0"><i class="fas fa-bell mr-2"></i>Email Notification Preferences</h5>
+                        <h5 class="mb-0 font-weight-bold"><i class="fas fa-bell mr-2"></i>Email Notification Preferences</h5>
                         <i class="fas fa-chevron-down"></i>
                     </div>
                     <div class="collapse" id="notifPrefsBody">
-                        <div class="card-body">
-                            <p class="text-muted small mb-3">
+                        <div class="card-body bg-white rounded-bottom">
+                            <p class="text-muted small mb-4">
                                 Choose which events trigger an email to your account.
                                 You will always see in-app notifications regardless of these settings.
                             </p>
                             <form id="notifPrefsForm">
                                 <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="custom-control custom-switch mb-3">
+                                    <div class="col-12 col-md-6">
+                                        <div class="custom-control custom-switch mb-4">
                                             <input type="checkbox" class="custom-control-input" id="pref_forwarded"
                                                    name="on_forwarded"
                                                    <?php echo $dept_notif_prefs['on_forwarded'] ? 'checked' : ''; ?>>
                                             <label class="custom-control-label" for="pref_forwarded">
-                                                <strong>Complaint forwarded to me</strong><br>
+                                                <strong class="text-dark">Complaint forwarded to me</strong><br>
                                                 <small class="text-muted">Email when ICT forwards a student complaint to your department</small>
                                             </label>
                                         </div>
-                                        <div class="custom-control custom-switch mb-3">
+                                        <div class="custom-control custom-switch mb-4 mb-md-3">
                                             <input type="checkbox" class="custom-control-input" id="pref_ict_response"
                                                    name="on_ict_response"
                                                    <?php echo $dept_notif_prefs['on_ict_response'] ? 'checked' : ''; ?>>
                                             <label class="custom-control-label" for="pref_ict_response">
-                                                <strong>ICT adds a response</strong><br>
+                                                <strong class="text-dark">ICT adds a response</strong><br>
                                                 <small class="text-muted">Email when ICT adds feedback or a response to a forwarded complaint</small>
                                             </label>
                                         </div>
                                     </div>
-                                    <div class="col-md-6">
-                                        <div class="custom-control custom-switch mb-3">
+                                    <div class="col-12 col-md-6">
+                                        <div class="custom-control custom-switch mb-4">
                                             <input type="checkbox" class="custom-control-input" id="pref_status_change"
                                                    name="on_status_change"
                                                    <?php echo $dept_notif_prefs['on_status_change'] ? 'checked' : ''; ?>>
                                             <label class="custom-control-label" for="pref_status_change">
-                                                <strong>Status change on forwarded complaint</strong><br>
+                                                <strong class="text-dark">Status change on forwarded complaint</strong><br>
                                                 <small class="text-muted">Email when the status of a complaint forwarded to you is updated</small>
                                             </label>
                                         </div>
@@ -378,16 +397,19 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
                                                    name="on_new_student_complaint"
                                                    <?php echo $dept_notif_prefs['on_new_student_complaint'] ? 'checked' : ''; ?>>
                                             <label class="custom-control-label" for="pref_new_complaint">
-                                                <strong>All new ICT complaints</strong><br>
+                                                <strong class="text-dark">All new ICT complaints</strong><br>
                                                 <small class="text-muted">Email for every new student ICT complaint submitted (high volume — off by default)</small>
                                             </label>
                                         </div>
                                     </div>
                                 </div>
-                                <button type="submit" class="btn btn-primary btn-sm" id="savePrefsBtn">
-                                    <i class="fas fa-save mr-1"></i> Save Preferences
-                                </button>
-                                <span id="prefsSaveMsg" class="ml-2 small" style="display:none"></span>
+                                <hr>
+                                <div class="d-flex align-items-center">
+                                    <button type="submit" class="btn btn-primary" id="savePrefsBtn">
+                                        <i class="fas fa-save mr-1"></i> Save Preferences
+                                    </button>
+                                    <span id="prefsSaveMsg" class="ml-3 font-weight-bold" style="display:none"></span>
+                                </div>
                             </form>
                         </div>
                     </div>
@@ -395,16 +417,15 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
             </div>
         </div>
 
-        <!-- Forwarded ICT Complaints -->
         <?php if (!empty($forwarded_cases)): ?>
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card border-info shadow-sm">
-                    <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0"><i class="fas fa-share-square mr-2"></i>Cases Forwarded From ICT (<?php echo count($forwarded_cases); ?>)</h5>
+                    <div class="card-header bg-info text-white d-flex justify-content-between align-items-center rounded-top">
+                        <h5 class="mb-0 font-weight-bold"><i class="fas fa-share-square mr-2"></i>Cases Forwarded From ICT (<?php echo count($forwarded_cases); ?>)</h5>
                     </div>
                     <div class="table-responsive">
-                        <table class="table table-hover mb-0">
+                        <table class="table table-hover table-mobile-cards mb-0">
                             <thead class="bg-light">
                                 <tr>
                                     <th>#</th>
@@ -413,7 +434,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
                                     <th>Decision Path</th>
                                     <th>Status</th>
                                     <th>Date</th>
-                                    <th>Actions</th>
+                                    <th style="width: 120px;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -422,58 +443,60 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
                                     $bc = $sc[$fc['status']] ?? 'secondary';
                                 ?>
                                 <tr>
-                                    <td><?php echo $fc['complaint_id']; ?></td>
-                                    <td>
-                                        <strong><?php echo htmlspecialchars($fc['student_name']); ?></strong><br>
-                                        <small class="text-muted"><?php echo htmlspecialchars($fc['registration_number']); ?></small><br>
-                                        <small class="text-muted"><?php echo htmlspecialchars($fc['email'] ?? ''); ?></small>
+                                    <td data-label="#"><strong><?php echo $fc['complaint_id']; ?></strong></td>
+                                    <td data-label="Student">
+                                        <div class="font-weight-bold text-dark"><?php echo htmlspecialchars($fc['student_name']); ?></div>
+                                        <small class="text-muted d-block"><?php echo htmlspecialchars($fc['registration_number']); ?></small>
+                                        <small class="text-muted d-block"><?php echo htmlspecialchars($fc['email'] ?? ''); ?></small>
                                     </td>
-                                    <td>
-                                        <div class="font-weight-bold"><?php echo htmlspecialchars($fc['category']); ?></div>
-                                        <small class="text-muted"><?php echo htmlspecialchars($fc['node_label']); ?></small>
+                                    <td data-label="Category / Issue">
+                                        <div class="font-weight-bold text-primary"><?php echo htmlspecialchars($fc['category']); ?></div>
+                                        <span class="badge badge-light border text-muted mt-1" style="white-space: normal; text-align: left;"><?php echo htmlspecialchars($fc['node_label']); ?></span>
                                     </td>
-                                    <td>
-                                        <small class="text-muted" style="max-width:200px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+                                    <td data-label="Decision Path">
+                                        <small class="text-muted d-block" style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap"
                                                title="<?php echo htmlspecialchars($fc['path_summary']); ?>">
                                             <?php echo htmlspecialchars($fc['path_summary']); ?>
                                         </small>
                                     </td>
-                                    <td>
-                                        <span class="badge badge-<?php echo $bc; ?>"><?php echo htmlspecialchars($fc['status']); ?></span>
+                                    <td data-label="Status">
+                                        <span class="badge badge-<?php echo $bc; ?> px-2 py-1"><?php echo htmlspecialchars($fc['status']); ?></span>
                                         <?php if (!empty($fc['admin_response'])): ?>
-                                            <br><small class="text-success"><i class="fas fa-check-circle mr-1"></i>ICT responded</small>
+                                            <div class="mt-1"><small class="text-success font-weight-bold"><i class="fas fa-check-circle mr-1"></i>ICT responded</small></div>
                                         <?php endif; ?>
                                     </td>
-                                    <td><?php echo date('M d, Y', strtotime($fc['created_at'])); ?></td>
-                                    <td>
-                                        <!-- View button — stores all data as attributes -->
-                                        <button type="button" class="btn btn-sm btn-outline-info mr-1 btn-view-fw"
-                                                data-id="<?php echo $fc['complaint_id']; ?>"
-                                                data-student="<?php echo htmlspecialchars($fc['student_name'], ENT_QUOTES); ?>"
-                                                data-reg="<?php echo htmlspecialchars($fc['registration_number'], ENT_QUOTES); ?>"
-                                                data-email="<?php echo htmlspecialchars($fc['email'] ?? '', ENT_QUOTES); ?>"
-                                                data-dept="<?php echo htmlspecialchars($fc['department_name'] ?? '', ENT_QUOTES); ?>"
-                                                data-faculty="<?php echo htmlspecialchars($fc['faculty_name'] ?? '', ENT_QUOTES); ?>"
-                                                data-programme="<?php echo htmlspecialchars($fc['programme_name'] ?? '', ENT_QUOTES); ?>"
-                                                data-category="<?php echo htmlspecialchars($fc['category'], ENT_QUOTES); ?>"
-                                                data-label="<?php echo htmlspecialchars($fc['node_label'], ENT_QUOTES); ?>"
-                                                data-path="<?php echo htmlspecialchars($fc['path_summary'], ENT_QUOTES); ?>"
-                                                data-desc="<?php echo htmlspecialchars($fc['description'] ?? '', ENT_QUOTES); ?>"
-                                                data-auto="<?php echo htmlspecialchars($fc['auto_response'] ?? '', ENT_QUOTES); ?>"
-                                                data-ict-response="<?php echo htmlspecialchars($fc['admin_response'] ?? '', ENT_QUOTES); ?>"
-                                                data-status="<?php echo htmlspecialchars($fc['status'], ENT_QUOTES); ?>"
-                                                data-date="<?php echo date('M d, Y H:i', strtotime($fc['created_at'])); ?>"
-                                                data-extra="<?php echo htmlspecialchars($fc['extra_fields'] ?? '{}', ENT_QUOTES); ?>">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
-                                        <!-- Respond button -->
-                                        <button type="button" class="btn btn-sm btn-outline-success btn-respond-fw"
-                                                data-id="<?php echo $fc['complaint_id']; ?>"
-                                                data-student="<?php echo htmlspecialchars($fc['student_name'], ENT_QUOTES); ?>"
-                                                data-label="<?php echo htmlspecialchars($fc['node_label'], ENT_QUOTES); ?>"
-                                                data-status="<?php echo htmlspecialchars($fc['status'], ENT_QUOTES); ?>">
-                                            <i class="fas fa-reply"></i>
-                                        </button>
+                                    <td data-label="Date" class="text-nowrap">
+                                        <i class="far fa-calendar-alt text-muted mr-1"></i> <?php echo date('M d, Y', strtotime($fc['created_at'])); ?>
+                                    </td>
+                                    <td data-label="Actions" class="action-col">
+                                        <div class="d-flex flex-wrap gap-1 justify-content-md-start justify-content-end">
+                                            <button type="button" class="btn btn-sm btn-outline-info mr-1 mb-1 btn-view-fw" title="View Details"
+                                                    data-id="<?php echo $fc['complaint_id']; ?>"
+                                                    data-student="<?php echo htmlspecialchars($fc['student_name'], ENT_QUOTES); ?>"
+                                                    data-reg="<?php echo htmlspecialchars($fc['registration_number'], ENT_QUOTES); ?>"
+                                                    data-email="<?php echo htmlspecialchars($fc['email'] ?? '', ENT_QUOTES); ?>"
+                                                    data-dept="<?php echo htmlspecialchars($fc['department_name'] ?? '', ENT_QUOTES); ?>"
+                                                    data-faculty="<?php echo htmlspecialchars($fc['faculty_name'] ?? '', ENT_QUOTES); ?>"
+                                                    data-programme="<?php echo htmlspecialchars($fc['programme_name'] ?? '', ENT_QUOTES); ?>"
+                                                    data-category="<?php echo htmlspecialchars($fc['category'], ENT_QUOTES); ?>"
+                                                    data-label="<?php echo htmlspecialchars($fc['node_label'], ENT_QUOTES); ?>"
+                                                    data-path="<?php echo htmlspecialchars($fc['path_summary'], ENT_QUOTES); ?>"
+                                                    data-desc="<?php echo htmlspecialchars($fc['description'] ?? '', ENT_QUOTES); ?>"
+                                                    data-auto="<?php echo htmlspecialchars($fc['auto_response'] ?? '', ENT_QUOTES); ?>"
+                                                    data-ict-response="<?php echo htmlspecialchars($fc['admin_response'] ?? '', ENT_QUOTES); ?>"
+                                                    data-status="<?php echo htmlspecialchars($fc['status'], ENT_QUOTES); ?>"
+                                                    data-date="<?php echo date('M d, Y H:i', strtotime($fc['created_at'])); ?>"
+                                                    data-extra="<?php echo htmlspecialchars($fc['extra_fields'] ?? '{}', ENT_QUOTES); ?>">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-success mb-1 btn-respond-fw" title="Respond"
+                                                    data-id="<?php echo $fc['complaint_id']; ?>"
+                                                    data-student="<?php echo htmlspecialchars($fc['student_name'], ENT_QUOTES); ?>"
+                                                    data-label="<?php echo htmlspecialchars($fc['node_label'], ENT_QUOTES); ?>"
+                                                    data-status="<?php echo htmlspecialchars($fc['status'], ENT_QUOTES); ?>">
+                                                <i class="fas fa-reply"></i>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                                 <?php endforeach; ?>
@@ -486,11 +509,10 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
         <?php endif; ?>
 
         <div class="row">
-            <!-- Submit New Complaint -->
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        <h5><i class="fas fa-plus-circle mr-2"></i>Submit New Complaint</h5>
+            <div class="col-12 col-lg-6 mb-4">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0 text-primary font-weight-bold"><i class="fas fa-plus-circle mr-2"></i>Submit New Complaint</h5>
                     </div>
                     <div class="card-body">
                         <?php if(!empty($success_message)): ?>
@@ -513,32 +535,33 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
 
                         <form method="post" action="department_dashboard.php" enctype="multipart/form-data">
                             <div class="form-group">
-                                <label>Complaint Details</label>
+                                <label class="font-weight-bold text-muted">Complaint Details</label>
                                 <textarea name="complaint_text" class="form-control manual-clipboard-init" rows="5" required placeholder="Describe your complaint in detail... (You can paste images directly with Ctrl+V)"></textarea>
-                                <small class="form-text text-muted">
+                                <small class="form-text text-muted mt-2">
                                     <i class="fas fa-info-circle text-info"></i> 
                                     <strong>Tip:</strong> You can paste screenshots directly with Ctrl+V while typing, or use the file input below.
                                 </small>
                             </div>
                             
                             <div class="form-group">
-                                <label>Attach Images (Optional)</label>
-                                <input type="file" id="complaint_images" name="images[]" class="form-control-file" accept="image/*" multiple>
+                                <label class="font-weight-bold text-muted">Attach Images (Optional)</label>
+                                <div class="custom-file mb-2">
+                                    <input type="file" id="complaint_images" name="images[]" class="custom-file-input" accept="image/*" multiple>
+                                    <label class="custom-file-label" for="complaint_images">Choose files...</label>
+                                </div>
                                 <small class="form-text text-muted">Supported formats: JPG, JPEG, PNG, GIF (Max size: 5MB per image)</small>
                             </div>
                             
-
-                            
-                            <div class="form-group">
-                                <div class="custom-control custom-checkbox">
+                            <div class="form-group my-4">
+                                <div class="custom-control custom-switch">
                                     <input type="checkbox" class="custom-control-input" id="urgentCheck" name="is_urgent">
-                                    <label class="custom-control-label" for="urgentCheck">
-                                        <i class="fas fa-exclamation-triangle mr-1 text-danger"></i>Mark as Urgent
+                                    <label class="custom-control-label font-weight-bold text-danger" for="urgentCheck">
+                                        Mark as Urgent Issue
                                     </label>
                                 </div>
                             </div>
                             
-                            <button type="submit" name="submit_complaint" class="btn btn-primary btn-block">
+                            <button type="submit" name="submit_complaint" class="btn btn-primary btn-block py-2 font-weight-bold">
                                 <i class="fas fa-paper-plane mr-2"></i>Submit Complaint
                             </button>
                         </form>
@@ -546,60 +569,62 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
                 </div>
             </div>
 
-            <!-- Recent Complaints -->
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        <h5><i class="fas fa-history mr-2"></i>Recent Department Complaints</h5>
+            <div class="col-12 col-lg-6 mb-4">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 text-primary font-weight-bold"><i class="fas fa-history mr-2"></i>Recent Activity</h5>
+                        <span class="badge badge-light border text-muted"><?php echo count($complaints); ?> Total</span>
                     </div>
-                    <div class="card-body" style="max-height: 500px; overflow-y: auto;">
+                    <div class="card-body bg-light" style="max-height: 600px; overflow-y: auto;">
                         <?php if(empty($complaints)): ?>
-                            <div class="text-center text-muted py-4">
-                                <i class="fas fa-inbox fa-3x mb-3"></i>
-                                <p>No complaints submitted yet.</p>
+                            <div class="text-center text-muted py-5">
+                                <div class="p-4 bg-white rounded-circle d-inline-block shadow-sm mb-3">
+                                    <i class="fas fa-inbox fa-3x text-primary opacity-50"></i>
+                                </div>
+                                <p class="font-weight-bold mb-1">No complaints submitted yet.</p>
                                 <small>Submit your first complaint using the form on the left.</small>
                             </div>
                         <?php else: ?>
                             <?php foreach(array_slice($complaints, 0, 8) as $complaint): ?>
-                                <div class="card complaint-card <?php echo $complaint['is_urgent'] ? 'urgent' : ''; ?> <?php echo $complaint['status'] == 'Treated' ? 'treated' : ''; ?>">
+                                <div class="card complaint-card bg-white <?php echo $complaint['is_urgent'] ? 'urgent' : ''; ?> <?php echo $complaint['status'] == 'Treated' ? 'treated' : ''; ?>">
                                     <div class="card-body p-3">
                                         <div class="d-flex justify-content-between align-items-start mb-2">
-                                            <h6 class="mb-0">
-                                                <a href="view_complaint.php?id=<?php echo $complaint['complaint_id']; ?>" class="text-decoration-none">
-                                                    <i class="fas fa-eye mr-1"></i>View Details
+                                            <h6 class="mb-0 font-weight-bold">
+                                                <a href="view_complaint.php?id=<?php echo $complaint['complaint_id']; ?>" class="text-primary text-decoration-none">
+                                                    <i class="fas fa-hashtag text-muted mr-1"></i><?php echo $complaint['complaint_id']; ?> - View Details
                                                 </a>
                                                 <?php if($complaint['is_urgent']): ?>
-                                                    <span class="badge badge-danger ml-1">Urgent</span>
+                                                    <span class="badge badge-danger ml-2 px-2 py-1"><i class="fas fa-bolt mr-1"></i>Urgent</span>
                                                 <?php endif; ?>
                                             </h6>
-                                            <small class="text-muted"><?php echo date('M j, Y H:i', strtotime($complaint['created_at'])); ?></small>
+                                            <small class="text-muted"><i class="far fa-clock mr-1"></i><?php echo date('M j, g:i A', strtotime($complaint['created_at'])); ?></small>
                                         </div>
-                                        <p class="text-muted mb-2 small"><?php echo substr(htmlspecialchars($complaint['complaint_text']), 0, 120) . (strlen($complaint['complaint_text']) > 120 ? '...' : ''); ?></p>
+                                        <p class="text-dark mb-3 small bg-light p-2 rounded"><?php echo substr(htmlspecialchars($complaint['complaint_text']), 0, 120) . (strlen($complaint['complaint_text']) > 120 ? '...' : ''); ?></p>
                                         
                                         <?php if(!empty($complaint['feedback'])): ?>
-                                            <div class="alert alert-info py-2 px-3 mb-2">
+                                            <div class="alert alert-success py-2 px-3 mb-3 border-0">
                                                 <div class="d-flex align-items-start">
-                                                    <i class="fas fa-comment-dots text-info mr-2 mt-1"></i>
+                                                    <i class="fas fa-comment-dots text-success mr-2 mt-1"></i>
                                                     <div class="flex-grow-1">
-                                                        <strong class="small">Admin Feedback:</strong>
-                                                        <p class="mb-0 small"><?php echo substr(htmlspecialchars($complaint['feedback']), 0, 100) . (strlen($complaint['feedback']) > 100 ? '...' : ''); ?></p>
+                                                        <strong class="small text-success">Admin Feedback:</strong>
+                                                        <p class="mb-0 small text-dark mt-1"><?php echo substr(htmlspecialchars($complaint['feedback']), 0, 100) . (strlen($complaint['feedback']) > 100 ? '...' : ''); ?></p>
                                                     </div>
                                                 </div>
                                             </div>
                                         <?php endif; ?>
                                         
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <span class="badge badge-<?php echo $complaint['status'] == 'Treated' ? 'success' : ($complaint['status'] == 'In Progress' ? 'warning' : 'secondary'); ?>">
-                                                <i class="fas fa-<?php echo $complaint['status'] == 'Treated' ? 'check-circle' : ($complaint['status'] == 'In Progress' ? 'clock' : 'hourglass-start'); ?>"></i>
+                                        <div class="d-flex justify-content-between align-items-center mt-2 border-top pt-2">
+                                            <span class="badge badge-<?php echo $complaint['status'] == 'Treated' ? 'success' : ($complaint['status'] == 'In Progress' ? 'warning' : 'secondary'); ?> px-2 py-1">
+                                                <i class="fas fa-<?php echo $complaint['status'] == 'Treated' ? 'check-circle' : ($complaint['status'] == 'In Progress' ? 'tools' : 'hourglass-half'); ?> mr-1"></i>
                                                 <?php echo $complaint['status']; ?>
                                             </span>
                                             <?php if($complaint['handler_name']): ?>
-                                                <small class="text-success">
-                                                    <i class="fas fa-user-check"></i> <?php echo htmlspecialchars($complaint['handler_name']); ?>
+                                                <small class="text-success font-weight-bold">
+                                                    <i class="fas fa-user-check mr-1"></i> <?php echo htmlspecialchars($complaint['handler_name']); ?>
                                                 </small>
                                             <?php else: ?>
-                                                <small class="text-muted">
-                                                    <i class="fas fa-clock"></i> Awaiting Assignment
+                                                <small class="text-muted font-italic">
+                                                    <i class="fas fa-user-clock mr-1"></i> Unassigned
                                                 </small>
                                             <?php endif; ?>
                                         </div>
@@ -607,11 +632,10 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
                                 </div>
                             <?php endforeach; ?>
                             <?php if(count($complaints) > 8): ?>
-                                <div class="text-center mt-3">
-                                    <small class="text-muted">
-                                        Showing 8 of <?php echo count($complaints); ?> complaints. 
-                                        <a href="view_complaint.php" class="text-primary">View complaint details</a> for more information.
-                                    </small>
+                                <div class="text-center mt-3 mb-2">
+                                    <a href="department_complaints.php" class="btn btn-sm btn-outline-primary rounded-pill px-4">
+                                        View All <?php echo count($complaints); ?> Complaints <i class="fas fa-arrow-right ml-1"></i>
+                                    </a>
                                 </div>
                             <?php endif; ?>
                         <?php endif; ?>
@@ -620,14 +644,13 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
             </div>
         </div>
 
-        <!-- Calendar Section -->
-        <div class="row mt-4">
+        <div class="row mt-2">
             <div class="col-12">
-                <div class="card">
-                    <div class="card-header">
-                        <h5><i class="fas fa-calendar-alt mr-2"></i>Complaint Calendar</h5>
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0 text-primary font-weight-bold"><i class="fas fa-calendar-alt mr-2"></i>Complaint Calendar</h5>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body p-0 p-md-3">
                         <?php 
                         // Show calendar for department complaints only
                         echo generateComplaintCalendar($conn, $_SESSION["role_id"], " AND lodged_by = " . $_SESSION["user_id"]); 
@@ -645,57 +668,75 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script src="js/clipboard-paste.js"></script>
     
-    <!-- Forwarded Case View Modal (full details) -->
     <div class="modal fade" id="forwardedViewModal" tabindex="-1" role="dialog">
         <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
-            <div class="modal-content">
-                <div class="modal-header bg-info text-white">
-                    <h5 class="modal-title"><i class="fas fa-eye mr-2"></i>Forwarded Case Details</h5>
-                    <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-info text-white border-0">
+                    <h5 class="modal-title font-weight-bold"><i class="fas fa-clipboard-list mr-2"></i>Forwarded Case Details</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
                 </div>
-                <div class="modal-body" id="fwViewBody"></div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-success" id="fwViewToRespond">
-                        <i class="fas fa-reply mr-1"></i>Respond to This Case
+                <div class="modal-body p-4" id="fwViewBody"></div>
+                <div class="modal-footer bg-light border-0 rounded-bottom">
+                    <button type="button" class="btn btn-secondary font-weight-bold" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-success font-weight-bold shadow-sm" id="fwViewToRespond">
+                        <i class="fas fa-reply mr-1"></i> Respond to Case
                     </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Forwarded Case Response Modal -->
     <div class="modal fade" id="forwardedReplyModal" tabindex="-1" role="dialog">
         <div class="modal-dialog modal-dialog-centered" role="document">
-            <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title">Respond to Forwarded Case</h5>
-                    <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-primary text-white border-0">
+                    <h5 class="modal-title font-weight-bold"><i class="fas fa-reply-all mr-2"></i>Submit Response</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
                 </div>
                 <form method="POST">
-                    <div class="modal-body">
+                    <div class="modal-body p-4">
                         <input type="hidden" name="complaint_id" id="fwReplyId">
-                        <div class="alert alert-light border">
-                            <strong>Student:</strong> <span id="fwReplyStudent"></span><br>
-                            <strong>Issue:</strong> <span id="fwReplyLabel"></span>
+                        
+                        <div class="bg-light p-3 rounded mb-4 border">
+                            <div class="d-flex align-items-start mb-2">
+                                <i class="fas fa-user-graduate text-primary mt-1 mr-2"></i>
+                                <div>
+                                    <span class="text-muted small text-uppercase font-weight-bold d-block">Student</span>
+                                    <span id="fwReplyStudent" class="font-weight-bold text-dark"></span>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-start">
+                                <i class="fas fa-exclamation-circle text-warning mt-1 mr-2"></i>
+                                <div>
+                                    <span class="text-muted small text-uppercase font-weight-bold d-block">Issue Category</span>
+                                    <span id="fwReplyLabel" class="text-dark"></span>
+                                </div>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label class="font-weight-bold">Update Status</label>
-                            <select name="status" id="fwReplyStatus" class="form-control" required>
+
+                        <div class="form-group mb-4">
+                            <label class="font-weight-bold text-primary">Update Status</label>
+                            <select name="status" id="fwReplyStatus" class="form-control border-primary shadow-sm" required>
                                 <option value="Under Review">Under Review</option>
                                 <option value="Resolved">Resolved</option>
                                 <option value="Rejected">Rejected</option>
                             </select>
                         </div>
-                        <div class="form-group">
-                            <label class="font-weight-bold">Your Response</label>
-                            <textarea name="dept_response" class="form-control" rows="4" required placeholder="Type the resolution or feedback..."></textarea>
+                        
+                        <div class="form-group mb-0">
+                            <label class="font-weight-bold text-primary">Department Response</label>
+                            <textarea name="dept_response" class="form-control border-primary shadow-sm" rows="5" required placeholder="Type the resolution, instructions, or feedback for ICT and the student..."></textarea>
+                            <small class="form-text text-muted mt-2"><i class="fas fa-info-circle mr-1"></i> This response will be visible to ICT admins.</small>
                         </div>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                        <button type="submit" name="reply_forwarded" class="btn btn-primary">
-                            <i class="fas fa-paper-plane mr-1"></i>Send Response
+                    <div class="modal-footer bg-light border-0 rounded-bottom">
+                        <button type="button" class="btn btn-secondary font-weight-bold" data-dismiss="modal">Cancel</button>
+                        <button type="submit" name="reply_forwarded" class="btn btn-primary font-weight-bold shadow-sm">
+                            <i class="fas fa-paper-plane mr-1"></i> Send Response
                         </button>
                     </div>
                 </form>
@@ -715,6 +756,13 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
 
     $(document).ready(function() {
 
+        // Custom file input label update
+        $('.custom-file-input').on('change', function() {
+            let files = $(this)[0].files;
+            let label = files.length > 1 ? files.length + ' files selected' : (files.length == 1 ? files[0].name : 'Choose files...');
+            $(this).next('.custom-file-label').html(label);
+        });
+
         // ── View button ──────────────────────────────────────
         $(document).on('click', '.btn-view-fw', function() {
             const d = $(this).data();
@@ -732,47 +780,70 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
                 const ef = JSON.parse(d.extra || '{}');
                 const filtered = Object.entries(ef).filter(([k,v]) => v !== '' && v !== null && k !== 'ai_category');
                 if (filtered.length) {
-                    extraHtml = '<h6 class="mt-3">Extra Information Provided by Student</h6><table class="table table-sm table-bordered">';
+                    extraHtml = '<h6 class="mt-4 font-weight-bold text-primary border-bottom pb-2">Extra Information Provided by Student</h6><div class="table-responsive"><table class="table table-sm table-bordered mt-3">';
                     filtered.forEach(([k,v]) => {
                         const label = k.replace(/_/g,' ').replace(/\b\w/g, l => l.toUpperCase());
-                        extraHtml += `<tr><td class="font-weight-bold" style="width:40%">${esc(label)}</td><td>${esc(String(v))}</td></tr>`;
+                        extraHtml += `<tr><td class="font-weight-bold bg-light" style="width:40%">${esc(label)}</td><td>${esc(String(v))}</td></tr>`;
                     });
-                    extraHtml += '</table>';
+                    extraHtml += '</table></div>';
                 }
             } catch(e) {}
 
             const autoHtml = d.auto
-                ? `<div class="alert alert-info mt-3"><strong>Auto-Response Shown to Student:</strong><br>${esc(d.auto).replace(/\n/g,'<br>')}</div>`
+                ? `<div class="alert alert-info mt-4 border-info shadow-sm"><strong class="d-block mb-2 text-info"><i class="fas fa-robot mr-2"></i>Auto-Response Shown to Student:</strong><p class="mb-0 small">${esc(d.auto).replace(/\n/g,'<br>')}</p></div>`
                 : '';
             const ictRespHtml = d.ictResponse
-                ? `<div class="alert alert-success mt-3"><strong>ICT Response:</strong><br>${esc(d.ictResponse).replace(/\n/g,'<br>')}</div>`
+                ? `<div class="alert alert-success mt-4 border-success shadow-sm"><strong class="d-block mb-2 text-success"><i class="fas fa-user-shield mr-2"></i>ICT Response:</strong><p class="mb-0 text-dark">${esc(d.ictResponse).replace(/\n/g,'<br>')}</p></div>`
                 : '';
             const descHtml = d.desc
-                ? `<h6 class="mt-3">Additional Details from Student</h6><p class="text-muted">${esc(d.desc).replace(/\n/g,'<br>')}</p>`
+                ? `<h6 class="mt-4 font-weight-bold text-primary border-bottom pb-2">Additional Details from Student</h6><p class="text-dark bg-light p-3 rounded mt-2 border">${esc(d.desc).replace(/\n/g,'<br>')}</p>`
                 : '';
 
             const body = `
                 <div class="row">
-                    <div class="col-md-6">
-                        <h6>Student Information</h6>
-                        <p><strong>Name:</strong> ${esc(d.student)}</p>
-                        <p><strong>Reg No:</strong> ${esc(d.reg)}</p>
-                        <p><strong>Email:</strong> ${esc(d.email)}</p>
-                        <p><strong>Programme:</strong> ${esc(d.programme || 'N/A')}</p>
-                        <p><strong>Department:</strong> ${esc(d.dept || 'N/A')}</p>
-                        <p><strong>Faculty:</strong> ${esc(d.faculty || 'N/A')}</p>
+                    <div class="col-md-6 mb-3 mb-md-0">
+                        <div class="card h-100 border-0 bg-light">
+                            <div class="card-body p-3">
+                                <h6 class="font-weight-bold text-primary mb-3"><i class="fas fa-user-graduate mr-2"></i>Student Info</h6>
+                                <p class="mb-1 text-muted small text-uppercase">Name</p>
+                                <p class="font-weight-bold text-dark mb-2">${esc(d.student)}</p>
+                                
+                                <p class="mb-1 text-muted small text-uppercase">Registration</p>
+                                <p class="font-weight-bold text-dark mb-2"><code>${esc(d.reg)}</code></p>
+                                
+                                <p class="mb-1 text-muted small text-uppercase">Email</p>
+                                <p class="font-weight-bold text-dark mb-2">${esc(d.email)}</p>
+                                
+                                <p class="mb-1 text-muted small text-uppercase">Programme</p>
+                                <p class="font-weight-bold text-dark mb-0">${esc(d.programme || 'N/A')}</p>
+                            </div>
+                        </div>
                     </div>
                     <div class="col-md-6">
-                        <h6>Complaint Information</h6>
-                        <p><strong>Category:</strong> ${esc(d.category)}</p>
-                        <p><strong>Issue:</strong> ${esc(d.label)}</p>
-                        <p><strong>Status:</strong> <span class="badge badge-${bc}">${esc(d.status)}</span></p>
-                        <p><strong>Submitted:</strong> ${esc(d.date)}</p>
+                        <div class="card h-100 border-0 bg-light">
+                            <div class="card-body p-3">
+                                <h6 class="font-weight-bold text-primary mb-3"><i class="fas fa-file-alt mr-2"></i>Complaint Info</h6>
+                                <p class="mb-1 text-muted small text-uppercase">Category</p>
+                                <p class="font-weight-bold text-dark mb-2">${esc(d.category)}</p>
+                                
+                                <p class="mb-1 text-muted small text-uppercase">Specific Issue</p>
+                                <p class="font-weight-bold text-dark mb-2">${esc(d.label)}</p>
+                                
+                                <p class="mb-1 text-muted small text-uppercase">Current Status</p>
+                                <p class="mb-2"><span class="badge badge-${bc} px-2 py-1">${esc(d.status)}</span></p>
+                                
+                                <p class="mb-1 text-muted small text-uppercase">Date Submitted</p>
+                                <p class="font-weight-bold text-dark mb-0">${esc(d.date)}</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <hr>
-                <h6>Decision Path Taken by Student</h6>
-                <p class="text-muted small">${esc(d.path)}</p>
+                
+                <h6 class="mt-4 font-weight-bold text-primary border-bottom pb-2">Decision Path Taken by Student</h6>
+                <div class="p-3 bg-light rounded mt-2 border-left border-info" style="border-width: 4px !important;">
+                    <p class="text-dark small mb-0 font-weight-bold">${esc(d.path).split(' > ').join(' <i class="fas fa-chevron-right text-muted mx-1"></i> ')}</p>
+                </div>
+                
                 ${descHtml}${autoHtml}${ictRespHtml}${extraHtml}`;
 
             $('#fwViewBody').html(body);
@@ -822,14 +893,14 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
 
             $.post('api/save_notification_prefs.php', $(this).serialize(), function(res) {
                 if (res.success) {
-                    msg.text('✓ Saved').css('color','#28a745').show();
+                    msg.text('✓ Saved successfully').removeClass('text-danger').addClass('text-success').show();
                 } else {
-                    msg.text('✗ ' + (res.message || 'Failed')).css('color','#dc3545').show();
+                    msg.text('✗ ' + (res.message || 'Failed to save')).removeClass('text-success').addClass('text-danger').show();
                 }
                 btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i> Save Preferences');
-                setTimeout(() => msg.fadeOut(), 3000);
+                setTimeout(() => msg.fadeOut(), 4000);
             }, 'json').fail(function() {
-                msg.text('✗ Request failed').css('color','#dc3545').show();
+                msg.text('✗ Request failed. Try again.').removeClass('text-success').addClass('text-danger').show();
                 btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i> Save Preferences');
             });
         });
