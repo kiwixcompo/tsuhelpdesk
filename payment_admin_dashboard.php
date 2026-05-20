@@ -19,6 +19,45 @@ require_once "calendar_helper.php";
 ensureNotifPrefsTable($conn);
 $notif_prefs = getUserNotifPrefs($conn, $_SESSION['user_id'], 6);
 
+// ── Handle inline treat/respond from modal ────────────────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['treat_payment_complaint'])) {
+    $cid      = (int) ($_POST['complaint_id'] ?? 0);
+    $status   = $_POST['status'] ?? 'Pending';
+    $feedback = trim($_POST['feedback'] ?? '');
+
+    // Self-heal: add feedback_images column if missing
+    $col_chk = mysqli_query($conn, "SHOW COLUMNS FROM complaints LIKE 'feedback_images'");
+    if ($col_chk && mysqli_num_rows($col_chk) === 0) {
+        mysqli_query($conn, "ALTER TABLE complaints ADD COLUMN feedback_images TEXT NULL DEFAULT NULL AFTER feedback");
+    }
+
+    // Handle image uploads
+    $img_paths = [];
+    if (!empty($_FILES['feedback_images']['name'][0])) {
+        $upload_dir = 'uploads/';
+        if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
+        $allowed = ['jpg','jpeg','png','gif'];
+        foreach ($_FILES['feedback_images']['tmp_name'] as $k => $tmp) {
+            if ($_FILES['feedback_images']['error'][$k] !== UPLOAD_ERR_OK) continue;
+            $ext = strtolower(pathinfo($_FILES['feedback_images']['name'][$k], PATHINFO_EXTENSION));
+            if (!in_array($ext, $allowed)) continue;
+            if ($_FILES['feedback_images']['size'][$k] > 5 * 1024 * 1024) continue;
+            $fname = 'pay_' . uniqid() . '.' . $ext;
+            if (move_uploaded_file($tmp, $upload_dir . $fname)) $img_paths[] = $fname;
+        }
+    }
+    $imgs_str = !empty($img_paths) ? implode(',', $img_paths) : null;
+
+    $sql = "UPDATE complaints SET status=?, feedback=?, feedback_images=?, handled_by=?, updated_at=NOW() WHERE complaint_id=?";
+    if ($stmt = mysqli_prepare($conn, $sql)) {
+        mysqli_stmt_bind_param($stmt, 'sssii', $status, $feedback, $imgs_str, $_SESSION['user_id'], $cid);
+        mysqli_stmt_execute($stmt);
+        mysqli_stmt_close($stmt);
+    }
+    header("Location: payment_admin_dashboard.php?treated=1");
+    exit;
+}
+
 // Initialize notification count
 $notification_count = 0;
 if (function_exists('getUnreadNotificationCount')) {
@@ -324,13 +363,18 @@ function getImagePath($path) {
                                 <td><span class="badge badge-<?php echo $fbc; ?>"><?php echo htmlspecialchars($fi['status']); ?></span></td>
                                 <td><?php echo date('M d, Y', strtotime($fi['created_at'])); ?></td>
                                 <td>
-                                    <a href="ict_complaints_admin.php" class="btn btn-sm btn-outline-primary">
-                                        <i class="fas fa-external-link-alt mr-1"></i>View in ICT
-                                    </a>
-                                    <button class="btn btn-sm btn-outline-success btn-respond-ict-pay"
+                                    <button class="btn btn-sm btn-primary btn-view-respond-fwd"
                                             data-id="<?php echo $fi['complaint_id']; ?>"
-                                            data-label="<?php echo htmlspecialchars($fi['node_label'], ENT_QUOTES); ?>">
-                                        <i class="fas fa-reply"></i> Respond
+                                            data-label="<?php echo htmlspecialchars($fi['node_label'], ENT_QUOTES); ?>"
+                                            data-category="<?php echo htmlspecialchars($fi['category'], ENT_QUOTES); ?>"
+                                            data-status="<?php echo htmlspecialchars($fi['status'], ENT_QUOTES); ?>"
+                                            data-student="<?php echo htmlspecialchars($fi['student_name'], ENT_QUOTES); ?>"
+                                            data-reg="<?php echo htmlspecialchars($fi['registration_number'], ENT_QUOTES); ?>"
+                                            data-email="<?php echo htmlspecialchars($fi['email'], ENT_QUOTES); ?>"
+                                            data-date="<?php echo date('M d, Y', strtotime($fi['created_at'])); ?>"
+                                            data-path="<?php echo htmlspecialchars($fi['path_summary'] ?? '', ENT_QUOTES); ?>"
+                                            data-response="<?php echo htmlspecialchars($fi['admin_response'] ?? '', ENT_QUOTES); ?>">
+                                        <i class="fas fa-eye mr-1"></i>View & Respond
                                     </button>
                                 </td>
                             </tr>
@@ -553,7 +597,18 @@ function getImagePath($path) {
                                                             <td><?php echo htmlspecialchars($row['status']); ?></td>
                                                             <td><?php echo date('Y-m-d', strtotime($row['created_at'])); ?></td>
                                                             <td>
-                                                                <a href="view_complaint.php?id=<?php echo $row['complaint_id']; ?>&payment=1" class="btn btn-sm btn-info">View/Treat</a>
+                                                                <button class="btn btn-sm btn-primary btn-view-pay-complaint"
+                                                                        data-id="<?php echo $row['complaint_id']; ?>"
+                                                                        data-student="<?php echo htmlspecialchars($row['student_id'] ?? '', ENT_QUOTES); ?>"
+                                                                        data-dept="<?php echo htmlspecialchars($row['department_name'] ?? '', ENT_QUOTES); ?>"
+                                                                        data-staff="<?php echo htmlspecialchars($row['staff_name'] ?? '', ENT_QUOTES); ?>"
+                                                                        data-lodgedby="<?php echo htmlspecialchars($row['lodged_by_name'] ?? '', ENT_QUOTES); ?>"
+                                                                        data-text="<?php echo htmlspecialchars($row['complaint_text'] ?? '', ENT_QUOTES); ?>"
+                                                                        data-status="<?php echo htmlspecialchars($row['status'], ENT_QUOTES); ?>"
+                                                                        data-date="<?php echo date('Y-m-d', strtotime($row['created_at'])); ?>"
+                                                                        data-feedback="<?php echo htmlspecialchars($row['feedback'] ?? '', ENT_QUOTES); ?>">
+                                                                    <i class="fas fa-eye mr-1"></i>View & Treat
+                                                                </button>
                                                             </td>
                                                         </tr>
                                                     <?php endforeach; ?>
@@ -782,7 +837,95 @@ function getImagePath($path) {
     
     <!-- End of page scripts -->
 
-    <!-- Respond to Forwarded ICT Complaint Modal -->
+    <!-- View & Respond Modal for Forwarded ICT Complaints -->
+    <div class="modal fade" id="viewRespondFwdModal" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header" style="background:linear-gradient(135deg,#856404,#b8860b);color:#fff">
+                    <h5 class="modal-title" id="vrfModalTitle"><i class="fas fa-credit-card mr-2"></i>ICT Complaint Details</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+                </div>
+                <div class="modal-body">
+                    <div id="vrfDetailsBody" class="mb-4"></div>
+                    <hr>
+                    <h6 class="font-weight-bold text-primary mb-3"><i class="fas fa-reply mr-2"></i>Respond to this Complaint</h6>
+                    <div class="form-group">
+                        <label class="font-weight-bold">Status</label>
+                        <select id="vrfStatus" class="form-control">
+                            <option value="Under Review">Under Review</option>
+                            <option value="Resolved">Resolved</option>
+                            <option value="Rejected">Rejected</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="font-weight-bold">Response / Feedback</label>
+                        <textarea id="vrfText" class="form-control manual-clipboard-init" rows="4"
+                                  placeholder="Type your response here. Paste screenshots with Ctrl+V."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="font-weight-bold">Attach Images <span class="text-muted font-weight-normal">(optional)</span></label>
+                        <input type="file" id="vrfImages" class="form-control-file" accept="image/*" multiple>
+                        <div id="vrfImgPreview" class="d-flex flex-wrap mt-2"></div>
+                    </div>
+                    <input type="hidden" id="vrfComplaintId">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-success" id="vrfSubmitBtn">
+                        <i class="fas fa-paper-plane mr-1"></i>Send Response
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- View & Treat Modal for Payment Complaints -->
+    <div class="modal fade" id="viewPayComplaintModal" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header" style="background:linear-gradient(135deg,#1e3c72,#2a5298);color:#fff">
+                    <h5 class="modal-title" id="vpcModalTitle"><i class="fas fa-credit-card mr-2"></i>Payment Complaint</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+                </div>
+                <div class="modal-body">
+                    <div id="vpcDetailsBody" class="mb-4"></div>
+                    <div id="vpcRespondSection">
+                        <hr>
+                        <h6 class="font-weight-bold text-primary mb-3"><i class="fas fa-reply mr-2"></i>Treat this Complaint</h6>
+                        <form method="post" id="vpcForm" enctype="multipart/form-data">
+                            <input type="hidden" name="complaint_id" id="vpcComplaintId">
+                            <div class="form-group">
+                                <label class="font-weight-bold">Update Status</label>
+                                <select name="status" id="vpcStatus" class="form-control" required>
+                                    <option value="Pending">Pending</option>
+                                    <option value="Treated">Treated</option>
+                                    <option value="Needs More Info">Needs More Info</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="font-weight-bold">Feedback / Response</label>
+                                <textarea name="feedback" id="vpcFeedback" class="form-control manual-clipboard-init" rows="4"
+                                          placeholder="Your feedback to the complaint lodger. Paste screenshots with Ctrl+V."></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label class="font-weight-bold">Attach Images <span class="text-muted font-weight-normal">(optional)</span></label>
+                                <input type="file" name="feedback_images[]" id="vpcImages" class="form-control-file" accept="image/*" multiple>
+                                <div id="vpcImgPreview" class="d-flex flex-wrap mt-2"></div>
+                            </div>
+                            <div class="modal-footer px-0 pb-0">
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                <button type="submit" name="treat_payment_complaint" class="btn btn-success">
+                                    <i class="fas fa-check mr-1"></i>Submit Treatment
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Respond to Forwarded ICT Complaint Modal (legacy — kept for backward compat) -->
     <div class="modal fade" id="respondIctModalPay" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -826,8 +969,156 @@ function getImagePath($path) {
     </div>
 
     <script>
-    $(document).on('click', '.btn-respond-ict-pay', function() {
-        const id    = $(this).data('id');
+    // ── View & Respond: Forwarded ICT complaints ─────────
+    $(document).on('click', '.btn-view-respond-fwd', function() {
+        const d = $(this).data();
+        const sc = {'Pending':'warning','Under Review':'info','Resolved':'success','Rejected':'danger','Auto-Resolved':'secondary'};
+        const bc = sc[d.status] || 'secondary';
+        const respHtml = d.response
+            ? `<div class="alert alert-success mt-3"><strong>Current Response:</strong><br>${esc(d.response).replace(/\n/g,'<br>')}</div>`
+            : '';
+        const body = `
+            <div class="row">
+                <div class="col-md-6">
+                    <h6 class="text-muted text-uppercase" style="font-size:.72rem">Student</h6>
+                    <p class="mb-1"><strong>${esc(d.student)}</strong></p>
+                    <p class="mb-1 text-muted small">${esc(d.reg)}</p>
+                    <p class="mb-1 text-muted small">${esc(d.email)}</p>
+                </div>
+                <div class="col-md-6">
+                    <h6 class="text-muted text-uppercase" style="font-size:.72rem">Complaint</h6>
+                    <p class="mb-1"><strong>${esc(d.category)}</strong></p>
+                    <p class="mb-1">${esc(d.label)}</p>
+                    <p class="mb-1"><span class="badge badge-${bc}">${esc(d.status)}</span></p>
+                    <p class="mb-1 text-muted small">${esc(d.date)}</p>
+                </div>
+            </div>
+            ${d.path ? `<hr><h6 class="text-muted text-uppercase" style="font-size:.72rem">Decision Path</h6><p class="text-muted small">${esc(d.path)}</p>` : ''}
+            ${respHtml}`;
+        $('#vrfModalTitle').html('<i class="fas fa-credit-card mr-2"></i>ICT Complaint #' + d.id + ' — ' + esc(d.label));
+        $('#vrfDetailsBody').html(body);
+        $('#vrfComplaintId').val(d.id);
+        $('#vrfStatus').val(d.status === 'Pending' ? 'Under Review' : d.status);
+        $('#vrfText').val('');
+        $('#vrfImages').val('');
+        $('#vrfImgPreview').empty();
+        const resolved = ['Resolved','Rejected','Auto-Resolved'];
+        // Show respond section only if not resolved
+        $('#viewRespondFwdModal .modal-footer #vrfSubmitBtn').toggle(!resolved.includes(d.status));
+        $('#viewRespondFwdModal').modal('show');
+        $('#viewRespondFwdModal').one('shown.bs.modal', function() {
+            const ta = document.getElementById('vrfText');
+            const fi = document.getElementById('vrfImages');
+            if (ta && fi && typeof initializeClipboardPaste === 'function') initializeClipboardPaste(ta, fi);
+        });
+    });
+
+    $('#vrfImages').on('change', function() {
+        const p = $('#vrfImgPreview'); p.empty();
+        Array.from(this.files).forEach(f => {
+            const r = new FileReader();
+            r.onload = e => p.append(`<div class="mr-2 mb-2"><img src="${e.target.result}" style="max-height:80px;max-width:100px;border-radius:4px;border:1px solid #dee2e6"></div>`);
+            r.readAsDataURL(f);
+        });
+    });
+
+    $('#vrfSubmitBtn').on('click', function() {
+        const id     = $('#vrfComplaintId').val();
+        const status = $('#vrfStatus').val();
+        const text   = $('#vrfText').val().trim();
+        const btn    = $(this);
+        if (!text && !$('#vrfImages')[0].files.length) {
+            alert('Please enter a response or attach an image.');
+            return;
+        }
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i>Sending...');
+        const fd = new FormData();
+        fd.append('complaint_id', id);
+        fd.append('status', status);
+        fd.append('response', text);
+        Array.from($('#vrfImages')[0].files).forEach(f => fd.append('response_images[]', f));
+        $.ajax({
+            url: 'api/ict_complaint_respond.php',
+            type: 'POST',
+            data: fd,
+            processData: false,
+            contentType: false,
+            success: function(res) {
+                if (res.success) {
+                    $('#viewRespondFwdModal').modal('hide');
+                    location.reload();
+                } else {
+                    alert(res.message || 'Failed to send response.');
+                    btn.prop('disabled', false).html('<i class="fas fa-paper-plane mr-1"></i>Send Response');
+                }
+            },
+            error: function() {
+                alert('Network error. Please try again.');
+                btn.prop('disabled', false).html('<i class="fas fa-paper-plane mr-1"></i>Send Response');
+            }
+        });
+    });
+
+    // ── View & Treat: Payment complaints ─────────────────
+    $(document).on('click', '.btn-view-pay-complaint', function() {
+        const d = $(this).data();
+        const sc = {'Pending':'warning','Treated':'success','Needs More Info':'info'};
+        const bc = sc[d.status] || 'secondary';
+        const feedbackHtml = d.feedback
+            ? `<div class="alert alert-success mt-3"><strong>Previous Feedback:</strong><br>${esc(d.feedback).replace(/\n/g,'<br>')}</div>`
+            : '';
+        const body = `
+            <div class="row">
+                <div class="col-md-6">
+                    <h6 class="text-muted text-uppercase" style="font-size:.72rem">Complaint Info</h6>
+                    <p class="mb-1"><strong>Student ID:</strong> ${esc(d.student)}</p>
+                    <p class="mb-1"><strong>Department:</strong> ${esc(d.dept || 'N/A')}</p>
+                    <p class="mb-1"><strong>Staff:</strong> ${esc(d.staff || 'N/A')}</p>
+                    <p class="mb-1"><strong>Lodged By:</strong> ${esc(d.lodgedby || 'N/A')}</p>
+                </div>
+                <div class="col-md-6">
+                    <h6 class="text-muted text-uppercase" style="font-size:.72rem">Status</h6>
+                    <p class="mb-1"><span class="badge badge-${bc}">${esc(d.status)}</span></p>
+                    <p class="mb-1 text-muted small">${esc(d.date)}</p>
+                </div>
+            </div>
+            <hr>
+            <h6 class="text-muted text-uppercase" style="font-size:.72rem">Complaint Text</h6>
+            <p>${esc(d.text).replace(/\n/g,'<br>')}</p>
+            ${feedbackHtml}`;
+        $('#vpcModalTitle').html('<i class="fas fa-credit-card mr-2"></i>Payment Complaint #' + d.id);
+        $('#vpcDetailsBody').html(body);
+        $('#vpcComplaintId').val(d.id);
+        $('#vpcStatus').val(d.status);
+        $('#vpcFeedback').val('');
+        $('#vpcImages').val('');
+        $('#vpcImgPreview').empty();
+        // Hide respond section if already treated
+        $('#vpcRespondSection').toggle(d.status !== 'Treated');
+        $('#viewPayComplaintModal').modal('show');
+        $('#viewPayComplaintModal').one('shown.bs.modal', function() {
+            const ta = document.getElementById('vpcFeedback');
+            const fi = document.getElementById('vpcImages');
+            if (ta && fi && typeof initializeClipboardPaste === 'function') initializeClipboardPaste(ta, fi);
+        });
+    });
+
+    $('#vpcImages').on('change', function() {
+        const p = $('#vpcImgPreview'); p.empty();
+        Array.from(this.files).forEach(f => {
+            const r = new FileReader();
+            r.onload = e => p.append(`<div class="mr-2 mb-2"><img src="${e.target.result}" style="max-height:80px;max-width:100px;border-radius:4px;border:1px solid #dee2e6"></div>`);
+            r.readAsDataURL(f);
+        });
+    });
+
+    function esc(str) {
+        const d = document.createElement('div');
+        d.textContent = String(str || '');
+        return d.innerHTML;
+    }
+
+    $(document).on('click', '.btn-respond-ict-pay', function() {        const id    = $(this).data('id');
         const label = $(this).data('label');
         $('#respondIctIdPay').val(id);
         $('#respondIctMetaPay').html('<strong>Complaint #' + id + ':</strong> ' + $('<div>').text(label).html());

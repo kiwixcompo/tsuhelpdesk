@@ -531,7 +531,7 @@ include 'includes/dashboard_header.php';
                     </td>
                     <td><?php echo date('M d, Y', strtotime($c['created_at'])); ?></td>
                     <td>
-                        <button class="btn btn-sm btn-outline-primary mr-1 btn-view"
+                        <button class="btn btn-sm btn-primary btn-view-respond"
                                 data-id="<?php echo $c['complaint_id']; ?>"
                                 data-name="<?php echo htmlspecialchars($c['student_name'], ENT_QUOTES); ?>"
                                 data-reg="<?php echo htmlspecialchars($c['registration_number'], ENT_QUOTES); ?>"
@@ -548,18 +548,10 @@ include 'includes/dashboard_header.php';
                                 data-auto="<?php echo htmlspecialchars($c['auto_response'] ?? '', ENT_QUOTES); ?>"
                                 data-response="<?php echo htmlspecialchars($c['admin_response'] ?? '', ENT_QUOTES); ?>"
                                 data-attachment="<?php echo htmlspecialchars($c['attachment_path'] ?? '', ENT_QUOTES); ?>"
-                                data-extra="<?php echo htmlspecialchars($c['extra_fields'] ?? '{}', ENT_QUOTES); ?>">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                        <button class="btn btn-sm btn-outline-success mr-1 btn-reply"
-                                data-id="<?php echo $c['complaint_id']; ?>"
-                                data-name="<?php echo htmlspecialchars($c['student_name'], ENT_QUOTES); ?>"
-                                data-label="<?php echo htmlspecialchars($c['node_label'], ENT_QUOTES); ?>"
-                                data-status="<?php echo htmlspecialchars($c['status'], ENT_QUOTES); ?>"
-                                data-response="<?php echo htmlspecialchars($c['admin_response'] ?? '', ENT_QUOTES); ?>"
+                                data-extra="<?php echo htmlspecialchars($c['extra_fields'] ?? '{}', ENT_QUOTES); ?>"
                                 data-forwarded="<?php echo htmlspecialchars($c['forwarded_to'] ?? '', ENT_QUOTES); ?>"
-                                title="Respond to Student">
-                            <i class="fas fa-reply"></i>
+                                title="View & Respond">
+                            <i class="fas fa-eye mr-1"></i>View & Respond
                         </button>
                         <?php if (in_array($c['status'], ['Pending', 'Under Review'])): ?>
                         <button class="btn btn-sm btn-outline-info mr-1 btn-forward"
@@ -588,98 +580,78 @@ include 'includes/dashboard_header.php';
 
 </div><!-- /container -->
 
-<!-- ── Shared View Modal (outside table, no flicker) ── -->
+<!-- ── Combined View & Respond Modal ── -->
 <div class="modal fade" id="sharedViewModal" tabindex="-1" role="dialog" aria-labelledby="viewModalTitle">
-    <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" role="document">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="viewModalTitle">Complaint Details</h5>
-                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+            <div class="modal-header" style="background:linear-gradient(135deg,#1e3c72,#2a5298);color:#fff">
+                <h5 class="modal-title" id="viewModalTitle"><i class="fas fa-headset mr-2"></i>Complaint Details</h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
             </div>
-            <div class="modal-body" id="sharedViewBody"></div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- ── Shared Feedback Modal (outside table, no flicker) ── -->
-<div class="modal fade" id="sharedFeedbackModal" tabindex="-1" role="dialog" aria-labelledby="feedbackModalTitle">
-    <div class="modal-dialog modal-dialog-centered" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="feedbackModalTitle">Respond to Complaint</h5>
-                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
-            </div>
-            <form method="POST" id="feedbackForm" enctype="multipart/form-data">
-                <div class="modal-body">
-                    <input type="hidden" name="complaint_id" id="feedbackComplaintId">
-                    <p class="text-muted small" id="feedbackMeta"></p>
-                    <div class="form-group">
-                        <label class="font-weight-bold">Update Status</label>
-                        <select name="status" id="feedbackStatus" class="form-control" required>
-                            <option value="Pending">Pending</option>
-                            <option value="Under Review">Under Review</option>
-                            <option value="Resolved">Resolved</option>
-                            <option value="Rejected">Rejected</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="font-weight-bold">Response to Student</label>
-                        <textarea name="admin_response" id="feedbackResponse" class="form-control manual-clipboard-init" rows="5"
-                                  placeholder="Your response will be shown to the student. Your identity will not be revealed."></textarea>
-                        <small class="text-muted">
-                            <i class="fas fa-shield-alt mr-1"></i>
-                            Your name will not be shown to the student.
-                        </small>
-                    </div>
-                    <div class="form-group">
-                        <label class="font-weight-bold">Attach Images <span class="text-muted font-weight-normal">(optional)</span></label>
-                        <input type="file" id="feedbackImages" name="response_images[]"
-                               class="form-control-file" accept="image/*" multiple>
-                        <small class="text-muted"><i class="fas fa-info-circle mr-1"></i>Tip: You can also paste screenshots with Ctrl+V in the response box above</small>
-                        <div id="feedbackImgPreview" class="d-flex flex-wrap mt-2"></div>
-                    </div>
-                    <div class="form-group">
-                        <label class="font-weight-bold">
-                            <i class="fas fa-share mr-1"></i>Forward to Department / Unit
-                            <span class="text-muted font-weight-normal">(optional)</span>
-                        </label>
-                        <input type="text" id="forwardSearch" class="form-control mb-1"
-                               placeholder="Type to search department or unit…" autocomplete="off">
-                        <select name="forwarded_to" id="feedbackForwardTo" class="form-control">
-                            <option value="">— Do not forward —</option>
-                            <?php
-                            $rl = [5=>'i4Cus Staff', 6=>'Payment Admin', 7=>'Department'];
-                            $role_tags_fb = [5 => 'i4cus', 6 => 'payment'];
-                            $cur_grp = null;
-                            foreach ($departments_for_forward as $dept):
-                                $grp = $rl[$dept['role_id']] ?? 'Other';
-                                if ($grp !== $cur_grp):
-                                    if ($cur_grp !== null) echo '</optgroup>';
-                                    echo '<optgroup label="' . htmlspecialchars($grp) . '">';
-                                    $cur_grp = $grp;
-                                endif;
-                                $fb_value = isset($role_tags_fb[$dept['role_id']])
-                                    ? $role_tags_fb[$dept['role_id']]
-                                    : $dept['full_name'];
-                            ?>
-                                <option value="<?php echo htmlspecialchars($fb_value, ENT_QUOTES); ?>">
-                                    <?php echo htmlspecialchars($dept['full_name']); ?>
-                                </option>
-                            <?php endforeach; if ($cur_grp !== null) echo '</optgroup>'; ?>
-                        </select>
-                        <small class="text-muted">If forwarded, the department will be noted in the complaint record.</small>
-                    </div>
+            <div class="modal-body">
+                <!-- Details section -->
+                <div id="sharedViewBody" class="mb-4"></div>
+                <!-- Respond section -->
+                <div id="respondSection">
+                    <hr>
+                    <h6 class="text-primary font-weight-bold mb-3"><i class="fas fa-reply mr-2"></i>Respond to Student</h6>
+                    <form method="POST" id="feedbackForm" enctype="multipart/form-data">
+                        <input type="hidden" name="complaint_id" id="feedbackComplaintId">
+                        <div class="form-group">
+                            <label class="font-weight-bold">Update Status</label>
+                            <select name="status" id="feedbackStatus" class="form-control" required>
+                                <option value="Pending">Pending</option>
+                                <option value="Under Review">Under Review</option>
+                                <option value="Resolved">Resolved</option>
+                                <option value="Rejected">Rejected</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="font-weight-bold">Response to Student</label>
+                            <textarea name="admin_response" id="feedbackResponse" class="form-control manual-clipboard-init" rows="4"
+                                      placeholder="Your response will be shown to the student. Your identity will not be revealed."></textarea>
+                            <small class="text-muted"><i class="fas fa-shield-alt mr-1"></i>Your name will not be shown to the student. Paste screenshots with Ctrl+V.</small>
+                        </div>
+                        <div class="form-group">
+                            <label class="font-weight-bold">Attach Images <span class="text-muted font-weight-normal">(optional)</span></label>
+                            <input type="file" id="feedbackImages" name="response_images[]" class="form-control-file" accept="image/*" multiple>
+                            <div id="feedbackImgPreview" class="d-flex flex-wrap mt-2"></div>
+                        </div>
+                        <div class="form-group">
+                            <label class="font-weight-bold"><i class="fas fa-share mr-1"></i>Forward to Department / Unit <span class="text-muted font-weight-normal">(optional)</span></label>
+                            <input type="text" id="forwardSearch" class="form-control mb-1" placeholder="Type to search department or unit…" autocomplete="off">
+                            <select name="forwarded_to" id="feedbackForwardTo" class="form-control">
+                                <option value="">— Do not forward —</option>
+                                <?php
+                                $rl = [5=>'i4Cus Staff', 6=>'Payment Admin', 7=>'Department'];
+                                $role_tags_fb = [5 => 'i4cus', 6 => 'payment'];
+                                $cur_grp = null;
+                                foreach ($departments_for_forward as $dept):
+                                    $grp = $rl[$dept['role_id']] ?? 'Other';
+                                    if ($grp !== $cur_grp):
+                                        if ($cur_grp !== null) echo '</optgroup>';
+                                        echo '<optgroup label="' . htmlspecialchars($grp) . '">';
+                                        $cur_grp = $grp;
+                                    endif;
+                                    $fb_value = isset($role_tags_fb[$dept['role_id']])
+                                        ? $role_tags_fb[$dept['role_id']]
+                                        : $dept['full_name'];
+                                ?>
+                                    <option value="<?php echo htmlspecialchars($fb_value, ENT_QUOTES); ?>">
+                                        <?php echo htmlspecialchars($dept['full_name']); ?>
+                                    </option>
+                                <?php endforeach; if ($cur_grp !== null) echo '</optgroup>'; ?>
+                            </select>
+                        </div>
+                        <div class="modal-footer px-0 pb-0">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                            <button type="submit" name="submit_feedback" class="btn btn-success">
+                                <i class="fas fa-paper-plane mr-1"></i>Send Response
+                            </button>
+                        </div>
+                    </form>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                    <button type="submit" name="submit_feedback" class="btn btn-success">
-                        <i class="fas fa-paper-plane mr-1"></i>Send Response
-                    </button>
-                </div>
-            </form>
+            </div>
         </div>
     </div>
 </div>
@@ -752,8 +724,8 @@ $(function() {
     // Auto-dismiss alerts
     $('.alert').delay(4000).fadeOut();
 
-    // ── View button ──────────────────────────────────────
-    $(document).on('click', '.btn-view', function() {
+    // ── View & Respond button (combined) ─────────────────
+    $(document).on('click', '.btn-view-respond', function() {
         const d = $(this).data();
         const statusColors = {
             'Pending':'warning','Under Review':'info','Resolved':'success',
@@ -779,12 +751,11 @@ $(function() {
             ? `<div class="alert alert-info mt-3"><strong>Auto-Response Shown to Student:</strong><br>${esc(d.auto).replace(/\n/g,'<br>')}</div>`
             : '';
         const respHtml = d.response
-            ? `<div class="alert alert-success mt-3"><strong>ICT Response:</strong><br>${esc(d.response).replace(/\n/g,'<br>')}</div>`
+            ? `<div class="alert alert-success mt-3"><strong>Current ICT Response:</strong><br>${esc(d.response).replace(/\n/g,'<br>')}</div>`
             : '';
         const descHtml = d.desc
             ? `<h6 class="mt-3">Additional Details</h6><p>${esc(d.desc).replace(/\n/g,'<br>')}</p>`
             : '';
-
         const attachmentHtml = d.attachment
             ? `<h6 class="mt-3">Attachment</h6><a href="${esc(d.attachment)}" target="_blank" class="btn btn-sm btn-info"><i class="fas fa-file-download mr-1"></i> View Attached File</a>`
             : '';
@@ -792,50 +763,46 @@ $(function() {
         const body = `
             <div class="row">
                 <div class="col-md-6">
-                    <h6>Student</h6>
-                    <p><strong>Name:</strong> ${esc(d.name)}</p>
-                    <p><strong>Reg No:</strong> ${esc(d.reg)}</p>
-                    <p><strong>Email:</strong> ${esc(d.email)}</p>
-                    <p><strong>Department:</strong> ${esc(d.dept || 'N/A')}</p>
-                    <p><strong>Faculty:</strong> ${esc(d.faculty || 'N/A')}</p>
+                    <h6 class="text-muted text-uppercase" style="font-size:.72rem;letter-spacing:.05em">Student</h6>
+                    <p class="mb-1"><strong>${esc(d.name)}</strong></p>
+                    <p class="mb-1 text-muted small">${esc(d.reg)}</p>
+                    <p class="mb-1 text-muted small">${esc(d.email)}</p>
+                    <p class="mb-1 text-muted small">${esc(d.dept || 'N/A')} &bull; ${esc(d.faculty || 'N/A')}</p>
                 </div>
                 <div class="col-md-6">
-                    <h6>Complaint</h6>
-                    <p><strong>Category:</strong> ${esc(d.category)}</p>
-                    <p><strong>Issue:</strong> ${esc(d.label)}</p>
-                    <p><strong>Status:</strong> <span class="badge badge-${bc}">${esc(d.status)}</span></p>
-                    <p><strong>Escalated:</strong> ${esc(d.escalated)}</p>
-                    <p><strong>Submitted:</strong> ${esc(d.date)}</p>
+                    <h6 class="text-muted text-uppercase" style="font-size:.72rem;letter-spacing:.05em">Complaint</h6>
+                    <p class="mb-1"><strong>${esc(d.category)}</strong></p>
+                    <p class="mb-1">${esc(d.label)}</p>
+                    <p class="mb-1"><span class="badge badge-${bc}">${esc(d.status)}</span></p>
+                    <p class="mb-1 text-muted small">${esc(d.date)}</p>
                 </div>
             </div>
             <hr>
-            <h6>Decision Path</h6>
-            <p class="text-muted">${esc(d.path)}</p>
+            <h6 class="text-muted text-uppercase" style="font-size:.72rem;letter-spacing:.05em">Decision Path</h6>
+            <p class="text-muted small">${esc(d.path)}</p>
             ${descHtml}${attachmentHtml}${autoHtml}${respHtml}${extraHtml}`;
 
-        $('#viewModalTitle').text('Complaint #' + d.id + ' — Details');
+        $('#viewModalTitle').html('<i class="fas fa-headset mr-2"></i>Complaint #' + d.id + ' — ' + esc(d.label));
         $('#sharedViewBody').html(body);
-        $('#sharedViewModal').modal('show');
-    });
 
-    // ── Reply button ─────────────────────────────────────
-    $(document).on('click', '.btn-reply', function() {
-        const d = $(this).data();
-        $('#feedbackModalTitle').text('Respond to Complaint #' + d.id);
+        // Pre-fill the response form
         $('#feedbackComplaintId').val(d.id);
-        $('#feedbackMeta').html('<strong>Student:</strong> ' + esc(d.name) + '<br><strong>Issue:</strong> ' + esc(d.label));
         $('#feedbackStatus').val(d.status);
         $('#feedbackResponse').val(d.response || '');
         $('#feedbackForwardTo').val(d.forwarded || '');
         $('#forwardSearch').val('');
-        // Reset forward dropdown to show all options
         $('#feedbackForwardTo option').show();
         $('#feedbackImages').val('');
         $('#feedbackImgPreview').empty();
-        $('#sharedFeedbackModal').modal('show');
+
+        // Show/hide respond section based on status
+        const resolved = ['Resolved','Rejected','Auto-Resolved'];
+        $('#respondSection').toggle(!resolved.includes(d.status));
+
+        $('#sharedViewModal').modal('show');
 
         // Init clipboard paste after modal opens
-        $('#sharedFeedbackModal').one('shown.bs.modal', function() {
+        $('#sharedViewModal').one('shown.bs.modal', function() {
             const ta = document.getElementById('feedbackResponse');
             const fi = document.getElementById('feedbackImages');
             if (ta && fi && typeof initializeClipboardPaste === 'function') {
