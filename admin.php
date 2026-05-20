@@ -1325,7 +1325,6 @@ function getImagePath($image) {
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script src="js/clipboard-paste.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="assets/js/auto_refresh_complaints.js"></script>
     <script>
     let myChart = null;
     const staffNames = <?php echo json_encode($staff_names); ?>;
@@ -1428,64 +1427,6 @@ function getImagePath($image) {
     $(function() {
         var userId = <?php echo $_SESSION["user_id"]; ?>;
         var userRoleId = <?php echo $_SESSION["role_id"]; ?>;
-        // Helper to render a complaint row (adapt as needed for admin.php)
-        function renderComplaint(complaint, userId, userRoleId) {
-            let urgentBadge = complaint.is_urgent ? '<span class="badge badge-danger ml-2">Urgent</span>' : '';
-            let feedbackBox = complaint.feedback ? `<div class="feedback-box mt-2"><small class="text-muted">Feedback:</small><p class="mb-0">${complaint.feedback}</p></div>` : '';
-            let imagesHtml = '';
-            let imgCount = 0;
-            let images = [];
-            if (complaint.image_path && complaint.image_path !== '0') {
-                images = complaint.image_path.split(',').map(s => s.trim()).filter(Boolean);
-                imgCount = images.length;
-            }
-            if (imgCount > 0) {
-                let galleryItems = images.slice(0,3).map((img, idx) => {
-                    let directPath = 'public_image.php?img=' + encodeURIComponent(img.split('/').pop());
-                    let badge = (imgCount > 3 && idx === 2) ? `<div class=\"image-count-badge\">+${imgCount-3}</div>` : '';
-                    return `<div class=\"gallery-item\" onclick=\"toggleZoom(this)\"><img src=\"${directPath}\" alt=\"Complaint Image ${idx+1}\" loading=\"lazy\" onerror=\"this.onerror=null; this.parentElement.innerHTML='<div class=\\'image-error\\'>Image not available</div>'\;\">${badge}</div>`;
-                }).join('');
-                let allImages = images.map(img => 'public_image.php?img=' + encodeURIComponent(img.split('/').pop()));
-                let viewAllBtn = imgCount > 3 ? `<button type=\"button\" class=\"btn btn-sm btn-info view-all-btn\" onclick=\"showGalleryModal(${JSON.stringify(allImages)})\"><i class=\"fas fa-images\"></i> View All (${imgCount})</button>` : '';
-                imagesHtml = `<div class=\"mt-2\"><strong>Attached Images:</strong><div class=\"gallery-container\">${galleryItems}</div>${viewAllBtn}</div>`;
-            }
-            let checkbox = (userRoleId == 1 || complaint.lodged_by == userId) ? `<div class=\"form-check mr-3\"><input type=\"checkbox\" class=\"form-check-input complaint-checkbox\" name=\"complaint_ids[]\" value=\"${complaint.complaint_id}\"></div>` : '';
-            // For admin, updated to include data-labels for mobile cards styling
-            return `<tr class=\"new-complaint\" data-complaint-id=\"${complaint.complaint_id}\">
-                        <td data-label=\"Select\">
-                            <input type=\"checkbox\" name=\"complaint_ids[]\" value=\"${complaint.complaint_id}\" class=\"complaint-checkbox\">
-                        </td>
-                        <td data-label=\"Date\">${complaint.created_at_fmt}</td>
-                        <td data-label=\"Student ID\">${complaint.student_id}</td>
-                        <td data-label=\"Complaint\">${complaint.complaint_text.substring(0,50)}... ${imagesHtml}</td>
-                        <td data-label=\"Status\"><span class=\"complaint-status status-${complaint.status.toLowerCase()}\">${complaint.status}</span></td>
-                        <td data-label=\"Priority\">${complaint.is_urgent ? '<span class=\"badge badge-danger\">Urgent</span>' : '<span class=\"badge badge-secondary\">Normal</span>'}</td>
-                        <td data-label=\"Lodged By\"><strong>${complaint.lodged_by_name || '-'}</strong></td>
-                        <td data-label=\"Handler\">${complaint.handler_name || 'Not assigned'}</td>
-                        <td data-label=\"Action\" class=\"action-col\">
-                            <button type=\"button\" class=\"btn btn-outline-primary btn-sm p-1\" data-toggle=\"modal\" 
-                                    data-target=\"#updateModal${complaint.complaint_id}\" title=\"Update Complaint\">
-                                <i class=\"fas fa-edit\"></i>
-                            </button>
-                        </td>
-                    </tr>`;
-        }
-        function getLastComplaintId() {
-            let first = $('#complaintsTable tbody tr').first();
-            let idMatch = first.html() && first.html().match(/view_complaint.php\?id=(\d+)/);
-            if (idMatch) return parseInt(idMatch[1]);
-            // Fallback: try to get from data attribute if available
-            let dataId = first.data('complaint-id');
-            return dataId ? parseInt(dataId) : 0;
-        }
-        autoRefreshComplaints({
-            container: '#complaintsTable tbody',
-            afterSelector: 'tr:first',
-            getLastId: getLastComplaintId,
-            renderComplaint: renderComplaint,
-            userId: userId,
-            userRoleId: userRoleId
-        });
     });
     </script>
     

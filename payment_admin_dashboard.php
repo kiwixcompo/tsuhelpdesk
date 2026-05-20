@@ -606,7 +606,8 @@ function getImagePath($path) {
                                                                         data-text="<?php echo htmlspecialchars($row['complaint_text'] ?? '', ENT_QUOTES); ?>"
                                                                         data-status="<?php echo htmlspecialchars($row['status'], ENT_QUOTES); ?>"
                                                                         data-date="<?php echo date('Y-m-d', strtotime($row['created_at'])); ?>"
-                                                                        data-feedback="<?php echo htmlspecialchars($row['feedback'] ?? '', ENT_QUOTES); ?>">
+                                                                        data-feedback="<?php echo htmlspecialchars($row['feedback'] ?? '', ENT_QUOTES); ?>"
+                                                                        data-images="<?php echo htmlspecialchars($row['image_path'] ?? '', ENT_QUOTES); ?>">
                                                                     <i class="fas fa-eye mr-1"></i>View & Treat
                                                                 </button>
                                                             </td>
@@ -1067,6 +1068,24 @@ function getImagePath($path) {
         const feedbackHtml = d.feedback
             ? `<div class="alert alert-success mt-3"><strong>Previous Feedback:</strong><br>${esc(d.feedback).replace(/\n/g,'<br>')}</div>`
             : '';
+
+        // Build images HTML
+        let imagesHtml = '';
+        if (d.images && d.images !== '0' && d.images !== '') {
+            const imgs = d.images.split(',').map(s => s.trim()).filter(Boolean);
+            if (imgs.length > 0) {
+                const thumbs = imgs.map(img => {
+                    const url = 'public_image.php?img=' + encodeURIComponent(img.split('/').pop());
+                    return `<a href="${url}" target="_blank" class="mr-2 mb-2 d-inline-block">
+                        <img src="${url}" style="max-height:80px;max-width:100px;border-radius:4px;border:1px solid #dee2e6;object-fit:cover"
+                             onerror="this.style.display='none'">
+                    </a>`;
+                }).join('');
+                imagesHtml = `<hr><h6 class="text-muted text-uppercase" style="font-size:.72rem">Attached Images</h6>
+                    <div class="d-flex flex-wrap">${thumbs}</div>`;
+            }
+        }
+
         const body = `
             <div class="row">
                 <div class="col-md-6">
@@ -1084,7 +1103,8 @@ function getImagePath($path) {
             </div>
             <hr>
             <h6 class="text-muted text-uppercase" style="font-size:.72rem">Complaint Text</h6>
-            <p>${esc(d.text).replace(/\n/g,'<br>')}</p>
+            <div class="p-3 bg-light rounded" style="white-space:pre-wrap;word-break:break-word">${esc(d.text)}</div>
+            ${imagesHtml}
             ${feedbackHtml}`;
         $('#vpcModalTitle').html('<i class="fas fa-credit-card mr-2"></i>Payment Complaint #' + d.id);
         $('#vpcDetailsBody').html(body);
