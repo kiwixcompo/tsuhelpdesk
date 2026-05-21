@@ -695,7 +695,12 @@ $val_map = [
                             </select>
                         </div>
                         <div class="form-group">
-                            <label class="font-weight-bold">Response to Student</label>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="font-weight-bold mb-0">Response to Student</label>
+                                <button type="button" id="btnDraftWithAI" class="btn btn-sm" style="display: none; background: linear-gradient(135deg, #7F00FF, #E100FF); color: white; border: none; border-radius: 20px; padding: 0.25rem 0.85rem; font-size: 0.75rem; font-weight: 600; box-shadow: 0 2px 8px rgba(225, 0, 255, 0.3); transition: all 0.2s;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(225, 0, 255, 0.5)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(225, 0, 255, 0.3)';">
+                                    <i class="fas fa-robot mr-1"></i> Draft with AI
+                                </button>
+                            </div>
                             <textarea name="admin_response" id="feedbackResponse" class="form-control manual-clipboard-init" rows="4"
                                       placeholder="Your response will be shown to the student. Your identity will not be revealed."></textarea>
                             <small class="text-muted"><i class="fas fa-shield-alt mr-1"></i>Your name will not be shown to the student. Paste screenshots with Ctrl+V.</small>
@@ -806,6 +811,7 @@ $val_map = [
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script src="https://js.puter.com/v2/"></script>
 <script src="js/clipboard-paste.js"></script>
 <script>
 $(function() {
@@ -890,6 +896,16 @@ $(function() {
         $('#feedbackImages').val('');
         $('#feedbackImgPreview').empty();
 
+        // Check if there is historical feedback to enable AI responses
+        $('#btnDraftWithAI').hide().removeData('history');
+        if (d.category) {
+            $.getJSON('api/get_historical_feedback.php', { category: d.category, complaint_id: d.id }, function(res) {
+                if (res.success && res.history && res.history.length > 0) {
+                    $('#btnDraftWithAI').data('history', res.history).show();
+                }
+            });
+        }
+
         // Show/hide respond section based on status
         const resolved = ['Resolved','Rejected','Auto-Resolved'];
         $('#respondSection').toggle(!resolved.includes(d.status));
@@ -904,6 +920,71 @@ $(function() {
                 initializeClipboardPaste(ta, fi);
             }
         });
+    });
+
+    // ── Puter AI response generator click handler ────────────────────────
+    $(document).on('click', '#btnDraftWithAI', async function() {
+        const btn = $(this);
+        const originalHtml = btn.html();
+        const historyData = btn.data('history') || [];
+        
+        if (!historyData.length) return;
+        
+        // Find current complaint description from modal body
+        let currentDesc = '';
+        $('#sharedViewBody p').each(function() {
+            if ($(this).prev('h6').text().includes('Additional Details')) {
+                currentDesc = $(this).text().trim();
+            }
+        });
+        
+        // If not found in additional details, fallback to the label/title
+        if (!currentDesc) {
+            currentDesc = $('#viewModalTitle').text().replace(/Complaint #\d+\s*—\s*/, '').trim();
+        }
+        
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Coining...');
+        
+        try {
+            let examplesPrompt = "";
+            historyData.forEach((h, index) => {
+                examplesPrompt += `Example #${index + 1}:\nStudent Complaint: "${h.description}"\nAdmin Response: "${h.admin_response}"\n\n`;
+            });
+            
+            const prompt = `You are a helpful university ICT Support assistant. 
+Below are historical examples of similar student complaints and the correct professional feedback responses that were given:
+
+${examplesPrompt}
+Now, draft a professional, polite, and helpful response for this new student complaint:
+New Complaint Description: "${currentDesc}"
+
+Return ONLY the response text that the admin should send to the student. Do not write any intro or outro (e.g. do not say "Here is a response" or "Dear student"). Just output the exact text to be pasted into the response box.`;
+
+            const result = await puter.ai.chat(prompt);
+            const generatedResponse = (result?.message?.content || result || '').trim();
+            
+            if (generatedResponse) {
+                $('#feedbackResponse').val(generatedResponse);
+                
+                // Glimmering green glow effect to show AI success
+                const ta = $('#feedbackResponse');
+                ta.css('transition', 'all 0.4s');
+                ta.css('box-shadow', '0 0 15px rgba(46, 196, 182, 0.8)');
+                ta.css('border-color', '#2ec4b6');
+                
+                setTimeout(() => {
+                    ta.css('box-shadow', '');
+                    ta.css('border-color', '');
+                }, 2000);
+            } else {
+                alert('AI generated an empty response. Please try again.');
+            }
+        } catch (e) {
+            console.error('Puter AI error:', e);
+            alert('Could not generate response with AI: ' + e.message);
+        } finally {
+            btn.prop('disabled', false).html(originalHtml);
+        }
     });
 
     // Image preview for feedback form

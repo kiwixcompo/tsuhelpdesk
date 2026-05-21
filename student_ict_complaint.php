@@ -88,6 +88,47 @@ body { background:#f4f7fb; font-family:'Segoe UI',sans-serif; }
 /* Spinner */
 .spinner-sm { width:18px; height:18px; border:2px solid #fff; border-top-color:transparent; border-radius:50%; animation:spin .6s linear infinite; display:inline-block; vertical-align:middle; margin-right:.4rem; }
 @keyframes spin { to { transform:rotate(360deg); } }
+
+/* AI Suggested Resolution Premium Styling */
+.ai-suggested-box {
+    background: linear-gradient(135deg, #f5f3ff, #ecf4ff);
+    border-left: 4px solid #7F00FF;
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    box-shadow: 0 4px 15px rgba(127, 0, 255, 0.08);
+    position: relative;
+    overflow: hidden;
+    animation: fadeInSlide 0.4s ease-out;
+}
+@keyframes fadeInSlide {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.ai-suggested-box h6 {
+    color: #5b00e2;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+}
+.ai-suggested-box p {
+    margin-bottom: 1rem;
+    color: #2b2b2b;
+    font-size: 0.9rem;
+    line-height: 1.6;
+}
+.ai-badge-pill {
+    background: linear-gradient(135deg, #7F00FF, #E100FF);
+    color: white;
+    font-size: 0.65rem;
+    padding: 0.15rem 0.55rem;
+    border-radius: 12px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
 </style>
 </head>
 <body>
@@ -123,7 +164,8 @@ body { background:#f4f7fb; font-family:'Segoe UI',sans-serif; }
     </div>
 </div>
 
-<!-- Puter.js for AI classification -->
+<!-- jQuery & Puter.js for AI classification -->
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script src="https://js.puter.com/v2/"></script>
 <script>
 const TREE = <?php echo $tree_json; ?>;
@@ -214,6 +256,7 @@ function renderLeaf(node, c) {
                         <label>Describe your issue <span class="text-muted">(optional but in-depth details help)</span></label>
                         <textarea id="descField" class="form-control" rows="3" placeholder="Add any extra details...">${esc(state.description)}</textarea>
                     </div>
+                    <div id="aiAutoResponseContainer" style="display:none; margin-top: 1rem; margin-bottom: 1rem;"></div>
                     <div class="form-group mb-2">
                         <label>Upload or Paste Screenshot <span class="text-muted">(optional)</span></label>
                         <input type="file" id="attachmentField" class="form-control-file text-muted" accept="image/*,.pdf,.doc,.docx" style="font-size:0.85rem;">
@@ -515,6 +558,90 @@ function esc(str) {
     d.textContent = String(str);
     return d.innerHTML;
 }
+
+// ── Real-time Puter AI Learnt Suggestion System ──────────────────────
+let autoResponseDebounce;
+$(document).on('input', '#descField', function() {
+    clearTimeout(autoResponseDebounce);
+    const desc = $(this).val().trim();
+    
+    if (desc.length < 15) {
+        $('#aiAutoResponseContainer').slideUp(200, function() { $(this).empty(); });
+        return;
+    }
+    
+    autoResponseDebounce = setTimeout(async function() {
+        const category = getCategoryLabel();
+        if (!category) return;
+        
+        try {
+            // Fetch resolved complaints with responses in the same category
+            const res = await $.getJSON('api/get_historical_feedback.php', { category: category });
+            if (res.success && res.history && res.history.length > 0) {
+                // Formulate history list for Puter AI
+                let historyList = "";
+                res.history.forEach((h, i) => {
+                    historyList += `Option #${i+1}:\nSolved Issue: "${h.description}"\nResolution: "${h.admin_response}"\n\n`;
+                });
+                
+                const prompt = `You are a smart matching router for university ICT support.
+Below is a list of previously solved student issues and their specific resolutions:
+
+${historyList}
+A student is currently typing this description of their issue: "${desc}"
+
+Does the student's typed issue describe a problem that is highly similar to one of the solved issues listed above?
+If yes, select the solved issue that matches, and reply with ONLY the EXACT Resolution text of that solved issue.
+If no solved issue is highly similar to what the student is describing, reply with "NO_MATCH".
+Do not add any greetings, preamble, or formatting. Reply with either the exact matching Resolution text or "NO_MATCH".`;
+
+                const result = await puter.ai.chat(prompt);
+                const match = (result?.message?.content || result || '').trim();
+                
+                if (match && match !== 'NO_MATCH') {
+                    // Display the dynamic resolution match card
+                    $('#aiAutoResponseContainer').html(`
+                        <div class="ai-suggested-box mt-3 mb-3">
+                            <h6>
+                                <i class="fas fa-magic"></i> AI-Suggested Resolution
+                                <span class="ai-badge-pill">Instant Match</span>
+                            </h6>
+                            <p>${esc(match)}</p>
+                            <div class="d-flex">
+                                <button type="button" class="btn btn-sm btn-success mr-2" id="btnAcceptAISuggestion" style="font-weight:600; border-radius:8px;">
+                                    <i class="fas fa-check mr-1"></i> This resolves my issue
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="btnRejectAISuggestion" style="font-weight:600; border-radius:8px;">
+                                    No, I still need help
+                                </button>
+                            </div>
+                        </div>
+                    `).slideDown(300);
+                    
+                    // Handle accepting suggestion
+                    $('#btnAcceptAISuggestion').off('click').on('click', function() {
+                        const btn = $(this);
+                        // Inject auto-response directly into node state and submit
+                        state.currentNode.actionType = 'auto_response';
+                        state.currentNode.responseText = match;
+                        submitComplaint(false, state.currentNode, btn);
+                    });
+                    
+                    // Handle rejecting suggestion
+                    $('#btnRejectAISuggestion').off('click').on('click', function() {
+                        $('#aiAutoResponseContainer').slideUp(200, function() {
+                            $(this).empty();
+                        });
+                    });
+                } else {
+                    $('#aiAutoResponseContainer').slideUp(200, function() { $(this).empty(); });
+                }
+            }
+        } catch (e) {
+            console.error('Error matching resolved complaint context:', e);
+        }
+    }, 1000); // 1s debounce
+});
 </script>
 <script>
 // Clipboard paste support for ICT complaint wizard
