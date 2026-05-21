@@ -23,6 +23,17 @@ if ($_col && mysqli_num_rows($_col) === 0) {
     mysqli_query($conn, "ALTER TABLE student_ict_complaints ADD COLUMN forwarded_to VARCHAR(255) NULL DEFAULT NULL");
 }
 
+// Ensure student_ict_replies table exists
+mysqli_query($conn, "CREATE TABLE IF NOT EXISTS student_ict_replies (
+    reply_id     INT AUTO_INCREMENT PRIMARY KEY,
+    complaint_id INT NOT NULL,
+    sender_type  ENUM('student','staff') NOT NULL DEFAULT 'student',
+    sender_id    INT NOT NULL,
+    reply_text   TEXT NOT NULL,
+    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_complaint (complaint_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
 $success_msg = $error_msg = '';
 
 // Flash messages from PRG redirect
