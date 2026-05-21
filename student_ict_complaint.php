@@ -169,10 +169,15 @@ body { background:#f4f7fb; font-family:'Segoe UI',sans-serif; }
 <script src="https://js.puter.com/v2/"></script>
 <script>
 function extractAIText(result) {
+    console.log('extractAIText received:', result);
     if (!result) return '';
+    
+    // 1. If it's already a string, return it
     if (typeof result === 'string') {
         return result.trim();
     }
+    
+    // 2. If it's an object, check standard paths
     if (typeof result === 'object') {
         if (result.message) {
             if (typeof result.message === 'string') {
@@ -191,6 +196,40 @@ function extractAIText(result) {
         if (typeof result.text === 'string') {
             return result.text.trim();
         }
+        
+        // 3. Recursive deep search for the longest non-metadata string
+        let longestStr = '';
+        const excludeValues = ['assistant', 'user', 'system', 'role', 'text'];
+        
+        function search(obj) {
+            if (!obj) return;
+            if (typeof obj === 'string') {
+                const trimmed = obj.trim();
+                if (trimmed && !excludeValues.includes(trimmed.toLowerCase()) && trimmed.length > longestStr.length) {
+                    longestStr = trimmed;
+                }
+                return;
+            }
+            if (typeof obj === 'object') {
+                for (const key in obj) {
+                    try {
+                        if (Object.prototype.hasOwnProperty.call(obj, key)) {
+                            search(obj[key]);
+                        }
+                    } catch (e) {
+                        // ignore key access errors
+                    }
+                }
+            }
+        }
+        
+        search(result);
+        if (longestStr) {
+            console.log('extractAIText successfully extracted text via deep search:', longestStr);
+            return longestStr;
+        }
+        
+        // 4. Try toString() safely as a last resort
         try {
             if (typeof result.toString === 'function') {
                 const strVal = result.toString();
