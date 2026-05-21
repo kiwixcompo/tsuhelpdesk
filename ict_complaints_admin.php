@@ -268,6 +268,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['forward_complaint']))
 }
 
 // ── Filters ───────────────────────────────────────────────
+$f_search   = trim($_GET['search'] ?? '');
 $f_status   = $_GET['status']   ?? '';
 $f_category = $_GET['category'] ?? '';
 $f_from     = $_GET['date_from'] ?? '';
@@ -277,17 +278,34 @@ $show_archive = isset($_GET['archive']) && $_GET['archive'] === '1';
 $where = ['1=1'];
 $params = []; $types = '';
 
-// Default: show only active (non-resolved) unless archive view or explicit status filter
-if (empty($f_status) && !$show_archive) {
+// Status filter handling
+if ($f_status === 'all') {
+    // Show all complaints, so do not add any status or active/archive bounds
+} elseif (empty($f_status) && !$show_archive) {
     $where[] = "c.status NOT IN ('Resolved', 'Rejected', 'Auto-Resolved')";
 } elseif ($show_archive && empty($f_status)) {
     $where[] = "c.status IN ('Resolved', 'Rejected', 'Auto-Resolved')";
 }
 
-if ($f_status)   { $where[] = 'c.status=?';   $params[] = $f_status;   $types .= 's'; }
+if ($f_status && $f_status !== 'all') {
+    $where[] = 'c.status=?';
+    $params[] = $f_status;
+    $types .= 's';
+}
+
 if ($f_category) { $where[] = 'c.category=?'; $params[] = $f_category; $types .= 's'; }
 if ($f_from)     { $where[] = 'c.created_at>=?'; $params[] = $f_from.' 00:00:00'; $types .= 's'; }
 if ($f_to)       { $where[] = 'c.created_at<=?'; $params[] = $f_to.' 23:59:59';   $types .= 's'; }
+
+if ($f_search !== '') {
+    $where[] = "(s.registration_number LIKE ? OR CONCAT(s.first_name, ' ', s.last_name) LIKE ? OR c.description LIKE ? OR c.node_label LIKE ?)";
+    $search_param = '%' . $f_search . '%';
+    $params[] = $search_param;
+    $params[] = $search_param;
+    $params[] = $search_param;
+    $params[] = $search_param;
+    $types .= 'ssss';
+}
 
 $wc = implode(' AND ', $where);
 
@@ -358,8 +376,18 @@ if ($dept_res) {
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 <link rel="stylesheet" href="css/style.css">
 <style>
-.stat-card { background:#fff; border-radius:10px; padding:1.25rem 1.5rem;
-             box-shadow:0 2px 10px rgba(30,60,114,.08); border-left:4px solid #1e3c72; }
+.stat-card {
+    background:#fff;
+    border-radius:10px;
+    padding:1.25rem 1.5rem;
+    box-shadow:0 2px 10px rgba(30,60,114,.08);
+    border-left:4px solid #1e3c72;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(30,60,114,0.15);
+}
 .stat-num  { font-size:1.8rem; font-weight:700; color:#1e3c72; }
 .stat-lbl  { font-size:.8rem; color:#6c757d; text-transform:uppercase; letter-spacing:.04em; }
 .badge-auto { background:#6f42c1; color:#fff; }
@@ -401,6 +429,15 @@ include 'includes/dashboard_header.php';
 <?php endif; ?>
 
 <!-- Stats -->
+<?php
+$val_map = [
+    'Total' => 'all',
+    'Pending' => 'Pending',
+    'Under Review' => 'Under Review',
+    'Resolved' => 'Resolved',
+    'Auto-Resolved' => 'Auto-Resolved'
+];
+?>
 <div class="row mb-4">
     <?php foreach ([
         ['Total',        $stats['total'],        '#1e3c72'],
@@ -408,12 +445,27 @@ include 'includes/dashboard_header.php';
         ['Under Review', $stats['under_review'],  '#2980b9'],
         ['Resolved',     $stats['resolved'],      '#27ae60'],
         ['Auto-Resolved',$stats['auto'],          '#6f42c1'],
-    ] as [$lbl,$num,$col]): ?>
+    ] as [$lbl,$num,$col]): 
+        $val = $val_map[$lbl] ?? '';
+        $card_params = $_GET;
+        $card_params['status'] = $val;
+        // Adjust archive param based on selection
+        if ($val === 'Resolved' || $val === 'Auto-Resolved') {
+            $card_params['archive'] = '1';
+        } elseif ($val === 'all') {
+            unset($card_params['archive']);
+        } else {
+            unset($card_params['archive']);
+        }
+        $card_url = 'ict_complaints_admin.php?' . http_build_query($card_params);
+    ?>
     <div class="col-6 col-md-2 mb-3">
-        <div class="stat-card" style="border-left-color:<?php echo $col; ?>">
-            <div class="stat-num" style="color:<?php echo $col; ?>"><?php echo (int)$num; ?></div>
-            <div class="stat-lbl"><?php echo $lbl; ?></div>
-        </div>
+        <a href="<?php echo htmlspecialchars($card_url); ?>" class="text-decoration-none">
+            <div class="stat-card" style="border-left-color:<?php echo $col; ?>; cursor: pointer;">
+                <div class="stat-num" style="color:<?php echo $col; ?>"><?php echo (int)$num; ?></div>
+                <div class="stat-lbl"><?php echo htmlspecialchars($lbl); ?></div>
+            </div>
+        </a>
     </div>
     <?php endforeach; ?>
 </div>
@@ -422,15 +474,23 @@ include 'includes/dashboard_header.php';
 <div class="card mb-4">
     <div class="card-body py-3">
         <form method="GET" class="form-row align-items-end">
+            <!-- Search Keyword -->
+            <div class="col-md-3 mb-2">
+                <label class="small font-weight-bold"><i class="fas fa-search mr-1"></i>Search Keyword</label>
+                <input type="text" name="search" class="form-control form-control-sm" placeholder="Name, matric, or details…" value="<?php echo htmlspecialchars($f_search); ?>">
+            </div>
+            <!-- Status Filter -->
             <div class="col-md-2 mb-2">
                 <label class="small font-weight-bold">Status</label>
                 <select name="status" class="form-control form-control-sm">
-                    <option value="">All</option>
+                    <option value="" <?php echo $f_status===''?'selected':''; ?>>Active (Queue)</option>
+                    <option value="all" <?php echo $f_status==='all'?'selected':''; ?>>All (incl. Resolved)</option>
                     <?php foreach (['Pending','Under Review','Resolved','Rejected','Auto-Resolved'] as $s): ?>
                         <option value="<?php echo $s; ?>" <?php echo $f_status===$s?'selected':''; ?>><?php echo $s; ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
+            <!-- Category Filter -->
             <div class="col-md-3 mb-2">
                 <label class="small font-weight-bold">Category</label>
                 <select name="category" class="form-control form-control-sm">
@@ -442,20 +502,23 @@ include 'includes/dashboard_header.php';
                     <?php endforeach; ?>
                 </select>
             </div>
+            <!-- Date range: From -->
             <div class="col-md-2 mb-2">
                 <label class="small font-weight-bold">From</label>
                 <input type="date" name="date_from" class="form-control form-control-sm" value="<?php echo htmlspecialchars($f_from); ?>">
             </div>
+            <!-- Date range: To -->
             <div class="col-md-2 mb-2">
                 <label class="small font-weight-bold">To</label>
                 <input type="date" name="date_to" class="form-control form-control-sm" value="<?php echo htmlspecialchars($f_to); ?>">
             </div>
-            <div class="col-md-3 mb-2 d-flex gap-2">
-                <button type="submit" class="btn btn-primary btn-sm mr-2">
-                    <i class="fas fa-search mr-1"></i>Filter
+            <!-- Submit/Reset Buttons -->
+            <div class="col-12 mt-2 d-flex justify-content-end">
+                <button type="submit" class="btn btn-primary btn-sm px-4 mr-2">
+                    <i class="fas fa-filter mr-1"></i>Apply Filters
                 </button>
-                <a href="ict_complaints_admin.php" class="btn btn-secondary btn-sm">
-                    <i class="fas fa-times mr-1"></i>Clear
+                <a href="ict_complaints_admin.php" class="btn btn-secondary btn-sm px-4">
+                    <i class="fas fa-sync-alt mr-1"></i>Reset
                 </a>
             </div>
         </form>
