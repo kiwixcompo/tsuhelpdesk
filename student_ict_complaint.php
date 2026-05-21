@@ -168,6 +168,27 @@ body { background:#f4f7fb; font-family:'Segoe UI',sans-serif; }
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script src="https://js.puter.com/v2/"></script>
 <script>
+function extractAIText(result) {
+    if (typeof result === 'string') {
+        return result.trim();
+    }
+    if (result && typeof result === 'object') {
+        if (result.message && typeof result.message.content === 'string') {
+            return result.message.content.trim();
+        }
+        if (typeof result.content === 'string') {
+            return result.content.trim();
+        }
+        if (typeof result.text === 'string') {
+            return result.text.trim();
+        }
+        if (result.toString && result.toString() !== '[object Object]') {
+            return result.toString().trim();
+        }
+    }
+    return '';
+}
+
 const TREE = <?php echo $tree_json; ?>;
 const STUDENT_ID = <?php echo (int)$_SESSION['student_id']; ?>;
 
@@ -464,7 +485,7 @@ async function classifyWithAI(node) {
 Classify it into one of these categories: ${targets}. 
 Reply with only the category ID, nothing else.`;
         const result = await puter.ai.chat(prompt);
-        const cat = (result?.message?.content || result || '').trim();
+        const cat = extractAIText(result);
         if (cat) state.extraFields['ai_category'] = cat;
     } catch (e) {
         // AI unavailable — continue without classification
@@ -596,7 +617,7 @@ If no solved issue is highly similar to what the student is describing, reply wi
 Do not add any greetings, preamble, or formatting. Reply with either the exact matching Resolution text or "NO_MATCH".`;
 
                 const result = await puter.ai.chat(prompt);
-                const match = (result?.message?.content || result || '').trim();
+                const match = extractAIText(result);
                 
                 if (match && match !== 'NO_MATCH') {
                     // Display the dynamic resolution match card

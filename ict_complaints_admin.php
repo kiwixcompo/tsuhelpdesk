@@ -54,13 +54,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_feedback'])) {
     $valid_statuses = ['Pending', 'Under Review', 'Resolved', 'Rejected', 'Auto-Resolved'];
     if (!in_array($status, $valid_statuses)) $status = 'Pending';
 
+    $forwarded_to = trim($_POST['forwarded_to'] ?? '');
+    // If a forwarded department/unit is specified, force status to 'Under Review'
+    if (!empty($forwarded_to)) {
+        $status = 'Under Review';
+    }
+
     $upd = mysqli_prepare($conn,
         "UPDATE student_ict_complaints
          SET status=?, admin_response=?, handled_by=?, forwarded_to=?, updated_at=NOW()
          WHERE complaint_id=?");
     if ($upd) {
-        $forwarded_to = trim($_POST['forwarded_to'] ?? '');
-        mysqli_stmt_bind_param($upd, 'ssiis', $status, $response, $_SESSION['user_id'], $forwarded_to, $cid);
+        mysqli_stmt_bind_param($upd, 'ssisi', $status, $response, $_SESSION['user_id'], $forwarded_to, $cid);
         if (mysqli_stmt_execute($upd)) {
             $success_msg = "Complaint #$cid updated successfully.";
             // Notify student — hide staff identity
@@ -814,6 +819,27 @@ $val_map = [
 <script src="https://js.puter.com/v2/"></script>
 <script src="js/clipboard-paste.js"></script>
 <script>
+function extractAIText(result) {
+    if (typeof result === 'string') {
+        return result.trim();
+    }
+    if (result && typeof result === 'object') {
+        if (result.message && typeof result.message.content === 'string') {
+            return result.message.content.trim();
+        }
+        if (typeof result.content === 'string') {
+            return result.content.trim();
+        }
+        if (typeof result.text === 'string') {
+            return result.text.trim();
+        }
+        if (result.toString && result.toString() !== '[object Object]') {
+            return result.toString().trim();
+        }
+    }
+    return '';
+}
+
 $(function() {
     // Auto-dismiss alerts
     $('.alert').delay(4000).fadeOut();
@@ -961,7 +987,7 @@ New Complaint Description: "${currentDesc}"
 Return ONLY the response text that the admin should send to the student. Do not write any intro or outro (e.g. do not say "Here is a response" or "Dear student"). Just output the exact text to be pasted into the response box.`;
 
             const result = await puter.ai.chat(prompt);
-            const generatedResponse = (result?.message?.content || result || '').trim();
+            const generatedResponse = extractAIText(result);
             
             if (generatedResponse) {
                 $('#feedbackResponse').val(generatedResponse);
