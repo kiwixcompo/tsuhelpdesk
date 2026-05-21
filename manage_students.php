@@ -533,7 +533,7 @@ if($faculties_result){
                             </thead>
                             <tbody>
                                 <?php foreach($students as $student): ?>
-                                    <tr>
+                                    <tr class="student-row">
                                         <td data-label="Select">
                                             <input type="checkbox" class="student-checkbox" value="<?php echo $student['student_id']; ?>" onchange="updateStudentBulkActions()">
                                         </td>
@@ -968,18 +968,75 @@ if($faculties_result){
         // Auto-dismiss alerts
         $('.alert').delay(5000).fadeOut();
         
-        // Form validation
+        // Auto-focus search input and place cursor at the end on load if search is present
+        const searchInput = $('#search');
+        if (searchInput.length) {
+            const val = searchInput.val();
+            if (val) {
+                searchInput.focus().val('').val(val);
+            }
+        }
+
+        // Live Search on input (filtering visible rows instantly)
+        let searchTimeout;
+        $('#search').on('input', function() {
+            let query = $(this).val().toLowerCase().trim();
+            let matchCount = 0;
+            
+            $('.student-row').each(function() {
+                let row = $(this);
+                let studentInfo = row.find('td[data-label="Student Info"]').text().toLowerCase();
+                let regInfo = row.find('td[data-label="Registration"]').text().toLowerCase();
+                let progInfo = row.find('td[data-label="Programme"]').text().toLowerCase();
+                
+                if (studentInfo.includes(query) || regInfo.includes(query) || progInfo.includes(query)) {
+                    row.show();
+                    matchCount++;
+                } else {
+                    row.hide();
+                }
+            });
+            
+            // Update visible badge count
+            $('.card-header span.badge').text(matchCount + ' visible');
+            
+            if (matchCount === 0) {
+                if ($('#noStudentsRow').length === 0) {
+                    $('.table tbody').append('<tr id="noStudentsRow"><td colspan="8" class="text-center py-4 text-muted">No matching students found on this page.</td></tr>');
+                } else {
+                    $('#noStudentsRow').show();
+                }
+            } else {
+                $('#noStudentsRow').hide();
+            }
+
+            // Debounced global search form submission (1000ms delay of inactivity)
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(function() {
+                const form = $('#search').closest('form');
+                form.submit();
+            }, 1000);
+        });
+
+        // Auto-submit dropdowns on change
+        $('#faculty_id, #status').on('change', function() {
+            $(this).closest('form').submit();
+        });
+        
+        // Form validation / Loading indicator
         $('form').submit(function() {
             const submitBtn = $(this).find('button[type="submit"]');
-            submitBtn.prop('disabled', true);
-            const originalText = submitBtn.html();
-            submitBtn.html('<i class="fas fa-spinner fa-spin mr-2"></i>Processing...');
-            
-            // Re-enable after 3 seconds to prevent permanent disable on validation errors
-            setTimeout(function() {
-                submitBtn.prop('disabled', false);
-                submitBtn.html(originalText);
-            }, 3000);
+            if (submitBtn.length) {
+                submitBtn.prop('disabled', true);
+                const originalText = submitBtn.html();
+                submitBtn.html('<i class="fas fa-spinner fa-spin mr-2"></i>Processing...');
+                
+                // Re-enable after 3 seconds to prevent permanent disable on validation errors
+                setTimeout(function() {
+                    submitBtn.prop('disabled', false);
+                    submitBtn.html(originalText);
+                }, 3000);
+            }
         });
     </script>
 </body>

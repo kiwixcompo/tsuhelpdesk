@@ -1640,6 +1640,49 @@ function getImagePath($image) {
                 });
             }
         });
+
+        // Auto-focus search input and place cursor at the end on load if search is present
+        const searchInput = $('input[name="search"]');
+        if (searchInput.length && searchInput.val()) {
+            const val = searchInput.val();
+            searchInput.focus().val('').val(val);
+        }
+
+        // Live Search on input (filtering visible rows instantly)
+        let searchTimeout;
+        $('input[name="search"]').on('input', function() {
+            let query = $(this).val().toLowerCase().trim();
+            let matchCount = 0;
+            
+            $('tbody tr[data-complaint-id]').each(function() {
+                let row = $(this);
+                let text = row.text().toLowerCase();
+                
+                if (text.includes(query)) {
+                    row.show();
+                    matchCount++;
+                } else {
+                    row.hide();
+                }
+            });
+            
+            if (matchCount === 0) {
+                if ($('#noComplaintsRow').length === 0) {
+                    $('table tbody').append('<tr id="noComplaintsRow"><td colspan="8" class="text-center py-4 text-muted">No matching complaints found on this page.</td></tr>');
+                } else {
+                    $('#noComplaintsRow').show();
+                }
+            } else {
+                $('#noComplaintsRow').hide();
+            }
+
+            // Debounced global search form submission (1000ms delay of inactivity)
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(function() {
+                const form = $('input[name="search"]').closest('form');
+                form.submit();
+            }, 1000);
+        });
     });
     </script>
 </body>

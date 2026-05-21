@@ -282,16 +282,16 @@ $params = []; $types = '';
 if ($f_status === 'all') {
     // Show all complaints, so do not add any status or active/archive bounds
 } elseif ($f_status === 'Pending') {
-    $where[] = "(c.status = 'Pending' OR (c.status = 'Under Review' AND c.admin_response IS NOT NULL AND c.admin_response != ''))";
+    $where[] = "(c.status = 'Pending' OR (c.status NOT IN ('Resolved', 'Rejected', 'Auto-Resolved') AND (SELECT COUNT(*) FROM student_ict_replies r WHERE r.complaint_id = c.complaint_id AND r.sender_type = 'student' AND r.created_at > c.updated_at) > 0))";
 } elseif ($f_status === 'Under Review') {
-    $where[] = "(c.status = 'Under Review' AND (c.admin_response IS NULL OR c.admin_response = ''))";
+    $where[] = "(c.status = 'Under Review' AND (SELECT COUNT(*) FROM student_ict_replies r WHERE r.complaint_id = c.complaint_id AND r.sender_type = 'student' AND r.created_at > c.updated_at) = 0)";
 } elseif ($f_status && $f_status !== 'all') {
     $where[] = 'c.status=?';
     $params[] = $f_status;
     $types .= 's';
 } elseif (empty($f_status) && !$show_archive) {
-    // Default view: Pending or Under Review with feedback
-    $where[] = "(c.status = 'Pending' OR (c.status = 'Under Review' AND c.admin_response IS NOT NULL AND c.admin_response != ''))";
+    // Default view: Pending or student-replied active complaints
+    $where[] = "(c.status = 'Pending' OR (c.status NOT IN ('Resolved', 'Rejected', 'Auto-Resolved') AND (SELECT COUNT(*) FROM student_ict_replies r WHERE r.complaint_id = c.complaint_id AND r.sender_type = 'student' AND r.created_at > c.updated_at) > 0))";
 } elseif ($show_archive && empty($f_status)) {
     $where[] = "c.status IN ('Resolved', 'Rejected', 'Auto-Resolved')";
 }
@@ -316,8 +316,8 @@ $wc = implode(' AND ', $where);
 $stats = ['total'=>0,'pending'=>0,'under_review'=>0,'resolved'=>0,'auto'=>0];
 $sr = mysqli_query($conn, "SELECT
     COUNT(*) total,
-    SUM(status='Pending' OR (status='Under Review' AND admin_response IS NOT NULL AND admin_response != '')) pending,
-    SUM(status='Under Review' AND (admin_response IS NULL OR admin_response = '')) under_review,
+    SUM(status='Pending' OR (status NOT IN ('Resolved', 'Rejected', 'Auto-Resolved') AND (SELECT COUNT(*) FROM student_ict_replies r WHERE r.complaint_id = student_ict_complaints.complaint_id AND r.sender_type = 'student' AND r.created_at > student_ict_complaints.updated_at) > 0)) pending,
+    SUM(status='Under Review' AND (SELECT COUNT(*) FROM student_ict_replies r WHERE r.complaint_id = student_ict_complaints.complaint_id AND r.sender_type = 'student' AND r.created_at > student_ict_complaints.updated_at) = 0) under_review,
     SUM(status='Resolved') resolved,
     SUM(status='Auto-Resolved') auto_resolved
     FROM student_ict_complaints");
@@ -331,7 +331,8 @@ if ($sr && $row = mysqli_fetch_assoc($sr)) {
 $sql = "SELECT c.*,
         CONCAT(s.first_name,' ',s.last_name) AS student_name,
         s.registration_number, s.email,
-        sd.department_name, f.faculty_name
+        sd.department_name, f.faculty_name,
+        (SELECT COUNT(*) FROM student_ict_replies r WHERE r.complaint_id = c.complaint_id AND r.sender_type = 'student' AND r.created_at > c.updated_at) AS student_replied
         FROM student_ict_complaints c
         JOIN students s ON c.student_id = s.student_id
         LEFT JOIN student_departments sd ON s.department_id = sd.department_id
@@ -587,13 +588,15 @@ $val_map = [
                                'Rejected'=>'danger','Auto-Resolved'=>'secondary'];
                         $bc = $sc[$c['status']] ?? 'secondary';
                         ?>
-                        <?php if ($c['status'] === 'Under Review' && !empty($c['admin_response'])): ?>
-                            <span class="badge badge-info"><i class="fas fa-history mr-1"></i>Under Review</span>
+                        <span class="badge badge-<?php echo $bc; ?>"><?php echo htmlspecialchars($c['status']); ?></span>
+                        <?php if ($c['student_replied'] > 0): ?>
+                            <span class="badge badge-success mt-1 d-inline-block" style="background-color: #2ec4b6; border-color: #2ec4b6; color: white;">
+                                <i class="fas fa-reply mr-1"></i>Student Responded
+                            </span>
+                        <?php elseif ($c['status'] === 'Under Review' && !empty($c['admin_response'])): ?>
                             <span class="badge badge-success mt-1 d-inline-block" style="background-color: #2ec4b6; border-color: #2ec4b6; color: white;">
                                 <i class="fas fa-comment-dots mr-1"></i>Feedback Gotten
                             </span>
-                        <?php else: ?>
-                            <span class="badge badge-<?php echo $bc; ?>"><?php echo htmlspecialchars($c['status']); ?></span>
                         <?php endif; ?>
                         <?php if (!empty($c['forwarded_to'])): ?>
                             <br>
@@ -623,6 +626,7 @@ $val_map = [
                                 data-attachment="<?php echo htmlspecialchars($c['attachment_path'] ?? '', ENT_QUOTES); ?>"
                                 data-extra="<?php echo htmlspecialchars($c['extra_fields'] ?? '{}', ENT_QUOTES); ?>"
                                 data-forwarded="<?php echo htmlspecialchars($c['forwarded_to'] ?? '', ENT_QUOTES); ?>"
+                                data-student-replied="<?php echo $c['student_replied'] > 0 ? '1' : '0'; ?>"
                                 title="View & Respond">
                             <i class="fas fa-eye mr-1"></i>View & Respond
                         </button>
@@ -807,7 +811,9 @@ $(function() {
         const bc = statusColors[d.status] || 'secondary';
 
         let badgeHtml = `<span class="badge badge-${bc}">${esc(d.status)}</span>`;
-        if (d.status === 'Under Review' && d.response) {
+        if (d.studentReplied == 1 || d.studentReplied == '1') {
+            badgeHtml += ` <span class="badge badge-success ml-1 d-inline-block" style="background-color: #2ec4b6; border-color: #2ec4b6; color: white;"><i class="fas fa-reply mr-1"></i>Student Responded</span>`;
+        } else if (d.status === 'Under Review' && d.response) {
             badgeHtml += ` <span class="badge badge-success ml-1 d-inline-block" style="background-color: #2ec4b6; border-color: #2ec4b6; color: white;"><i class="fas fa-comment-dots mr-1"></i>Feedback Gotten</span>`;
         }
 

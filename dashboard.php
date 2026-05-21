@@ -1465,6 +1465,44 @@ if ($_SESSION["role_id"] == 1) { // Admin only
             $('#mainGalleryImage').attr('src', images[newIndex]);
             $('#galleryImageCount').text(`${newIndex + 1} of ${images.length}`);
         }
+
+        $(document).ready(function() {
+            // Auto-focus search input and place cursor at the end on load if search is present
+            const searchInput = $('input[name="search"]');
+            if (searchInput.length && searchInput.val()) {
+                const val = searchInput.val();
+                searchInput.focus().val('').val(val);
+            }
+
+            // Live Search on input (filtering visible list items instantly)
+            let searchTimeout;
+            $('input[name="search"]').on('input', function() {
+                let query = $(this).val().toLowerCase().trim();
+                
+                $('.list-group .list-group-item').not('.bg-light').each(function() {
+                    let row = $(this);
+                    let text = row.text().toLowerCase();
+                    
+                    if (text.includes(query)) {
+                        row.show();
+                    } else {
+                        row.hide();
+                    }
+                });
+
+                // Debounced global search form submission (1000ms delay of inactivity)
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(function() {
+                    const form = $('input[name="search"]').closest('form');
+                    form.submit();
+                }, 1000);
+            });
+
+            // Auto-submit dropdowns on change
+            $('select[name="feedback_filter"], select[name="role_filter"]').on('change', function() {
+                $(this).closest('form').submit();
+            });
+        });
         </script>
         
         <!-- Complaint Calendar at the bottom of the page -->
