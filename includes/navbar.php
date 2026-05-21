@@ -292,6 +292,16 @@ function nb_active(string $page, string $current): string {
     .nb-toggle { display: flex; }
     .nb-uname, .nb-urole { display: none; }
     .nb-user { padding: .3rem; border-radius: 50%; }
+    .nb-brand {
+        max-width: 42vw;
+        flex-shrink: 1 !important;
+    }
+    .nb-brand span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        display: inline-block;
+    }
 }
 @media (min-width: 992px) {
     .nb-drawer { display: none !important; }
@@ -356,8 +366,8 @@ function nb_active(string $page, string $current): string {
             <?php endif; ?>
         </ul>
 
-        <!-- Right icons -->
-        <div class="nb-div" style="display:flex!important"></div>
+        <!-- Right icons spacer -->
+        <div class="nb-div"></div>
 
         <!-- Messages -->
         <a class="nb-icon-btn" href="messages.php" title="Messages">
@@ -426,22 +436,10 @@ function nb_active(string $page, string $current): string {
             <a href="admin.php" class="<?php echo nb_active('admin.php', $current_page); ?>">
                 <i class="fas fa-cogs"></i> Admin Panel
             </a>
-            <a href="users.php" class="<?php echo nb_active('users.php', $current_page); ?>">
-                <i class="fas fa-users"></i> Staff Users
-            </a>
-            <a href="manage_students.php" class="<?php echo nb_active('manage_students.php', $current_page); ?>">
-                <i class="fas fa-user-graduate"></i> Students
-            </a>
-            <a href="student_complaints_report.php" class="<?php echo nb_active('student_complaints_report.php', $current_page); ?>">
-                <i class="fas fa-chart-bar"></i> Reports
-            </a>
+            <?php endif; ?>
+            <?php if (in_array($role_id, [1, 3])): ?>
             <a href="ict_complaints_admin.php" class="<?php echo nb_active('ict_complaints_admin.php', $current_page); ?>">
                 <i class="fas fa-headset"></i> ICT Complaints
-            </a>
-            <?php endif; ?>
-            <?php if (in_array($role_id, [3, 8])): ?>
-            <a href="student_complaints_report.php" class="<?php echo nb_active('student_complaints_report.php', $current_page); ?>">
-                <i class="fas fa-chart-bar"></i> Reports
             </a>
             <?php endif; ?>
         </div>

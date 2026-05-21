@@ -2,6 +2,7 @@
  * Session Timeout Warning System
  * Shows a countdown timer 10 seconds before session expires
  * Allows user to extend session by any activity
+ * Built in robust Vanilla JS to prevent jQuery console crashes
  */
 
 class SessionTimeoutManager {
@@ -57,11 +58,14 @@ class SessionTimeoutManager {
             </div>
         `;
         
-        $('body').append(modalHtml);
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = modalHtml.trim();
+        const modalElement = tempDiv.firstChild;
+        document.body.appendChild(modalElement);
         
         // Bind modal button events
-        $('#stayLoggedInBtn').on('click', () => this.extendSession());
-        $('#logoutNowBtn').on('click', () => this.logoutNow());
+        document.getElementById('stayLoggedInBtn').addEventListener('click', () => this.extendSession());
+        document.getElementById('logoutNowBtn').addEventListener('click', () => this.logoutNow());
     }
     
     bindActivityEvents() {
@@ -106,7 +110,24 @@ class SessionTimeoutManager {
     
     showWarning(secondsLeft) {
         this.warningShown = true;
-        $('#sessionTimeoutModal').modal('show');
+        
+        const modalElement = document.getElementById('sessionTimeoutModal');
+        if (window.$ && typeof $.fn.modal === 'function') {
+            $(modalElement).modal('show');
+        } else {
+            // Fallback: manually show modal
+            modalElement.style.display = 'block';
+            // Trigger browser reflow to allow transition
+            modalElement.offsetHeight;
+            modalElement.classList.add('show');
+            document.body.classList.add('modal-open');
+            
+            // Add backdrop
+            const backdrop = document.createElement('div');
+            backdrop.className = 'modal-backdrop fade show';
+            backdrop.id = 'session-timeout-backdrop';
+            document.body.appendChild(backdrop);
+        }
         
         // Start countdown
         this.startCountdown(secondsLeft);
@@ -114,18 +135,25 @@ class SessionTimeoutManager {
     
     startCountdown(seconds) {
         let remaining = seconds;
-        const timerElement = $('#countdownTimer');
+        const timerElement = document.getElementById('countdownTimer');
+        if (timerElement) {
+            timerElement.textContent = remaining;
+        }
         
         this.countdownInterval = setInterval(() => {
             remaining--;
-            timerElement.text(remaining);
-            
-            // Change color as time runs out
-            if (remaining <= 3) {
-                timerElement.removeClass('badge-danger badge-warning').addClass('badge-danger');
-                timerElement.parent().addClass('animate__animated animate__pulse');
-            } else if (remaining <= 5) {
-                timerElement.removeClass('badge-danger badge-warning').addClass('badge-warning');
+            if (timerElement) {
+                timerElement.textContent = remaining;
+                
+                // Change color as time runs out
+                if (remaining <= 3) {
+                    timerElement.classList.remove('badge-danger', 'badge-warning');
+                    timerElement.classList.add('badge-danger');
+                    timerElement.parentElement.classList.add('animate__animated', 'animate__pulse');
+                } else if (remaining <= 5) {
+                    timerElement.classList.remove('badge-danger', 'badge-warning');
+                    timerElement.classList.add('badge-warning');
+                }
             }
             
             if (remaining <= 0) {
@@ -137,7 +165,29 @@ class SessionTimeoutManager {
     
     hideWarning() {
         this.warningShown = false;
-        $('#sessionTimeoutModal').modal('hide');
+        
+        const modalElement = document.getElementById('sessionTimeoutModal');
+        if (window.$ && typeof $.fn.modal === 'function') {
+            $(modalElement).modal('hide');
+        } else {
+            // Fallback: manually hide modal
+            modalElement.classList.remove('show');
+            document.body.classList.remove('modal-open');
+            const backdrop = document.getElementById('session-timeout-backdrop');
+            if (backdrop) {
+                backdrop.classList.remove('show');
+                setTimeout(() => {
+                    if (backdrop.parentNode) {
+                        backdrop.remove();
+                    }
+                }, 150);
+            }
+            setTimeout(() => {
+                if (!this.warningShown) {
+                    modalElement.style.display = 'none';
+                }
+            }, 150);
+        }
         
         if (this.countdownInterval) {
             clearInterval(this.countdownInterval);
@@ -146,20 +196,26 @@ class SessionTimeoutManager {
     }
     
     extendSession() {
-        // Make AJAX call to extend session
-        $.ajax({
-            url: 'extend_session.php',
-            type: 'POST',
-            success: (response) => {
+        // Make fetch call to extend session
+        fetch('extend_session.php', {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (response.ok) {
                 this.updateLastActivity();
                 this.hideWarning();
-                
                 // Show brief success message
                 this.showToast('Session extended successfully', 'success');
-            },
-            error: () => {
+            } else {
                 this.showToast('Failed to extend session', 'error');
             }
+        })
+        .catch(error => {
+            console.error('Session extension error:', error);
+            this.showToast('Failed to extend session', 'error');
         });
     }
     
@@ -179,36 +235,42 @@ class SessionTimeoutManager {
     }
     
     showToast(message, type = 'info') {
+        const container = document.createElement('div');
+        container.className = 'toast-container';
+        container.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; transition: opacity 0.5s ease;';
+        
         const toastHtml = `
-            <div class="toast-container" style="position: fixed; top: 20px; right: 20px; z-index: 9999;">
-                <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
-                    <div class="toast-header bg-${type === 'success' ? 'success' : 'danger'} text-white">
-                        <i class="fas fa-${type === 'success' ? 'check' : 'exclamation-triangle'} mr-2"></i>
-                        <strong class="mr-auto">Session Manager</strong>
-                        <button type="button" class="ml-2 mb-1 close text-white" data-dismiss="toast">
-                            <span>&times;</span>
-                        </button>
-                    </div>
-                    <div class="toast-body">
-                        ${message}
-                    </div>
+            <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="toast-header bg-${type === 'success' ? 'success' : 'danger'} text-white">
+                    <i class="fas fa-${type === 'success' ? 'check' : 'exclamation-triangle'} mr-2"></i>
+                    <strong class="mr-auto">Session Manager</strong>
+                    <button type="button" class="ml-2 mb-1 close text-white" onclick="this.closest('.toast-container').remove()">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <div class="toast-body">
+                    ${message}
                 </div>
             </div>
         `;
         
-        $('body').append(toastHtml);
+        container.innerHTML = toastHtml.trim();
+        document.body.appendChild(container);
         
         // Auto remove after 3 seconds
         setTimeout(() => {
-            $('.toast-container').fadeOut(() => {
-                $('.toast-container').remove();
-            });
+            container.style.opacity = '0';
+            setTimeout(() => {
+                if (container.parentNode) {
+                    container.remove();
+                }
+            }, 500);
         }, 3000);
     }
 }
 
 // Initialize session timeout manager when document is ready
-$(document).ready(function() {
+document.addEventListener('DOMContentLoaded', function() {
     // Only initialize if user is logged in
     if (typeof sessionTimeoutEnabled !== 'undefined' && sessionTimeoutEnabled) {
         window.sessionManager = new SessionTimeoutManager({
