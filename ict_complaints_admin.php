@@ -820,12 +820,21 @@ $val_map = [
 <script src="js/clipboard-paste.js"></script>
 <script>
 function extractAIText(result) {
+    if (!result) return '';
     if (typeof result === 'string') {
         return result.trim();
     }
-    if (result && typeof result === 'object') {
-        if (result.message && typeof result.message.content === 'string') {
-            return result.message.content.trim();
+    if (typeof result === 'object') {
+        if (result.message) {
+            if (typeof result.message === 'string') {
+                return result.message.trim();
+            }
+            if (result.message.content && typeof result.message.content === 'string') {
+                return result.message.content.trim();
+            }
+            if (result.message.text && typeof result.message.text === 'string') {
+                return result.message.text.trim();
+            }
         }
         if (typeof result.content === 'string') {
             return result.content.trim();
@@ -833,8 +842,15 @@ function extractAIText(result) {
         if (typeof result.text === 'string') {
             return result.text.trim();
         }
-        if (result.toString && result.toString() !== '[object Object]') {
-            return result.toString().trim();
+        try {
+            if (typeof result.toString === 'function') {
+                const strVal = result.toString();
+                if (typeof strVal === 'string' && strVal !== '[object Object]') {
+                    return strVal.trim();
+                }
+            }
+        } catch (e) {
+            // ignore toString errors
         }
     }
     return '';
