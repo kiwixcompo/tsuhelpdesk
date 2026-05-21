@@ -281,16 +281,19 @@ $params = []; $types = '';
 // Status filter handling
 if ($f_status === 'all') {
     // Show all complaints, so do not add any status or active/archive bounds
-} elseif (empty($f_status) && !$show_archive) {
-    $where[] = "c.status NOT IN ('Resolved', 'Rejected', 'Auto-Resolved')";
-} elseif ($show_archive && empty($f_status)) {
-    $where[] = "c.status IN ('Resolved', 'Rejected', 'Auto-Resolved')";
-}
-
-if ($f_status && $f_status !== 'all') {
+} elseif ($f_status === 'Pending') {
+    $where[] = "(c.status = 'Pending' OR (c.status = 'Under Review' AND c.admin_response IS NOT NULL AND c.admin_response != ''))";
+} elseif ($f_status === 'Under Review') {
+    $where[] = "(c.status = 'Under Review' AND (c.admin_response IS NULL OR c.admin_response = ''))";
+} elseif ($f_status && $f_status !== 'all') {
     $where[] = 'c.status=?';
     $params[] = $f_status;
     $types .= 's';
+} elseif (empty($f_status) && !$show_archive) {
+    // Default view: Pending or Under Review with feedback
+    $where[] = "(c.status = 'Pending' OR (c.status = 'Under Review' AND c.admin_response IS NOT NULL AND c.admin_response != ''))";
+} elseif ($show_archive && empty($f_status)) {
+    $where[] = "c.status IN ('Resolved', 'Rejected', 'Auto-Resolved')";
 }
 
 if ($f_category) { $where[] = 'c.category=?'; $params[] = $f_category; $types .= 's'; }
@@ -313,8 +316,8 @@ $wc = implode(' AND ', $where);
 $stats = ['total'=>0,'pending'=>0,'under_review'=>0,'resolved'=>0,'auto'=>0];
 $sr = mysqli_query($conn, "SELECT
     COUNT(*) total,
-    SUM(status='Pending') pending,
-    SUM(status='Under Review') under_review,
+    SUM(status='Pending' OR (status='Under Review' AND admin_response IS NOT NULL AND admin_response != '')) pending,
+    SUM(status='Under Review' AND (admin_response IS NULL OR admin_response = '')) under_review,
     SUM(status='Resolved') resolved,
     SUM(status='Auto-Resolved') auto_resolved
     FROM student_ict_complaints");
@@ -530,7 +533,7 @@ $val_map = [
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0"><i class="fas fa-headset mr-2"></i>
             <?php echo $show_archive ? 'Archived ICT Complaints' : 'Active ICT Complaints Queue'; ?>
-            (<?php echo count($complaints); ?>)
+            (<span id="complaintsCount"><?php echo count($complaints); ?></span>)
         </h5>
         <div>
             <?php if (!$show_archive): ?>
@@ -564,7 +567,7 @@ $val_map = [
                 <tr><td colspan="7" class="text-center py-4 text-muted">No complaints found.</td></tr>
             <?php else: ?>
             <?php foreach ($complaints as $c): ?>
-                <tr>
+                <tr class="complaint-row">
                     <td><?php echo $c['complaint_id']; ?></td>
                     <td>
                         <strong><?php echo htmlspecialchars($c['student_name']); ?></strong><br>
@@ -584,7 +587,14 @@ $val_map = [
                                'Rejected'=>'danger','Auto-Resolved'=>'secondary'];
                         $bc = $sc[$c['status']] ?? 'secondary';
                         ?>
-                        <span class="badge badge-<?php echo $bc; ?>"><?php echo htmlspecialchars($c['status']); ?></span>
+                        <?php if ($c['status'] === 'Under Review' && !empty($c['admin_response'])): ?>
+                            <span class="badge badge-info"><i class="fas fa-history mr-1"></i>Under Review</span>
+                            <span class="badge badge-success mt-1 d-inline-block" style="background-color: #2ec4b6; border-color: #2ec4b6; color: white;">
+                                <i class="fas fa-comment-dots mr-1"></i>Feedback Gotten
+                            </span>
+                        <?php else: ?>
+                            <span class="badge badge-<?php echo $bc; ?>"><?php echo htmlspecialchars($c['status']); ?></span>
+                        <?php endif; ?>
                         <?php if (!empty($c['forwarded_to'])): ?>
                             <br>
                             <span class="badge badge-light border mt-1" style="font-size:.7rem;color:#0c5460;background:#d1ecf1;border-color:#bee5eb!important">
@@ -796,6 +806,11 @@ $(function() {
         };
         const bc = statusColors[d.status] || 'secondary';
 
+        let badgeHtml = `<span class="badge badge-${bc}">${esc(d.status)}</span>`;
+        if (d.status === 'Under Review' && d.response) {
+            badgeHtml += ` <span class="badge badge-success ml-1 d-inline-block" style="background-color: #2ec4b6; border-color: #2ec4b6; color: white;"><i class="fas fa-comment-dots mr-1"></i>Feedback Gotten</span>`;
+        }
+
         let extraHtml = '';
         try {
             const ef = JSON.parse(d.extra || '{}');
@@ -836,7 +851,7 @@ $(function() {
                     <h6 class="text-muted text-uppercase" style="font-size:.72rem;letter-spacing:.05em">Complaint</h6>
                     <p class="mb-1"><strong>${esc(d.category)}</strong></p>
                     <p class="mb-1">${esc(d.label)}</p>
-                    <p class="mb-1"><span class="badge badge-${bc}">${esc(d.status)}</span></p>
+                    <p class="mb-1">${badgeHtml}</p>
                     <p class="mb-1 text-muted small">${esc(d.date)}</p>
                 </div>
             </div>
@@ -920,6 +935,57 @@ $(function() {
             const text = $(this).text().toLowerCase();
             $(this).toggle(text.indexOf(val) > -1);
         });
+    });
+
+    // Live Search on input
+    $('input[name="search"]').on('input', function() {
+        let query = $(this).val().toLowerCase().trim();
+        let matchCount = 0;
+        
+        $('.complaint-row').each(function() {
+            let row = $(this);
+            let name = row.find('td:nth-child(2) strong').text().toLowerCase();
+            let matric = row.find('td:nth-child(2) small:nth-of-type(1)').text().toLowerCase();
+            let dept = row.find('td:nth-child(2) small:nth-of-type(2)').text().toLowerCase();
+            let category = row.find('td:nth-child(3) div').text().toLowerCase();
+            let label = row.find('td:nth-child(3) small').text().toLowerCase();
+            let path = row.find('td:nth-child(4) .path-text').text().toLowerCase();
+            
+            let btn = row.find('.btn-view-respond');
+            let desc = (btn.attr('data-desc') || btn.data('desc') || '').toString().toLowerCase();
+            let extra = '';
+            try {
+                let extraData = btn.attr('data-extra') || btn.data('extra') || '';
+                extra = (typeof extraData === 'object') ? JSON.stringify(extraData) : extraData.toString();
+            } catch(e){}
+            extra = extra.toLowerCase();
+            
+            if (name.includes(query) || 
+                matric.includes(query) || 
+                dept.includes(query) ||
+                category.includes(query) || 
+                label.includes(query) || 
+                path.includes(query) ||
+                desc.includes(query) || 
+                extra.includes(query)) {
+                row.show();
+                matchCount++;
+            } else {
+                row.hide();
+            }
+        });
+        
+        $('#complaintsCount').text(matchCount);
+        
+        if (matchCount === 0) {
+            if ($('#noMatchesRow').length === 0) {
+                $('.table tbody').append('<tr id="noMatchesRow"><td colspan="7" class="text-center py-4 text-muted">No matching complaints found.</td></tr>');
+            } else {
+                $('#noMatchesRow').show();
+            }
+        } else {
+            $('#noMatchesRow').hide();
+        }
     });
 
     function esc(str) {
