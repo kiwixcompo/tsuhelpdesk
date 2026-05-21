@@ -97,8 +97,8 @@ foreach ($files as $file) {
         @mkdir($destDir, 0755, true);
     }
 
-    // Fetch from GitHub raw
-    $rawUrl  = $rawBase . $path;
+    // Fetch from GitHub raw (append timestamp to bust CDN cache)
+    $rawUrl  = $rawBase . $path . '?t=' . time();
     $content = @file_get_contents($rawUrl, false, $ctx);
 
     if ($content === false) {
