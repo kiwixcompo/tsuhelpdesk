@@ -962,10 +962,44 @@ $(function() {
             <hr>
             <h6 class="text-muted text-uppercase" style="font-size:.72rem;letter-spacing:.05em">Decision Path</h6>
             <p class="text-muted small">${esc(d.path)}</p>
-            ${descHtml}${attachmentHtml}${autoHtml}${respHtml}${extraHtml}`;
+            ${descHtml}${attachmentHtml}${autoHtml}${respHtml}${extraHtml}
+            <div id="ictRepliesContainer" style="display: none;" class="mt-4"></div>`;
 
         $('#viewModalTitle').html('<i class="fas fa-headset mr-2"></i>Complaint #' + d.id + ' — ' + esc(d.label));
         $('#sharedViewBody').html(body);
+
+        // Fetch and display replies
+        const repliesContainer = $('#ictRepliesContainer');
+        repliesContainer.hide().empty();
+        $.getJSON('api/get_ict_replies.php', { complaint_id: d.id }, function(res) {
+            if (res.success && res.replies && res.replies.length > 0) {
+                let repliesHtml = `
+                    <hr>
+                    <h6 class="text-primary font-weight-bold mb-3"><i class="fas fa-comments mr-2"></i>Conversation History</h6>
+                    <div style="max-height: 350px; overflow-y: auto; padding-right: 5px;">
+                `;
+                res.replies.forEach(reply => {
+                    const isStudent = reply.sender_type === 'student';
+                    const icon = isStudent ? 'fa-user-graduate' : 'fa-user-shield';
+                    const color = isStudent ? 'success' : 'primary';
+                    const senderTitle = isStudent ? 'Student' : 'Staff';
+                    
+                    repliesHtml += `
+                        <div class="mb-3 p-3 bg-light rounded shadow-sm border-left border-${color}" style="border-left-width:3px!important">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="font-weight-bold text-${color}" style="font-size: 0.9rem;">
+                                    <i class="fas ${icon} mr-1"></i> ${esc(reply.sender_name)} (${senderTitle})
+                                </span>
+                                <small class="text-muted" style="font-size: 0.75rem;">${esc(reply.created_at)}</small>
+                            </div>
+                            <p class="mb-0 text-dark small" style="white-space: pre-line; line-height: 1.45;">${esc(reply.reply_text)}</p>
+                        </div>
+                    `;
+                });
+                repliesHtml += '</div>';
+                repliesContainer.html(repliesHtml).show();
+            }
+        });
 
         // Pre-fill the response form
         $('#feedbackComplaintId').val(d.id);
@@ -1166,6 +1200,23 @@ Return ONLY the response text that the admin should send to the student. Do not 
             $('#noMatchesRow').hide();
         }
     });
+
+    // Automatically open complaint if id is passed in URL query param
+    const urlParams = new URLSearchParams(window.location.search);
+    const openId = urlParams.get('id');
+    if (openId) {
+        const btn = $(`.btn-view-respond[data-id="${openId}"]`);
+        if (btn.length) {
+            btn.trigger('click');
+        } else {
+            // If the button is not found, try reloading with status=all so the complaint is visible
+            const curStatus = urlParams.get('status');
+            if (curStatus !== 'all') {
+                urlParams.set('status', 'all');
+                window.location.search = urlParams.toString();
+            }
+        }
+    }
 
     function esc(str) {
         const d = document.createElement('div');

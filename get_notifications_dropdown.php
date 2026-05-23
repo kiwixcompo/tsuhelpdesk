@@ -47,11 +47,30 @@ if ($is_student) {
     // ── Staff notifications from notifications table ──
     $user_id = (int) $_SESSION["user_id"];
 
+    // Proactive self-heal: Ensure notifications table has complaint_type column and drops foreign key
+    $col_check = mysqli_query($conn, "SHOW COLUMNS FROM notifications LIKE 'complaint_type'");
+    if ($col_check && mysqli_num_rows($col_check) === 0) {
+        mysqli_query($conn, "ALTER TABLE notifications ADD COLUMN complaint_type VARCHAR(20) NOT NULL DEFAULT 'academic' AFTER complaint_id");
+        $fk_query = "SELECT CONSTRAINT_NAME 
+                     FROM information_schema.KEY_COLUMN_USAGE 
+                     WHERE TABLE_SCHEMA = DATABASE() 
+                       AND TABLE_NAME = 'notifications' 
+                       AND COLUMN_NAME = 'complaint_id' 
+                       AND REFERENCED_TABLE_NAME = 'complaints'";
+        $fk_res = mysqli_query($conn, $fk_query);
+        if ($fk_res) {
+            while ($fk_row = mysqli_fetch_assoc($fk_res)) {
+                $fk_name = $fk_row['CONSTRAINT_NAME'];
+                mysqli_query($conn, "ALTER TABLE notifications DROP FOREIGN KEY `$fk_name`");
+            }
+        }
+    }
+
     require_once "includes/notifications.php";
 
     $sql = "SELECT n.notification_id, n.user_id, n.complaint_id,
                    n.title, n.message, n.is_read, n.created_at,
-                   'staff' AS complaint_type
+                   n.complaint_type
             FROM notifications n
             WHERE n.user_id = ?
             ORDER BY n.created_at DESC

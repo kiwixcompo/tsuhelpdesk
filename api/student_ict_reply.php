@@ -61,12 +61,43 @@ mysqli_stmt_bind_param($ins, 'iis', $complaint_id, $student_id, $reply);
 $ok = mysqli_stmt_execute($ins);
 mysqli_stmt_close($ins);
 
+// Self-heal: Ensure notifications table does not have a foreign key constraint blocking ICT complaint IDs
+// and has the complaint_type column
+function selfHealNotificationsTable($conn) {
+    $table_check = mysqli_query($conn, "SHOW TABLES LIKE 'notifications'");
+    if (!$table_check || mysqli_num_rows($table_check) === 0) {
+        return;
+    }
+
+    // 1. Check and add complaint_type column if missing
+    $col_check = mysqli_query($conn, "SHOW COLUMNS FROM notifications LIKE 'complaint_type'");
+    if ($col_check && mysqli_num_rows($col_check) === 0) {
+        mysqli_query($conn, "ALTER TABLE notifications ADD COLUMN complaint_type VARCHAR(20) NOT NULL DEFAULT 'academic' AFTER complaint_id");
+    }
+
+    // 2. Drop foreign key constraint referencing complaints table
+    $fk_query = "SELECT CONSTRAINT_NAME 
+                 FROM information_schema.KEY_COLUMN_USAGE 
+                 WHERE TABLE_SCHEMA = DATABASE() 
+                   AND TABLE_NAME = 'notifications' 
+                   AND COLUMN_NAME = 'complaint_id' 
+                   AND REFERENCED_TABLE_NAME = 'complaints'";
+    $fk_res = mysqli_query($conn, $fk_query);
+    if ($fk_res) {
+        while ($row = mysqli_fetch_assoc($fk_res)) {
+            $fk_name = $row['CONSTRAINT_NAME'];
+            mysqli_query($conn, "ALTER TABLE notifications DROP FOREIGN KEY `$fk_name`");
+        }
+    }
+}
+
 if ($ok) {
     // Notify the handler (admin/i4cus staff) that student replied
     if ($row['handled_by']) {
+        selfHealNotificationsTable($conn);
         $notif_ins = mysqli_prepare($conn,
-            "INSERT INTO notifications (user_id, complaint_id, type, title, message, created_at)
-             VALUES (?, ?, 'feedback_given', 'Student Reply on ICT Complaint', ?, NOW())");
+            "INSERT INTO notifications (user_id, complaint_id, type, title, message, complaint_type, created_at)
+             VALUES (?, ?, 'feedback_given', 'Student Reply on ICT Complaint', ?, 'ict', NOW())");
         if ($notif_ins) {
             $msg = "A student has replied to ICT complaint #{$complaint_id}.";
             mysqli_stmt_bind_param($notif_ins, 'iis', $row['handled_by'], $complaint_id, $msg);
@@ -78,3 +109,4 @@ if ($ok) {
 } else {
     echo json_encode(['success' => false, 'message' => 'Failed to save reply']);
 }
+

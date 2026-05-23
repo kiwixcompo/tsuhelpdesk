@@ -560,20 +560,24 @@ function nb_active(string $page, string $current): string {
         }
         el.innerHTML = list.map(n => `
             <div class="nb-notif-item ${n.is_read == 0 ? 'unread' : ''}"
-                 onclick="nbNotifClick(${n.notification_id}, ${n.complaint_id})">
+                 onclick="nbNotifClick(${n.notification_id}, ${n.complaint_id}, '${n.complaint_type}')">
                 <div class="nb-notif-title">${esc(n.title || 'Notification')}</div>
                 <div class="nb-notif-msg">${esc(n.message || '')}</div>
                 <div class="nb-notif-time">${timeAgo(n.created_at)}</div>
             </div>`).join('');
     }
 
-    window.nbNotifClick = function (nid, cid) {
+    window.nbNotifClick = function (nid, cid, type) {
         fetch('mark_notification_read.php', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({notification_id: nid})
         }).finally(() => {
-            window.location.href = 'view_complaint.php?id=' + cid;
+            if (type === 'ict') {
+                window.location.href = 'ict_complaints_admin.php?id=' + cid;
+            } else {
+                window.location.href = 'view_complaint.php?id=' + cid;
+            }
         });
     };
 

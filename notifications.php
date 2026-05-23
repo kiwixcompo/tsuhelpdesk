@@ -22,9 +22,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 }
 
 // Get all notifications for the user
-$sql = "SELECT n.*, c.student_id, c.complaint_text 
+$sql = "SELECT n.*, 
+               CASE 
+                   WHEN n.complaint_type = 'ict' THEN sic.node_label
+                   ELSE c.complaint_text
+               END as complaint_text,
+               CASE 
+                   WHEN n.complaint_type = 'ict' THEN s_ict.student_id
+                   ELSE c.student_id
+               END as student_id
         FROM notifications n 
-        JOIN complaints c ON n.complaint_id = c.complaint_id 
+        LEFT JOIN complaints c ON n.complaint_id = c.complaint_id AND n.complaint_type != 'ict'
+        LEFT JOIN student_ict_complaints sic ON n.complaint_id = sic.complaint_id AND n.complaint_type = 'ict'
+        LEFT JOIN students s_ict ON sic.student_id = s_ict.student_id
         WHERE n.user_id = ? 
         ORDER BY n.created_at DESC 
         LIMIT 50";
@@ -229,9 +239,9 @@ if($result){
                                                         <?php echo date('M d, Y h:i A', strtotime($notification['created_at'])); ?>
                                                     </small>
                                                     <div class="mt-2">
-                                                        <a href="view_complaint.php?id=<?php echo $notification['complaint_id']; ?>" 
-                                                           class="btn btn-sm btn-primary"
-                                                           onclick="markNotificationAsRead(<?php echo $notification['notification_id']; ?>, <?php echo $notification['complaint_id']; ?>)">View</a>
+                                                         <a href="<?php echo $notification['complaint_type'] === 'ict' ? 'ict_complaints_admin.php?id=' . $notification['complaint_id'] : 'view_complaint.php?id=' . $notification['complaint_id']; ?>" 
+                                                            class="btn btn-sm btn-primary"
+                                                            onclick="markNotificationAsRead(<?php echo $notification['notification_id']; ?>, <?php echo $notification['complaint_id']; ?>, '<?php echo htmlspecialchars($notification['complaint_type'] ?? '', ENT_QUOTES); ?>')">View</a>
                                                         <?php if (!$notification['is_read']): ?>
                                                         <form method="post" style="display: inline;">
                                                             <input type="hidden" name="notification_id" value="<?php echo $notification['notification_id']; ?>">
@@ -260,7 +270,7 @@ if($result){
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     
     <script>
-    function markNotificationAsRead(notificationId, complaintId) {
+    function markNotificationAsRead(notificationId, complaintId, complaintType) {
         // Mark as read via AJAX
         $.ajax({
             url: 'mark_notification_read.php',
@@ -294,11 +304,19 @@ if($result){
                 }
                 
                 // Navigate to the complaint page
-                window.location.href = 'view_complaint.php?id=' + complaintId;
+                if (complaintType === 'ict') {
+                    window.location.href = 'ict_complaints_admin.php?id=' + complaintId;
+                } else {
+                    window.location.href = 'view_complaint.php?id=' + complaintId;
+                }
             },
             error: function() {
                 // Still navigate even if marking as read fails
-                window.location.href = 'view_complaint.php?id=' + complaintId;
+                if (complaintType === 'ict') {
+                    window.location.href = 'ict_complaints_admin.php?id=' + complaintId;
+                } else {
+                    window.location.href = 'view_complaint.php?id=' + complaintId;
+                }
             }
         });
         
