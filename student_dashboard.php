@@ -147,11 +147,16 @@ if ($notif_count_result && $notif_row = mysqli_fetch_assoc($notif_count_result))
     $notification_count = (int) $notif_row['c'];
 }
 
-// Fetch unread student notifications for popup
+// Fetch unread student notifications for popup with pre-fetched complaint status to avoid N+1 query loops
 $unread_notifs = [];
 $notif_table_check = mysqli_query($conn, "SHOW TABLES LIKE 'student_notifications'");
 if (mysqli_num_rows($notif_table_check) > 0) {
-    $notif_sql = "SELECT * FROM student_notifications WHERE student_id = ? AND is_read = 0 ORDER BY created_at DESC LIMIT 5";
+    $notif_sql = "SELECT sn.*, sic.status AS complaint_status 
+                  FROM student_notifications sn 
+                  LEFT JOIN student_ict_complaints sic ON sn.complaint_id = sic.complaint_id 
+                  WHERE sn.student_id = ? AND sn.is_read = 0 
+                  ORDER BY sn.created_at DESC 
+                  LIMIT 5";
     if ($notif_stmt = mysqli_prepare($conn, $notif_sql)) {
         mysqli_stmt_bind_param($notif_stmt, "i", $_SESSION["student_id"]);
         if (mysqli_stmt_execute($notif_stmt)) {
@@ -163,6 +168,7 @@ if (mysqli_num_rows($notif_table_check) > 0) {
         mysqli_stmt_close($notif_stmt);
     }
 }
+
 
 ?>
 
@@ -1287,12 +1293,8 @@ if (mysqli_num_rows($notif_table_check) > 0) {
             </div>
             <div class="modal-body p-0">
                 <?php foreach ($unread_notifs as $notif):
-                    // Fetch complaint status to determine message
-                    $comp_status = '';
-                    if ($notif['complaint_id']) {
-                        $cs = mysqli_query($conn, "SELECT status FROM student_ict_complaints WHERE complaint_id = " . intval($notif['complaint_id']));
-                        if ($cs && $crow = mysqli_fetch_assoc($cs)) $comp_status = $crow['status'];
-                    }
+                    // Use pre-fetched complaint status from LEFT JOIN (zero database queries inside the loop!)
+                    $comp_status = $notif['complaint_status'] ?? '';
                     $is_resolved = in_array($comp_status, ['Resolved', 'Auto-Resolved']);
                 ?>
                 <div class="p-3 border-bottom d-flex align-items-start gap-3" style="gap:.75rem">

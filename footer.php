@@ -1,13 +1,12 @@
 <?php
 require_once "config.php";
 
-// Fetch footer text from settings
+// Fetch footer text from settings session cache (preloaded in config.php)
 $footer_text = "Copyright © " . date('Y') . " TSU ICT Help Desk. All rights reserved.";
-$sql = "SELECT setting_value FROM settings WHERE setting_key = 'footer_text'";
-$result = mysqli_query($conn, $sql);
-if($result && $row = mysqli_fetch_assoc($result)){
-    $footer_text = str_replace("{year}", date('Y'), $row['setting_value']);
+if (isset($_SESSION['app_settings']['footer_text'])) {
+    $footer_text = str_replace("{year}", date('Y'), $_SESSION['app_settings']['footer_text']);
 }
+
 ?>
 
 <footer class="footer mt-auto py-3 bg-light">

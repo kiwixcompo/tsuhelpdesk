@@ -12,28 +12,11 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true){
 require_once "config.php";
 require_once "includes/notification_prefs.php";
 
-// Fetch app settings for header use
-$app_name = 'TSU ICT Help Desk'; // Default value
-$app_logo = '';
-$app_favicon = '';
+// Fetch app settings from session cache (preloaded in config.php)
+$app_name = $_SESSION['app_settings']['app_name'] ?? 'TSU ICT Help Desk';
+$app_logo = $_SESSION['app_settings']['app_logo'] ?? '';
+$app_favicon = $_SESSION['app_settings']['app_favicon'] ?? '';
 
-$sql = "SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('app_name', 'app_logo', 'app_favicon')";
-$result = mysqli_query($conn, $sql);
-if($result){
-    while($row = mysqli_fetch_assoc($result)){
-        switch($row['setting_key']) {
-            case 'app_name':
-                $app_name = $row['setting_value'] ?: 'TSU ICT Help Desk';
-                break;
-            case 'app_logo':
-                $app_logo = $row['setting_value'];
-                break;
-            case 'app_favicon':
-                $app_favicon = $row['setting_value'];
-                break;
-        }
-    }
-}
 ?>
 <!DOCTYPE html>
 <html lang="en">

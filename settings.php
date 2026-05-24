@@ -99,6 +99,10 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["update_settings"])){
     
     if(empty($error_message)){
         $success_message = "Settings updated successfully.";
+        // Invalidate settings cache
+        if (isset($_SESSION['app_settings'])) {
+            unset($_SESSION['app_settings']);
+        }
     }
 }
 

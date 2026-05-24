@@ -30,3 +30,26 @@ if ($conn === false) {
     app_log('error', 'Database connection failed', ['error' => mysqli_connect_error()]);
     die("ERROR: Could not connect. " . mysqli_connect_error());
 }
+
+// Start session if not already started to support settings caching
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Cache global application settings to minimize database query overhead
+if (!isset($_SESSION['app_settings']) || !is_array($_SESSION['app_settings'])) {
+    $_SESSION['app_settings'] = [];
+    $settings_sql = "SELECT setting_key, setting_value FROM settings";
+    $settings_result = mysqli_query($conn, $settings_sql);
+    if ($settings_result) {
+        while ($row = mysqli_fetch_assoc($settings_result)) {
+            $_SESSION['app_settings'][$row['setting_key']] = $row['setting_value'];
+        }
+    }
+}
+
+// Globally expose core branding variables so pages load instantly
+$app_name = $_SESSION['app_settings']['app_name'] ?? 'TSU ICT Help Desk';
+$app_logo = $_SESSION['app_settings']['app_logo'] ?? '';
+$app_favicon = $_SESSION['app_settings']['app_favicon'] ?? '';
+
