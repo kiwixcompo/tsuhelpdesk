@@ -53,3 +53,39 @@ $app_name = $_SESSION['app_settings']['app_name'] ?? 'TSU ICT Help Desk';
 $app_logo = $_SESSION['app_settings']['app_logo'] ?? '';
 $app_favicon = $_SESSION['app_settings']['app_favicon'] ?? '';
 
+// Automatically mark student ICT complaints under review for 1 week or more as Resolved
+$table_check = mysqli_query($conn, "SHOW TABLES LIKE 'student_ict_complaints'");
+if ($table_check && mysqli_num_rows($table_check) > 0) {
+    // 1. Fetch complaints that are about to be auto-resolved to notify the students
+    $select_sql = "SELECT complaint_id, student_id, node_label 
+                   FROM student_ict_complaints 
+                   WHERE status = 'Under Review' 
+                     AND updated_at <= DATE_SUB(NOW(), INTERVAL 7 DAY)";
+    $select_res = mysqli_query($conn, $select_sql);
+    if ($select_res && mysqli_num_rows($select_res) > 0) {
+        $to_resolve_ids = [];
+        while ($row = mysqli_fetch_assoc($select_res)) {
+            $cid = (int)$row['complaint_id'];
+            $sid = (int)$row['student_id'];
+            $to_resolve_ids[] = $cid;
+            
+            // Insert notification for the student
+            $notif_title = "Complaint Automatically Resolved";
+            $notif_msg = "Your complaint regarding \"" . mysqli_real_escape_string($conn, $row['node_label']) . "\" has been automatically marked as resolved after 1 week of no activity under review.";
+            $notif_sql = "INSERT INTO student_notifications (student_id, complaint_id, title, message, created_at)
+                          VALUES ($sid, $cid, '" . mysqli_real_escape_string($conn, $notif_title) . "', '" . mysqli_real_escape_string($conn, $notif_msg) . "', NOW())";
+            mysqli_query($conn, $notif_sql);
+        }
+        
+        // 2. Perform the bulk update
+        if (!empty($to_resolve_ids)) {
+            $ids_str = implode(',', $to_resolve_ids);
+            $update_sql = "UPDATE student_ict_complaints 
+                           SET status = 'Resolved', updated_at = NOW() 
+                           WHERE complaint_id IN ($ids_str)";
+            mysqli_query($conn, $update_sql);
+        }
+    }
+}
+
+
