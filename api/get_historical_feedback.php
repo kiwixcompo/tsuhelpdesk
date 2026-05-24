@@ -25,15 +25,14 @@ if (empty($category)) {
     exit;
 }
 
-// Fetch past complaints of the same category with a non-empty admin response
-$sql = "SELECT description, admin_response, node_label 
+// Fetch past resolved complaints from all categories (prioritizing same category first) to allow instant global AI learning
+$sql = "SELECT description, admin_response, node_label, category 
         FROM student_ict_complaints 
-        WHERE category = ? 
-          AND admin_response IS NOT NULL 
+        WHERE admin_response IS NOT NULL 
           AND admin_response != '' 
           AND complaint_id != ?
-        ORDER BY created_at DESC 
-        LIMIT 10";
+        ORDER BY (CASE WHEN category = ? THEN 1 ELSE 2 END) ASC, created_at DESC 
+        LIMIT 15";
 
 $stmt = mysqli_prepare($conn, $sql);
 if (!$stmt) {
@@ -41,7 +40,7 @@ if (!$stmt) {
     exit;
 }
 
-mysqli_stmt_bind_param($stmt, 'si', $category, $complaint_id);
+mysqli_stmt_bind_param($stmt, 'is', $complaint_id, $category);
 mysqli_stmt_execute($stmt);
 $result = mysqli_stmt_get_result($stmt);
 

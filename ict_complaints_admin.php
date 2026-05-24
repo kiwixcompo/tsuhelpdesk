@@ -1070,10 +1070,11 @@ $(function() {
 Below are historical examples of similar student complaints and the correct professional feedback responses that were given:
 
 ${examplesPrompt}
-Now, draft a professional, polite, and helpful response for this new student complaint:
+Now, draft a highly professional, polite, and helpful response for this new student complaint. Tweak, refine, and polish the English phrasing to make it clear, grammatically flawless, and exceptionally professional, while retaining the correct technical instructions from similar historical responses:
 New Complaint Description: "${currentDesc}"
 
 Return ONLY the response text that the admin should send to the student. Do not write any intro or outro (e.g. do not say "Here is a response" or "Dear student"). Just output the exact text to be pasted into the response box.`;
+
 
             const result = await puter.ai.chat(prompt);
             const generatedResponse = extractAIText(result);

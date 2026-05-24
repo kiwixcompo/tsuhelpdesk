@@ -667,9 +667,10 @@ ${historyList}
 A student is currently typing this description of their issue: "${desc}"
 
 Does the student's typed issue describe a problem that is highly similar to one of the solved issues listed above?
-If yes, select the solved issue that matches, and reply with ONLY the EXACT Resolution text of that solved issue.
+If yes, select the matching resolution, and rewrite/tweak its English phrasing to make it grammatically flawless, highly professional, polite, and clear, while keeping the core instructions exactly the same.
 If no solved issue is highly similar to what the student is describing, reply with "NO_MATCH".
-Do not add any greetings, preamble, or formatting. Reply with either the exact matching Resolution text or "NO_MATCH".`;
+Do not add any greetings, preamble, or formatting. Reply with either the improved resolution text or "NO_MATCH".`;
+
 
                 const result = await puter.ai.chat(prompt);
                 const match = extractAIText(result);
