@@ -124,25 +124,22 @@ $per_page = 10;
 $offset = ($page - 1) * $per_page;
 
 // Base WHERE conditions - only show payment-related complaints
-$where = ["is_payment_related = 1"];
+$base_where = ["is_payment_related = 1"];
 if ($search_id) {
-    $where[] = "student_id LIKE '%" . mysqli_real_escape_string($conn, $search_id) . "%'";
-    // When searching by student ID, include all complaints regardless of status
-} else if ($filter_status) {
-    // Only apply status filter when not searching by student ID
-    $where[] = "status = '" . mysqli_real_escape_string($conn, $filter_status) . "'";
-} else if ($filter_date) {
-    // Filter by date
-    $where[] = "DATE(created_at) = '" . mysqli_real_escape_string($conn, $filter_date) . "'";
-} else {
-    // By default, only show non-treated complaints unless explicitly filtered
-    $where[] = "status != 'Treated'";
+    $base_where[] = "student_id LIKE '%" . mysqli_real_escape_string($conn, $search_id) . "%'";
+}
+if ($filter_status) {
+    $base_where[] = "status = '" . mysqli_real_escape_string($conn, $filter_status) . "'";
+}
+if ($filter_date) {
+    $base_where[] = "DATE(created_at) = '" . mysqli_real_escape_string($conn, $filter_date) . "'";
 }
 
-// Separate active and archived complaints
-$where_active = $where;
-$where_archived = $where;
+// Separate active and archived complaints completely
+$where_active = $base_where;
 $where_active[] = "status != 'Treated'";
+
+$where_archived = $base_where;
 $where_archived[] = "status = 'Treated'";
 
 // Build WHERE clauses
@@ -793,8 +790,8 @@ function getImagePath($path) {
     }
     </script>
     
-    <!-- Auto-refresh complaints script -->
-    <script src="assets/js/auto_refresh_complaints.js"></script>
+    <!-- Auto-refresh complaints script disabled -->
+    <!-- <script src="assets/js/auto_refresh_complaints.js"></script> -->
     <script>
     $(function() {
         var userId = <?php echo $_SESSION["user_id"]; ?>;
@@ -828,14 +825,14 @@ function getImagePath($path) {
             }
             return 0;
         }
-        autoRefreshComplaints({
-            container: '#active table tbody',
-            afterSelector: 'tr:first',
-            getLastId: getLastComplaintId,
-            renderComplaint: renderComplaint,
-            userId: userId,
-            userRoleId: userRoleId
-        });
+        // autoRefreshComplaints({
+        //     container: '#active table tbody',
+        //     afterSelector: 'tr:first',
+        //     getLastId: getLastComplaintId,
+        //     renderComplaint: renderComplaint,
+        //     userId: userId,
+        //     userRoleId: userRoleId
+        // });
     });
     </script>
     
