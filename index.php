@@ -1,3 +1,4 @@
+<?php
 // Load global security settings and headers
 require_once __DIR__ . '/security-config.php';
 
