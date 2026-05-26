@@ -823,6 +823,32 @@ while($row = mysqli_fetch_assoc($result)){
     
     <script>
     $(document).ready(function() {
+        // Explicitly handle Export to Excel dropdown toggle to bypass potential Bootstrap/Popper auto-initialization issues
+        $('#exportDropdown').on('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const $parent = $(this).closest('.dropdown');
+            const $menu = $parent.find('.dropdown-menu');
+            const isOpen = $parent.hasClass('show');
+            
+            // Close other dropdowns
+            $('.dropdown').removeClass('show');
+            $('.dropdown-menu').removeClass('show');
+            
+            if (!isOpen) {
+                $parent.addClass('show');
+                $menu.addClass('show');
+            }
+        });
+
+        // Close dropdown when clicking outside
+        $(document).on('click', function(e) {
+            if (!$(e.target).closest('.dropdown').length) {
+                $('.dropdown').removeClass('show');
+                $('.dropdown-menu').removeClass('show');
+            }
+        });
+
         let searchTimeout;
         
         // Autocomplete search functionality
