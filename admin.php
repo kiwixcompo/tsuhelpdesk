@@ -735,6 +735,35 @@ function getImagePath($image) {
             </div>
         </div>
 
+        <div class="mb-4">
+            <div class="card bg-light">
+                <div class="card-body py-2">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h6 class="mb-0"><i class="fas fa-building mr-2"></i>Department Complaints</h6>
+                            <small class="text-muted">Complaints lodged by academic and administrative departments regarding various administrative or operational issues</small>
+                        </div>
+                        <div class="col-md-4 text-right mt-2 mt-md-0">
+                            <?php
+                            $dept_pending = 0;
+                            $dept_r = mysqli_query($conn, "SELECT COUNT(*) c FROM complaints c JOIN users u ON c.lodged_by = u.user_id WHERE u.role_id = 7 AND c.status = 'Pending'");
+                            if ($dept_r && $dept_row = mysqli_fetch_assoc($dept_r)) {
+                                $dept_pending = (int)$dept_row['c'];
+                            }
+                            ?>
+                            <a href="department_complaints_admin.php" class="btn btn-info btn-sm" style="background: linear-gradient(135deg, #17a2b8 0%, #117a8b 100%); border: none;">
+                                <i class="fas fa-building mr-1"></i> Manage Department Complaints
+                                <?php if ($dept_pending > 0): ?>
+                                    <span class="badge badge-danger ml-1"><?php echo $dept_pending; ?></span>
+                                <?php endif; ?>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
         <div class="row mb-3 align-items-end">
             <div class="col-md-6 mb-3 mb-md-0">
                 <form method="get" class="form-inline">
@@ -950,109 +979,112 @@ function getImagePath($image) {
                                                 </button>
                                             </td>
                                         </tr>
-
-                                        <div class="modal fade" id="updateModal<?php echo $complaint['complaint_id']; ?>" tabindex="-1" data-backdrop="false" data-keyboard="true">
-                                            <div class="modal-dialog">
-                                                <div class="modal-content">
-                                                    <div class="modal-header">
-                                                        <h5 class="modal-title">Update Complaint</h5>
-                                                        <button type="button" class="close text-white" data-dismiss="modal">
-                                                            <span>&times;</span>
-                                                        </button>
-                                                    </div>
-                                                    <form method="post" enctype="multipart/form-data">
-                                                        <div class="modal-body">
-                                                            <input type="hidden" name="complaint_id" value="<?php echo $complaint['complaint_id']; ?>">
-                                                            <div class="form-group">
-                                                                <label>Student ID</label>
-                                                                <p class="form-control-plaintext font-weight-bold border-bottom pb-2"><?php echo $complaint['student_id']; ?></p>
-                                                            </div>
-                                                            <div class="form-group">
-                                                                <label>Complaint Details</label>
-                                                                <p class="form-control-plaintext bg-light p-2 rounded"><?php echo $complaint['complaint_text']; ?></p>
-                                                            </div>
-                                                            <?php if($complaint['image_path']): ?>
-                                                            <div class="form-group">
-                                                                <label>Attached Images</label>
-                                                                <div class="mt-2 d-flex flex-wrap">
-                                                                    <?php foreach(explode(",", $complaint['image_path']) as $image): ?>
-                                                                        <div class="mr-2 mb-2">
-                                                                            <img src="<?php echo htmlspecialchars(getImagePath($image)); ?>" 
-                                                                                 class="img-thumbnail" alt="Complaint Image"
-                                                                                 style="max-height: 100px; cursor: pointer;"
-                                                                                 onclick="showImageModal('<?php echo htmlspecialchars(getImagePath($image)); ?>')">
-                                                                        </div>
-                                                                    <?php endforeach; ?>
-                                                                </div>
-                                                            </div>
-                                                            <?php endif; ?>
-                                                            <div class="form-group">
-                                                                <label>Priority</label>
-                                                                <div class="custom-control custom-checkbox">
-                                                                    <input type="checkbox" class="custom-control-input" id="urgentCheck<?php echo $complaint['complaint_id']; ?>" 
-                                                                           name="is_urgent" <?php echo $complaint['is_urgent'] ? 'checked' : ''; ?>>
-                                                                    <label class="custom-control-label text-danger font-weight-bold" for="urgentCheck<?php echo $complaint['complaint_id']; ?>">
-                                                                        Mark as Urgent
-                                                                    </label>
-                                                                </div>
-                                                            </div>
-                                                            <div class="form-group">
-                                                                <label>Status</label>
-                                                                <select name="status" class="form-control" required>
-                                                                    <option value="Pending" <?php echo $complaint['status'] == 'Pending' ? 'selected' : ''; ?>>Pending</option>
-                                                                    <option value="Treated" <?php echo $complaint['status'] == 'Treated' ? 'selected' : ''; ?>>Treated</option>
-                                                                    <option value="Needs More Info" <?php echo $complaint['status'] == 'Needs More Info' ? 'selected' : ''; ?>>Needs More Info</option>
-                                                                </select>
-                                                            </div>
-                                                            <div class="form-group">
-                                                                <label>Feedback Type</label>
-                                                                <select name="feedback_type" class="form-control">
-                                                                    <option value="">No Feedback</option>
-                                                                    <option value="resolved" <?php echo $complaint['feedback_type'] == 'resolved' ? 'selected' : ''; ?>>Resolved (Response Only)</option>
-                                                                    <option value="incomplete" <?php echo $complaint['feedback_type'] == 'incomplete' ? 'selected' : ''; ?>>Incomplete Information</option>
-                                                                </select>
-                                                            </div>
-                                                            <div class="form-group">
-                                                                <label>Feedback</label>
-                                                                <textarea name="feedback" class="form-control" rows="3"><?php echo $complaint['feedback']; ?></textarea>
-                                                            </div>
-                                                            <div class="form-group">
-                                                                <label for="admin_feedback_images_<?php echo $complaint['complaint_id']; ?>">Attach Images to Feedback (Optional)</label>
-                                                                <input type="file" id="admin_feedback_images_<?php echo $complaint['complaint_id']; ?>" name="admin_feedback_images[]" class="form-control-file" accept="image/*" multiple>
-                                                                <small class="form-text text-muted">Supported formats: JPG, JPEG, PNG, GIF (Max size: 5MB per image)<br>
-                                                                <strong>💡 Tip:</strong> Paste screenshots with Ctrl+V or drag & drop images!</small>
-                                                            </div>
-                                                            <div class="form-group">
-                                                                <div class="custom-control custom-checkbox">
-                                                                    <input type="checkbox" class="custom-control-input" id="paymentCheck<?php echo $complaint['complaint_id']; ?>" 
-                                                                           name="is_payment_related" <?php echo $complaint['is_payment_related'] ? 'checked' : ''; ?>>
-                                                                    <label class="custom-control-label" for="paymentCheck<?php echo $complaint['complaint_id']; ?>">
-                                                                        Mark as Payment-Related
-                                                                    </label>
-                                                                </div>
-                                                            </div>
-                                                            <div class="form-group">
-                                                                <div class="custom-control custom-checkbox">
-                                                                    <input type="checkbox" class="custom-control-input" id="i4cusCheck<?php echo $complaint['complaint_id']; ?>" 
-                                                                           name="is_i4cus" <?php echo $complaint['is_i4cus'] ? 'checked' : ''; ?>>
-                                                                    <label class="custom-control-label" for="i4cusCheck<?php echo $complaint['complaint_id']; ?>">
-                                                                        Mark as i4Cus Issue
-                                                                    </label>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <div class="modal-footer bg-light">
-                                                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                                                            <button type="submit" name="update_complaint" class="btn btn-primary">Update</button>
-                                                        </div>
-                                                    </form>
-                                                </div>
-                                            </div>
-                                        </div>
                                         <?php endforeach; ?>
                                     </tbody>
                                 </table>
-                                </div></form>
+                                </div>
+                            </form>
+                            
+                            <?php foreach($complaints as $complaint): ?>
+                            <div class="modal fade" id="updateModal<?php echo $complaint['complaint_id']; ?>" tabindex="-1" data-backdrop="false" data-keyboard="true">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">Update Complaint</h5>
+                                            <button type="button" class="close text-white" data-dismiss="modal">
+                                                <span>&times;</span>
+                                            </button>
+                                        </div>
+                                        <form method="post" enctype="multipart/form-data">
+                                            <div class="modal-body">
+                                                <input type="hidden" name="complaint_id" value="<?php echo $complaint['complaint_id']; ?>">
+                                                <div class="form-group">
+                                                    <label>Student ID</label>
+                                                    <p class="form-control-plaintext font-weight-bold border-bottom pb-2"><?php echo $complaint['student_id']; ?></p>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label>Complaint Details</label>
+                                                    <p class="form-control-plaintext bg-light p-2 rounded"><?php echo $complaint['complaint_text']; ?></p>
+                                                </div>
+                                                <?php if($complaint['image_path']): ?>
+                                                <div class="form-group">
+                                                    <label>Attached Images</label>
+                                                    <div class="mt-2 d-flex flex-wrap">
+                                                        <?php foreach(explode(",", $complaint['image_path']) as $image): ?>
+                                                            <div class="mr-2 mb-2">
+                                                                <img src="<?php echo htmlspecialchars(getImagePath($image)); ?>" 
+                                                                     class="img-thumbnail" alt="Complaint Image"
+                                                                     style="max-height: 100px; cursor: pointer;"
+                                                                     onclick="showImageModal('<?php echo htmlspecialchars(getImagePath($image)); ?>')">
+                                                            </div>
+                                                        <?php endforeach; ?>
+                                                    </div>
+                                                </div>
+                                                <?php endif; ?>
+                                                <div class="form-group">
+                                                    <label>Priority</label>
+                                                    <div class="custom-control custom-checkbox">
+                                                        <input type="checkbox" class="custom-control-input" id="urgentCheck<?php echo $complaint['complaint_id']; ?>" 
+                                                               name="is_urgent" <?php echo $complaint['is_urgent'] ? 'checked' : ''; ?>>
+                                                        <label class="custom-control-label text-danger font-weight-bold" for="urgentCheck<?php echo $complaint['complaint_id']; ?>">
+                                                            Mark as Urgent
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label>Status</label>
+                                                    <select name="status" class="form-control" required>
+                                                        <option value="Pending" <?php echo $complaint['status'] == 'Pending' ? 'selected' : ''; ?>>Pending</option>
+                                                        <option value="Treated" <?php echo $complaint['status'] == 'Treated' ? 'selected' : ''; ?>>Treated</option>
+                                                        <option value="Needs More Info" <?php echo $complaint['status'] == 'Needs More Info' ? 'selected' : ''; ?>>Needs More Info</option>
+                                                    </select>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label>Feedback Type</label>
+                                                    <select name="feedback_type" class="form-control">
+                                                        <option value="">No Feedback</option>
+                                                        <option value="resolved" <?php echo $complaint['feedback_type'] == 'resolved' ? 'selected' : ''; ?>>Resolved (Response Only)</option>
+                                                        <option value="incomplete" <?php echo $complaint['feedback_type'] == 'incomplete' ? 'selected' : ''; ?>>Incomplete Information</option>
+                                                    </select>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label>Feedback</label>
+                                                    <textarea name="feedback" class="form-control" rows="3"><?php echo $complaint['feedback']; ?></textarea>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="admin_feedback_images_<?php echo $complaint['complaint_id']; ?>">Attach Images to Feedback (Optional)</label>
+                                                    <input type="file" id="admin_feedback_images_<?php echo $complaint['complaint_id']; ?>" name="admin_feedback_images[]" class="form-control-file" accept="image/*" multiple>
+                                                    <small class="form-text text-muted">Supported formats: JPG, JPEG, PNG, GIF (Max size: 5MB per image)<br>
+                                                    <strong>💡 Tip:</strong> Paste screenshots with Ctrl+V or drag & drop images!</small>
+                                                </div>
+                                                <div class="form-group">
+                                                    <div class="custom-control custom-checkbox">
+                                                        <input type="checkbox" class="custom-control-input" id="paymentCheck<?php echo $complaint['complaint_id']; ?>" 
+                                                               name="is_payment_related" <?php echo $complaint['is_payment_related'] ? 'checked' : ''; ?>>
+                                                        <label class="custom-control-label" for="paymentCheck<?php echo $complaint['complaint_id']; ?>">
+                                                            Mark as Payment-Related
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                <div class="form-group">
+                                                    <div class="custom-control custom-checkbox">
+                                                        <input type="checkbox" class="custom-control-input" id="i4cusCheck<?php echo $complaint['complaint_id']; ?>" 
+                                                               name="is_i4cus" <?php echo $complaint['is_i4cus'] ? 'checked' : ''; ?>>
+                                                        <label class="custom-control-label" for="i4cusCheck<?php echo $complaint['complaint_id']; ?>">
+                                                            Mark as i4Cus Issue
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer bg-light">
+                                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                                <button type="submit" name="update_complaint" class="btn btn-primary">Update</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
                             
                             <?php if($total_pages > 1): ?>
                             <nav aria-label="Page navigation" class="mt-4">
