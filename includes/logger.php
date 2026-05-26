@@ -66,7 +66,7 @@ function app_log(string $level, string $message, array $context = []): void
  * Never outputs to browser. Returns true on success, false on failure.
  */
 if (!function_exists('app_mail')) {
-function app_mail($to, $subject, $message, $headers = '') {
+function app_mail($to, $subject, $message, $headers = '', $attachment_path = '') {
     // Try PHPMailer first (SMTP — bypasses server mail() restrictions)
     $phpmailer_path = __DIR__ . '/../PHPMailer/src/PHPMailer.php';
     if (file_exists($phpmailer_path)) {
@@ -94,6 +94,9 @@ function app_mail($to, $subject, $message, $headers = '') {
             $mail->isHTML(false);
             $mail->Subject = $subject;
             $mail->Body    = $message;
+            if (!empty($attachment_path) && file_exists($attachment_path)) {
+                $mail->addAttachment($attachment_path);
+            }
             $mail->send();
             return true;
         } catch (Exception $e) {

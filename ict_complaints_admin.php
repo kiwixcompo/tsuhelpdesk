@@ -240,7 +240,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['forward_complaint']))
                 if ($du_row && !empty($du_row['email'])) {
                     // Get complaint details for the email
                     $comp_stmt = mysqli_prepare($conn,
-                        "SELECT c.node_label, c.category, c.path_summary,
+                        "SELECT c.node_label, c.category, c.path_summary, c.attachment_path,
                                 CONCAT(s.first_name,' ',s.last_name) as student_name,
                                 s.registration_number
                          FROM student_ict_complaints c
@@ -261,13 +261,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['forward_complaint']))
                         $body   .= "Student    : {$comp['student_name']} ({$comp['registration_number']})\n";
                         $body   .= "Category   : {$comp['category']}\n";
                         $body   .= "Issue      : {$comp['node_label']}\n";
-                        $body   .= "Path       : {$comp['path_summary']}\n\n";
-                        $body   .= "Please log in to review and respond:\n";
+                        $body   .= "Path       : {$comp['path_summary']}\n";
+                        if (!empty($comp['attachment_path'])) {
+                            $body .= "Attachment : https://helpdesk.tsuniversity.ng/{$comp['attachment_path']}\n";
+                        }
+                        $body   .= "\nPlease log in to review and respond:\n";
                         $body   .= "https://helpdesk.tsuniversity.ng/department_dashboard.php\n\n";
                         $body   .= "Best regards,\nTSU ICT Help Desk";
 
                         sendDeptEmailIfAllowed($conn, (int)$du_row['user_id'],
-                            'on_forwarded', $du_row['email'], $subject, $body);
+                            'on_forwarded', $du_row['email'], $subject, $body, $comp['attachment_path'] ?? '');
                     }
                 }
             }
@@ -283,7 +286,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['forward_complaint']))
     exit;
 }
 
-// ── Filters ───────────────────────────────────────────────
+// ── Filters & Pagination ──────────────────────────────────
 $f_search   = trim($_GET['search'] ?? '');
 $f_status   = $_GET['status']   ?? '';
 $f_category = $_GET['category'] ?? '';
@@ -294,28 +297,7 @@ $show_archive = isset($_GET['archive']) && $_GET['archive'] === '1';
 $where = ['1=1'];
 $params = []; $types = '';
 
-// Status filter handling
-if ($f_status === 'all') {
-    // Show all complaints, so do not add any status or active/archive bounds
-} elseif ($f_status === 'Pending') {
-    $where[] = "(c.status = 'Pending' OR (c.status NOT IN ('Resolved', 'Rejected', 'Auto-Resolved') AND (SELECT COUNT(*) FROM student_ict_replies r WHERE r.complaint_id = c.complaint_id AND r.sender_type = 'student' AND r.created_at > c.updated_at) > 0))";
-} elseif ($f_status === 'Under Review') {
-    $where[] = "(c.status = 'Under Review' AND (SELECT COUNT(*) FROM student_ict_replies r WHERE r.complaint_id = c.complaint_id AND r.sender_type = 'student' AND r.created_at > c.updated_at) = 0)";
-} elseif ($f_status && $f_status !== 'all') {
-    $where[] = 'c.status=?';
-    $params[] = $f_status;
-    $types .= 's';
-} elseif (empty($f_status) && !$show_archive) {
-    // Default view: Pending or student-replied active complaints
-    $where[] = "(c.status = 'Pending' OR (c.status NOT IN ('Resolved', 'Rejected', 'Auto-Resolved') AND (SELECT COUNT(*) FROM student_ict_replies r WHERE r.complaint_id = c.complaint_id AND r.sender_type = 'student' AND r.created_at > c.updated_at) > 0))";
-} elseif ($show_archive && empty($f_status)) {
-    $where[] = "c.status IN ('Resolved', 'Rejected', 'Auto-Resolved')";
-}
-
-if ($f_category) { $where[] = 'c.category=?'; $params[] = $f_category; $types .= 's'; }
-if ($f_from)     { $where[] = 'c.created_at>=?'; $params[] = $f_from.' 00:00:00'; $types .= 's'; }
-if ($f_to)       { $where[] = 'c.created_at<=?'; $params[] = $f_to.' 23:59:59';   $types .= 's'; }
-
+// If a search is done, ignore status/archive view filters to search entire records globally
 if ($f_search !== '') {
     $where[] = "(s.registration_number LIKE ? OR CONCAT(s.first_name, ' ', s.last_name) LIKE ? OR c.description LIKE ? OR c.node_label LIKE ?)";
     $search_param = '%' . $f_search . '%';
@@ -324,9 +306,83 @@ if ($f_search !== '') {
     $params[] = $search_param;
     $params[] = $search_param;
     $types .= 'ssss';
+    
+    // Maintain optional category and date filters if set
+    if ($f_category) { $where[] = 'c.category=?'; $params[] = $f_category; $types .= 's'; }
+    if ($f_from)     { $where[] = 'c.created_at>=?'; $params[] = $f_from.' 00:00:00'; $types .= 's'; }
+    if ($f_to)       { $where[] = 'c.created_at<=?'; $params[] = $f_to.' 23:59:59';   $types .= 's'; }
+} else {
+    // Standard view filters
+    if ($f_status === 'all') {
+        // Show all complaints
+    } elseif ($f_status === 'Pending') {
+        $where[] = "(c.status = 'Pending' OR (c.status NOT IN ('Resolved', 'Rejected', 'Auto-Resolved') AND (SELECT COUNT(*) FROM student_ict_replies r WHERE r.complaint_id = c.complaint_id AND r.sender_type = 'student' AND r.created_at > c.updated_at) > 0))";
+    } elseif ($f_status === 'Under Review') {
+        $where[] = "(c.status = 'Under Review' AND (SELECT COUNT(*) FROM student_ict_replies r WHERE r.complaint_id = c.complaint_id AND r.sender_type = 'student' AND r.created_at > c.updated_at) = 0)";
+    } elseif ($f_status && $f_status !== 'all') {
+        $where[] = 'c.status=?';
+        $params[] = $f_status;
+        $types .= 's';
+    } elseif (empty($f_status) && !$show_archive) {
+        // Default view: Active queue (Pending or student-replied active complaints)
+        $where[] = "(c.status = 'Pending' OR (c.status NOT IN ('Resolved', 'Rejected', 'Auto-Resolved') AND (SELECT COUNT(*) FROM student_ict_replies r WHERE r.complaint_id = c.complaint_id AND r.sender_type = 'student' AND r.created_at > c.updated_at) > 0))";
+    } elseif ($show_archive && empty($f_status)) {
+        $where[] = "c.status IN ('Resolved', 'Rejected', 'Auto-Resolved')";
+    }
+
+    if ($f_category) { $where[] = 'c.category=?'; $params[] = $f_category; $types .= 's'; }
+    if ($f_from)     { $where[] = 'c.created_at>=?'; $params[] = $f_from.' 00:00:00'; $types .= 's'; }
+    if ($f_to)       { $where[] = 'c.created_at<=?'; $params[] = $f_to.' 23:59:59';   $types .= 's'; }
 }
 
 $wc = implode(' AND ', $where);
+
+// --- Dynamic Pagination Logic Setup ---
+$default_limit = 10;
+$allowed_limits = [10, 20, 50, 100, 'all'];
+$per_page = isset($_GET['limit']) ? $_GET['limit'] : $default_limit;
+
+if (!in_array($per_page, $allowed_limits)) {
+    $per_page = $default_limit;
+}
+
+// Count total matching complaints for current filters
+$count_sql = "SELECT COUNT(*) as total
+              FROM student_ict_complaints c
+              JOIN students s ON c.student_id = s.student_id
+              LEFT JOIN student_departments sd ON s.department_id = sd.department_id
+              LEFT JOIN faculties f ON sd.faculty_id = f.faculty_id
+              WHERE $wc";
+
+$total_filtered_complaints = 0;
+$stmt_count = mysqli_prepare($conn, $count_sql);
+if ($stmt_count) {
+    if ($types) mysqli_stmt_bind_param($stmt_count, $types, ...$params);
+    mysqli_stmt_execute($stmt_count);
+    $res_count = mysqli_stmt_get_result($stmt_count);
+    if ($row_count = mysqli_fetch_assoc($res_count)) {
+        $total_filtered_complaints = (int)$row_count['total'];
+    }
+    mysqli_stmt_close($stmt_count);
+}
+
+if ($per_page === 'all') {
+    $total_pages = 1;
+    $page = 1;
+    $limit_clause = "";
+} else {
+    $per_page = (int)$per_page;
+    $total_pages = max(1, ceil($total_filtered_complaints / $per_page));
+    
+    $page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
+    if ($page < 1) $page = 1;
+    if ($page > $total_pages) $page = $total_pages;
+    
+    $offset = ($page - 1) * $per_page;
+    if ($offset < 0) $offset = 0;
+    
+    $limit_clause = "LIMIT $per_page OFFSET $offset";
+}
 
 // Stats
 $stats = ['total'=>0,'pending'=>0,'under_review'=>0,'resolved'=>0,'auto'=>0];
@@ -343,7 +399,7 @@ if ($sr && $row = mysqli_fetch_assoc($sr)) {
               'auto'=>$row['auto_resolved']];
 }
 
-// Complaints list
+// Complaints list with dynamic limit and offset
 $sql = "SELECT c.*,
         CONCAT(s.first_name,' ',s.last_name) AS student_name,
         s.registration_number, s.email,
@@ -354,7 +410,8 @@ $sql = "SELECT c.*,
         LEFT JOIN student_departments sd ON s.department_id = sd.department_id
         LEFT JOIN faculties f ON sd.faculty_id = f.faculty_id
         WHERE $wc
-        ORDER BY c.created_at DESC";
+        ORDER BY c.created_at DESC
+        $limit_clause";
 
 $complaints = [];
 $stmt = mysqli_prepare($conn, $sql);
@@ -469,6 +526,7 @@ $val_map = [
         $val = $val_map[$lbl] ?? '';
         $card_params = $_GET;
         $card_params['status'] = $val;
+        $card_params['page'] = 1; // Reset page to 1 on tab click
         // Adjust archive param based on selection
         if ($val === 'Resolved' || $val === 'Auto-Resolved') {
             $card_params['archive'] = '1';
@@ -550,7 +608,7 @@ $val_map = [
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0"><i class="fas fa-headset mr-2"></i>
             <?php echo $show_archive ? 'Archived ICT Complaints' : 'Active ICT Complaints Queue'; ?>
-            (<span id="complaintsCount"><?php echo count($complaints); ?></span>)
+            (<span id="complaintsCount"><?php echo $total_filtered_complaints; ?></span>)
         </h5>
         <div>
             <?php if (!$show_archive): ?>
@@ -669,6 +727,88 @@ $val_map = [
             </tbody>
         </table>
     </div>
+    <!-- Pagination controls -->
+    <?php if ($total_pages > 1 || $per_page !== 'all'): ?>
+        <div class="card-footer d-flex flex-column flex-md-row justify-content-between align-items-center bg-white border-top-0 py-3">
+            <div class="mb-2 mb-md-0 text-muted small">
+                <?php
+                if ($total_filtered_complaints > 0) {
+                    $start_entry = $per_page === 'all' ? 1 : ($page - 1) * $per_page + 1;
+                    $end_entry = $per_page === 'all' ? $total_filtered_complaints : min($page * $per_page, $total_filtered_complaints);
+                    echo "Showing " . $start_entry . " to " . $end_entry . " of " . $total_filtered_complaints . " entries";
+                } else {
+                    echo "Showing 0 to 0 of 0 entries";
+                }
+                ?>
+            </div>
+            <div class="d-flex align-items-center mb-2 mb-md-0">
+                <label class="mr-2 mb-0 font-weight-bold text-muted small" style="white-space: nowrap;">Show:</label>
+                <?php
+                // Clean $_GET to construct base query parameters without limit and page
+                $limit_params = $_GET;
+                unset($limit_params['limit']);
+                unset($limit_params['page']);
+                ?>
+                <select class="form-control form-control-sm" style="width: auto; cursor: pointer; height: auto !important; padding: 4px 8px !important;" 
+                        onchange="window.location.href='?<?php echo http_build_query($limit_params); ?>&page=1&limit='+this.value">
+                    <option value="10" <?php echo $per_page == 10 ? 'selected' : ''; ?>>10 entries</option>
+                    <option value="20" <?php echo $per_page == 20 ? 'selected' : ''; ?>>20 entries</option>
+                    <option value="50" <?php echo $per_page == 50 ? 'selected' : ''; ?>>50 entries</option>
+                    <option value="100" <?php echo $per_page == 100 ? 'selected' : ''; ?>>100 entries</option>
+                    <option value="all" <?php echo $per_page === 'all' ? 'selected' : ''; ?>>All entries</option>
+                </select>
+            </div>
+            <?php if ($total_pages > 1): ?>
+                <nav aria-label="Page navigation">
+                    <ul class="pagination pagination-sm mb-0">
+                        <?php
+                        $page_params = $_GET;
+                        unset($page_params['page']);
+                        ?>
+                        <!-- Previous Page -->
+                        <li class="page-item <?php echo $page <= 1 ? 'disabled' : ''; ?>">
+                            <a class="page-link" href="?<?php echo http_build_query(array_merge($page_params, ['page' => $page - 1])); ?>" aria-label="Previous">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+                        
+                        <!-- Page Numbers -->
+                        <?php
+                        $start_page = max(1, $page - 2);
+                        $end_page = min($total_pages, $page + 2);
+                        if ($start_page > 1) {
+                            echo '<li class="page-item"><a class="page-link" href="?' . http_build_query(array_merge($page_params, ['page' => 1])) . '">1</a></li>';
+                            if ($start_page > 2) {
+                                echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                            }
+                        }
+                        for ($i = $start_page; $i <= $end_page; $i++):
+                        ?>
+                            <li class="page-item <?php echo $i == $page ? 'active' : ''; ?>">
+                                <a class="page-link" href="?<?php echo http_build_query(array_merge($page_params, ['page' => $i])); ?>"><?php echo $i; ?></a>
+                            </li>
+                        <?php endfor; ?>
+                        
+                        <?php
+                        if ($end_page < $total_pages) {
+                            if ($end_page < $total_pages - 1) {
+                                echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                            }
+                            echo '<li class="page-item"><a class="page-link" href="?' . http_build_query(array_merge($page_params, ['page' => $total_pages])) . '">' . $total_pages . '</a></li>';
+                        }
+                        ?>
+                        
+                        <!-- Next Page -->
+                        <li class="page-item <?php echo $page >= $total_pages ? 'disabled' : ''; ?>">
+                            <a class="page-link" href="?<?php echo http_build_query(array_merge($page_params, ['page' => $page + 1])); ?>" aria-label="Next">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
 </div>
 
 </div><!-- /container -->

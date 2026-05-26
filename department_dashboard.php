@@ -336,6 +336,28 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
         
         /* Modal Fix */
         body.modal-open { overflow: auto !important; padding-right: 0 !important; }
+
+        /* Notification settings visibility enhancement */
+        #notifPrefsBody {
+            background-color: #ffffff;
+        }
+        #notifPrefsBody .text-muted {
+            color: #4a5568 !important; /* Rich slate gray for high contrast visibility */
+            font-weight: 500;
+        }
+        #notifPrefsBody .text-dark {
+            color: #1a202c !important; /* Deep dark charcoal for high visibility */
+            font-weight: 700;
+        }
+        #notifPrefsBody .custom-control-label {
+            cursor: pointer;
+            line-height: 1.4;
+            padding-left: 5px;
+        }
+        #notifPrefsBody .custom-control-input:checked ~ .custom-control-label::before {
+            background-color: var(--primary-blue);
+            border-color: var(--primary-blue);
+        }
     </style>
 </head>
 <body>
@@ -399,7 +421,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
                     <div class="card-header d-flex justify-content-between align-items-center"
                          style="background:linear-gradient(135deg, var(--light-blue) 0%, #f0f8ff 100%); color: var(--primary-blue); cursor:pointer; border-radius: 10px;"
                          data-toggle="collapse" data-target="#notifPrefsBody">
-                        <h5 class="mb-0 font-weight-bold"><i class="fas fa-bell mr-2"></i>Email Notification Preferences</h5>
+                        <h5 class="mb-0 font-weight-bold" style="color:var(--primary-blue)!important"><i class="fas fa-bell mr-2"></i>Email Notification Preferences</h5>
                         <i class="fas fa-chevron-down"></i>
                     </div>
                     <div class="collapse" id="notifPrefsBody">
@@ -531,6 +553,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
                                                     data-path="<?php echo htmlspecialchars($fc['path_summary'], ENT_QUOTES); ?>"
                                                     data-desc="<?php echo htmlspecialchars($fc['description'] ?? '', ENT_QUOTES); ?>"
                                                     data-auto="<?php echo htmlspecialchars($fc['auto_response'] ?? '', ENT_QUOTES); ?>"
+                                                    data-attachment="<?php echo htmlspecialchars($fc['attachment_path'] ?? '', ENT_QUOTES); ?>"
                                                     data-ict-response="<?php echo htmlspecialchars($fc['admin_response'] ?? '', ENT_QUOTES); ?>"
                                                     data-status="<?php echo htmlspecialchars($fc['status'], ENT_QUOTES); ?>"
                                                     data-date="<?php echo date('M d, Y H:i', strtotime($fc['created_at'])); ?>"
@@ -846,6 +869,9 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
             const descHtml = d.desc
                 ? `<h6 class="mt-4 font-weight-bold text-primary border-bottom pb-2">Additional Details from Student</h6><p class="text-dark bg-light p-3 rounded mt-2 border">${esc(d.desc).replace(/\n/g,'<br>')}</p>`
                 : '';
+            const attachmentHtml = d.attachment
+                ? `<h6 class="mt-4 font-weight-bold text-primary border-bottom pb-2">Attachment</h6><p class="mt-2"><a href="${esc(d.attachment)}" target="_blank" class="btn btn-sm btn-info"><i class="fas fa-file-download mr-1"></i> View Attached File</a></p>`
+                : '';
 
             const body = `
                 <div class="row">
@@ -892,7 +918,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
                     <p class="text-dark small mb-0 font-weight-bold">${esc(d.path).split(' > ').join(' <i class="fas fa-chevron-right text-muted mx-1"></i> ')}</p>
                 </div>
                 
-                ${descHtml}${autoHtml}${ictRespHtml}${extraHtml}`;
+                ${descHtml}${attachmentHtml}${autoHtml}${ictRespHtml}${extraHtml}`;
 
             $('#fwViewBody').html(body);
             $('#forwardedViewModal').modal('show');

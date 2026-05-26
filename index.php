@@ -1,6 +1,5 @@
-<?php
-// Start output buffering to prevent header issues
-ob_start();
+// Load global security settings and headers
+require_once __DIR__ . '/security-config.php';
 
 session_start();
 

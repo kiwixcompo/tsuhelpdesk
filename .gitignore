@@ -36,10 +36,10 @@ desktop.ini
 cache/
 *.cache
 
-# Environment files (temporarily unignored — will be re-added after deploy)
-# .env
-# .env.local
-# .env.production
+# Environment files
+.env
+.env.local
+.env.production
 
 # Database dumps (except the main structure files)
 *.sql

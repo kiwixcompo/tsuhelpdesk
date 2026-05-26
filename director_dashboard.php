@@ -85,7 +85,7 @@ $result = mysqli_query($conn, $sql);
 if($row = mysqli_fetch_assoc($result)){
     $treated_complaints = $row['total'];
 }
-$sql = "SELECT COUNT(*) as total FROM complaints WHERE status = 'Pending' $date_filter";
+$sql = "SELECT COUNT(*) as total FROM complaints WHERE status != 'Treated' $date_filter";
 $result = mysqli_query($conn, $sql);
 if($row = mysqli_fetch_assoc($result)){
     $pending_complaints = $row['total'];

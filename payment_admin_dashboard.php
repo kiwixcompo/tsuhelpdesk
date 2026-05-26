@@ -325,11 +325,11 @@ function getImagePath($path) {
         ?>
         <?php if (!empty($fwd_ict)): ?>
         <div class="card mb-4 border-warning">
-            <div class="card-header" style="background:#fff3cd;color:#856404">
-                <h5 class="mb-0">
+            <div class="card-header" style="background:#fff3cd;border-bottom:none">
+                <h5 class="mb-0" style="color:#856404!important">
                     <i class="fas fa-share-square mr-2"></i>
                     ICT Complaints Forwarded to You
-                    <span class="badge badge-warning ml-2"><?php echo count($fwd_ict); ?></span>
+                    <span class="badge badge-warning ml-2" style="background-color:#856404;color:#fff"><?php echo count($fwd_ict); ?></span>
                 </h5>
             </div>
             <div class="card-body p-0">
@@ -374,6 +374,7 @@ function getImagePath($path) {
                                             data-date="<?php echo date('M d, Y', strtotime($fi['created_at'])); ?>"
                                             data-path="<?php echo htmlspecialchars($fi['path_summary'] ?? '', ENT_QUOTES); ?>"
                                             data-desc="<?php echo htmlspecialchars($fi['description'] ?? '', ENT_QUOTES); ?>"
+                                            data-attachment="<?php echo htmlspecialchars($fi['attachment_path'] ?? '', ENT_QUOTES); ?>"
                                             data-extra="<?php echo htmlspecialchars($fi['extra_fields'] ?? '{}', ENT_QUOTES); ?>"
                                             data-response="<?php echo htmlspecialchars($fi['admin_response'] ?? '', ENT_QUOTES); ?>">
                                         <i class="fas fa-eye mr-1"></i>View & Respond
@@ -407,11 +408,11 @@ function getImagePath($path) {
         ?>
         <?php if (!empty($fwd_student)): ?>
         <div class="card mb-4 border-info">
-            <div class="card-header" style="background:#d1ecf1;color:#0c5460">
-                <h5 class="mb-0">
+            <div class="card-header" style="background:#d1ecf1;border-bottom:none">
+                <h5 class="mb-0" style="color:#0c5460!important">
                     <i class="fas fa-graduation-cap mr-2"></i>
                     Student Complaints Forwarded to You
-                    <span class="badge badge-info ml-2"><?php echo count($fwd_student); ?></span>
+                    <span class="badge badge-info ml-2" style="background-color:#0c5460;color:#fff"><?php echo count($fwd_student); ?></span>
                 </h5>
             </div>
             <div class="card-body p-0">
@@ -980,6 +981,9 @@ function getImagePath($path) {
         const respHtml = d.response
             ? `<div class="alert alert-success mt-3"><strong>Current Response:</strong><br>${esc(d.response).replace(/\n/g,'<br>')}</div>`
             : '';
+        const attachmentHtml = d.attachment
+            ? `<hr><h6 class="text-muted text-uppercase" style="font-size:.72rem">Attachment</h6><p><a href="${esc(d.attachment)}" target="_blank" class="btn btn-sm btn-info"><i class="fas fa-file-download mr-1"></i> View Attached File</a></p>`
+            : '';
         const body = `
             <div class="row">
                 <div class="col-md-6">
@@ -998,6 +1002,7 @@ function getImagePath($path) {
             </div>
             ${d.path ? `<hr><h6 class="text-muted text-uppercase" style="font-size:.72rem">Decision Path</h6><p class="text-muted small">${esc(d.path)}</p>` : ''}
             ${d.desc ? `<hr><h6 class="text-muted text-uppercase" style="font-size:.72rem">Additional Details from Student</h6><div class="p-3 bg-light rounded" style="white-space:pre-wrap;word-break:break-word">${esc(d.desc)}</div>` : ''}
+            ${attachmentHtml}
             ${(() => {
                 let extraHtml = '';
                 try {

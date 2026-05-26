@@ -22,7 +22,7 @@
 /**
  * Create the prefs table if it doesn't exist, then ALTER to add any columns
  * that were introduced after the table was first created on the server.
- * This makes the schema self-healing — no manual SQL migration needed.
+ * This makes the schema self-healing â€” no manual SQL migration needed.
  */
 function ensureNotifPrefsTable($conn): void {
     // Create with the original minimal set of columns (always safe)
@@ -51,7 +51,7 @@ function ensureNotifPrefsTable($conn): void {
     }
 
     // Fix: ensure every admin has on_new_student_complaint = 1 and on_new_complaint = 1
-    // UPDATE existing rows where the admin has opted out (value = 0) — only if they
+    // UPDATE existing rows where the admin has opted out (value = 0) â€” only if they
     // haven't explicitly changed it themselves (we can't tell, so we just ensure ON for admins)
     mysqli_query($conn,
         "UPDATE user_notification_prefs unp
@@ -99,13 +99,13 @@ function getUserNotifPrefs($conn, int $user_id, int $role_id = 0): array {
         'on_feedback_received'     => 1,
     ];
 
-    // Query all columns — by the time we get here ensureNotifPrefsTable() has
+    // Query all columns â€” by the time we get here ensureNotifPrefsTable() has
     // already added any missing columns, so this SELECT is safe.
     $stmt = mysqli_prepare($conn,
         "SELECT on_forwarded, on_ict_response, on_status_change,
                 on_new_student_complaint, on_new_complaint, on_feedback_received
          FROM user_notification_prefs WHERE user_id = ?");
-    if (!$stmt) return $defaults;   // DB error — return safe defaults
+    if (!$stmt) return $defaults;   // DB error â€” return safe defaults
 
     mysqli_stmt_bind_param($stmt, 'i', $user_id);
     mysqli_stmt_execute($stmt);
@@ -132,7 +132,8 @@ function getUserNotifPrefs($conn, int $user_id, int $role_id = 0): array {
  */
 function sendEmailIfAllowed($conn, int $user_id, int $role_id,
                              string $pref_key, string $to,
-                             string $subject, string $body): void {
+                             string $subject, string $body,
+                             string $attachment_path = ''): void {
     $prefs = getUserNotifPrefs($conn, $user_id, $role_id);
     if (empty($prefs[$pref_key])) return;
 
@@ -146,13 +147,14 @@ function sendEmailIfAllowed($conn, int $user_id, int $role_id,
     }
     if (empty($to)) return; // no email on file
 
-    @app_mail($to, $subject, $body);
+    @app_mail($to, $subject, $body, '', $attachment_path);
 }
 
 // Backwards-compatible alias used by department_dashboard.php
 function sendDeptEmailIfAllowed($conn, int $user_id, string $pref_key,
-                                 string $to, string $subject, string $body): void {
-    sendEmailIfAllowed($conn, $user_id, 7, $pref_key, $to, $subject, $body);
+                                 string $to, string $subject, string $body,
+                                 string $attachment_path = ''): void {
+    sendEmailIfAllowed($conn, $user_id, 7, $pref_key, $to, $subject, $body, $attachment_path);
 }
 
 // -- Event-level helpers -------------------------------------------------------
@@ -163,7 +165,7 @@ function sendDeptEmailIfAllowed($conn, int $user_id, string $pref_key,
  */
 function notifyAdminsNewComplaint($conn, int $complaint_id, string $lodger_name,
                                    string $complaint_preview): void {
-    $subject = "New Complaint Submitted — #{$complaint_id}";
+    $subject = "New Complaint Submitted â€” #{$complaint_id}";
     $body    = "A new complaint has been submitted.\n\n"
              . "Complaint ID : #{$complaint_id}\n"
              . "Submitted by : {$lodger_name}\n"
@@ -185,7 +187,7 @@ function notifyAdminsNewComplaint($conn, int $complaint_id, string $lodger_name,
 function notifyAdminsNewStudentIctComplaint($conn, int $complaint_id,
                                              string $student_name,
                                              string $category): void {
-    $subject = "New Student ICT Complaint — #{$complaint_id}";
+    $subject = "New Student ICT Complaint â€” #{$complaint_id}";
     $body    = "A new student ICT complaint has been submitted.\n\n"
              . "Complaint ID : #{$complaint_id}\n"
              . "Student      : {$student_name}\n"
@@ -210,7 +212,7 @@ function notifyAdminsNewStudentIctComplaint($conn, int $complaint_id,
 function notifyForwarded($conn, int $complaint_id, string $student_name,
                           string $category, string $node_label,
                           int $recipient_user_id, int $recipient_role_id = 0): void {
-    $subject = "Complaint Forwarded to You — #{$complaint_id}";
+    $subject = "Complaint Forwarded to You â€” #{$complaint_id}";
     $body    = "A student ICT complaint has been forwarded to you.\n\n"
              . "Complaint ID : #{$complaint_id}\n"
              . "Student      : {$student_name}\n"
@@ -241,7 +243,7 @@ function notifyForwarded($conn, int $complaint_id, string $student_name,
 function notifyIctResponse($conn, int $complaint_id, string $student_name,
                              string $response_preview,
                              int $recipient_user_id, int $recipient_role_id = 0): void {
-    $subject = "ICT Response Added — Complaint #{$complaint_id}";
+    $subject = "ICT Response Added â€” Complaint #{$complaint_id}";
     $body    = "ICT has added a response to a complaint forwarded to you.\n\n"
              . "Complaint ID : #{$complaint_id}\n"
              . "Student      : {$student_name}\n"
@@ -269,7 +271,7 @@ function notifyIctResponse($conn, int $complaint_id, string $student_name,
 function notifyStatusChange($conn, int $complaint_id, string $student_name,
                               string $new_status,
                               int $recipient_user_id, int $recipient_role_id = 0): void {
-    $subject = "Complaint Status Updated — #{$complaint_id}";
+    $subject = "Complaint Status Updated â€” #{$complaint_id}";
     $body    = "The status of a complaint has been updated.\n\n"
              . "Complaint ID : #{$complaint_id}\n"
              . "Student      : {$student_name}\n"
@@ -296,7 +298,7 @@ function notifyStatusChange($conn, int $complaint_id, string $student_name,
  */
 function notifyFeedbackReceived($conn, int $complaint_id, int $lodger_user_id,
                                   string $status, string $feedback_preview): void {
-    $subject = "Feedback on Your Complaint — #{$complaint_id}";
+    $subject = "Feedback on Your Complaint â€” #{$complaint_id}";
     $body    = "Your complaint has received a response.\n\n"
              . "Complaint ID : #{$complaint_id}\n"
              . "Status       : {$status}\n"
