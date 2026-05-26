@@ -420,17 +420,38 @@ while($row = mysqli_fetch_assoc($result)){
                     <div class="card-header">
                         <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center">
                             <h4 class="mb-2 mb-md-0">User Management</h4>
-                            <?php if($_SESSION["is_super_admin"]): ?>
-                            <div class="search-container w-100" style="max-width: 300px; position: relative;">
-                                <div class="input-group">
-                                    <input type="text" id="userSearch" class="form-control" placeholder="Search users..." autocomplete="off">
-                                    <div class="input-group-append">
-                                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                            <div class="d-flex align-items-center flex-wrap mt-2 mt-md-0" style="gap: 10px;">
+                                <!-- Export to Excel Dropdown -->
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-success dropdown-toggle" type="button" id="exportDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="padding: 5px 12px; font-size: 0.875rem;">
+                                        <i class="fas fa-file-excel mr-1"></i> Export to Excel
+                                    </button>
+                                    <div class="dropdown-menu dropdown-menu-right" aria-labelledby="exportDropdown">
+                                        <a class="dropdown-item" href="export_users.php?role_id=all">
+                                            <i class="fas fa-users mr-2 text-primary"></i> Export All Users
+                                        </a>
+                                        <div class="dropdown-divider"></div>
+                                        <h6 class="dropdown-header">Export by Role</h6>
+                                        <?php foreach($roles as $role): ?>
+                                            <a class="dropdown-item" href="export_users.php?role_id=<?php echo $role['role_id']; ?>">
+                                                <i class="fas fa-user-tag mr-2 text-secondary"></i> <?php echo htmlspecialchars($role['role_name']); ?>
+                                            </a>
+                                        <?php endforeach; ?>
                                     </div>
                                 </div>
-                                <div id="searchResults" class="search-results" style="display: none;"></div>
+
+                                <?php if($_SESSION["is_super_admin"]): ?>
+                                <div class="search-container" style="width: 200px; position: relative;">
+                                    <div class="input-group">
+                                        <input type="text" id="userSearch" class="form-control form-control-sm" placeholder="Search users..." autocomplete="off" style="height: 31px; padding: 4px 8px;">
+                                        <div class="input-group-append">
+                                            <span class="input-group-text px-2 py-0" style="font-size: 0.8rem;"><i class="fas fa-search"></i></span>
+                                        </div>
+                                    </div>
+                                    <div id="searchResults" class="search-results" style="display: none;"></div>
+                                </div>
+                                <?php endif; ?>
                             </div>
-                            <?php endif; ?>
                         </div>
                     </div>
                     <div class="card-body">
