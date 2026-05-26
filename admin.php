@@ -312,6 +312,9 @@ $sort = isset($_GET['sort']) ? $_GET['sort'] : 'desc';
 
 $where_conditions = [];
 
+// Exclude department-lodged complaints (role_id = 7) from student complaints view
+$where_conditions[] = "(c.lodged_by IS NULL OR c.lodged_by NOT IN (SELECT user_id FROM users WHERE role_id = 7))";
+
 // Apply specific view rules if not searching
 if ($filter_user > 0) {
     $where_conditions[] = "c.lodged_by = " . $filter_user;
@@ -423,7 +426,7 @@ $pending_previous_days = [];
 $pending_today = [];
 $today = date('Y-m-d');
 
-$pending_sql = "SELECT * FROM complaints WHERE status = 'Pending' ORDER BY created_at DESC";
+$pending_sql = "SELECT * FROM complaints WHERE status = 'Pending' AND (lodged_by IS NULL OR lodged_by NOT IN (SELECT user_id FROM users WHERE role_id = 7)) ORDER BY created_at DESC";
 if($pending_result = mysqli_query($conn, $pending_sql)){
     while($c = mysqli_fetch_assoc($pending_result)){
         $created_date = date('Y-m-d', strtotime($c['created_at']));
@@ -468,7 +471,7 @@ $sql = "SELECT
         GROUP_CONCAT(c.complaint_id) as complaint_ids
         FROM complaints c
         JOIN users u ON c.lodged_by = u.user_id
-        WHERE u.role_id != 1
+        WHERE u.role_id != 1 AND u.role_id != 7
         GROUP BY u.user_id, u.full_name
         ORDER BY total_complaints DESC";
 
@@ -604,7 +607,7 @@ function getImagePath($image) {
     $show_breadcrumb = false;
     
     // Get absolute stats for admin header (decoupled from active filters/pagination)
-    $header_total_complaints = mysqli_query($conn, "SELECT COUNT(*) as c FROM complaints")->fetch_assoc()['c'] ?? 0;
+    $header_total_complaints = mysqli_query($conn, "SELECT COUNT(*) as c FROM complaints WHERE lodged_by IS NULL OR lodged_by NOT IN (SELECT user_id FROM users WHERE role_id = 7)")->fetch_assoc()['c'] ?? 0;
     $header_total_users = count($users);
     $header_pending_complaints = count($pending_today) + count($pending_previous_days);
     
@@ -1169,7 +1172,7 @@ function getImagePath($image) {
                             SUM(CASE WHEN c.status = 'Pending' THEN 1 ELSE 0 END) as pending_complaints
                             FROM complaints c
                             JOIN users u ON c.lodged_by = u.user_id
-                            WHERE u.role_id != 1
+                            WHERE u.role_id != 1 AND u.role_id != 7
                             GROUP BY u.user_id, u.full_name";
                         
                         $stats_result = mysqli_query($conn, $stats_sql);
