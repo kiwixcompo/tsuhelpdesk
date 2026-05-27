@@ -11,6 +11,13 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true || $_SESSION[
 }
 
 require_once "config.php";
+
+// Self-heal: Ensure forwarded_to column exists in complaints table
+$col_check = mysqli_query($conn, "SHOW COLUMNS FROM complaints LIKE 'forwarded_to'");
+if ($col_check && mysqli_num_rows($col_check) === 0) {
+    mysqli_query($conn, "ALTER TABLE complaints ADD COLUMN forwarded_to VARCHAR(100) NULL DEFAULT NULL AFTER handled_by");
+}
+
 require_once "includes/notifications.php";
 require_once "calendar_helper.php";
 
@@ -202,6 +209,20 @@ $archive_complaints = [];
 $result = mysqli_query($conn, $sql);
 while($row = mysqli_fetch_assoc($result)){
     $archive_complaints[] = $row;
+}
+
+// Fetch department complaints forwarded to the ICT Director
+$forwarded_dept_complaints = [];
+$fwd_dept_sql = "SELECT c.*, u.full_name as department_name 
+                 FROM complaints c 
+                 JOIN users u ON c.lodged_by = u.user_id 
+                 WHERE c.forwarded_to = 'director' AND c.status != 'Treated'
+                 ORDER BY c.created_at DESC";
+$fwd_dept_res = mysqli_query($conn, $fwd_dept_sql);
+if ($fwd_dept_res) {
+    while ($row = mysqli_fetch_assoc($fwd_dept_res)) {
+        $forwarded_dept_complaints[] = $row;
+    }
 }
 
 // Handle i4cus complaint submission by director
@@ -439,6 +460,61 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["submit_i4cus_complaint"
             </div>
         </div>
         
+        <!-- Department Complaints Forwarded to Director Section -->
+        <?php if(!empty($forwarded_dept_complaints)): ?>
+        <div class="card mb-4 border-primary">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0"><i class="fas fa-share-square mr-2"></i>Department Complaints Forwarded to You</h4>
+                <span class="badge badge-light text-primary font-weight-bold px-3 py-2"><?php echo count($forwarded_dept_complaints); ?> Active</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover mb-0">
+                        <thead class="thead-light">
+                            <tr>
+                                <th style="width: 80px;">#</th>
+                                <th>Department</th>
+                                <th>Complaint Details</th>
+                                <th style="width: 120px;">Status</th>
+                                <th style="width: 120px;">Date Forwarded</th>
+                                <th style="width: 150px;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach($forwarded_dept_complaints as $fd): 
+                                $sc_color = $fd['status'] == 'Pending' ? 'warning' : ($fd['status'] == 'In Progress' ? 'info' : 'success');
+                            ?>
+                            <tr>
+                                <td><strong>#<?php echo $fd['complaint_id']; ?></strong></td>
+                                <td>
+                                    <div class="font-weight-bold text-dark"><?php echo htmlspecialchars($fd['department_name']); ?></div>
+                                    <small class="text-muted">ID: <?php echo htmlspecialchars($fd['student_id']); ?></small>
+                                </td>
+                                <td>
+                                    <div class="text-dark small" style="max-height: 80px; overflow-y: auto;">
+                                        <?php echo htmlspecialchars($fd['complaint_text']); ?>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-<?php echo $sc_color; ?>"><?php echo htmlspecialchars($fd['status']); ?></span>
+                                </td>
+                                <td>
+                                    <i class="far fa-calendar-alt text-muted mr-1"></i> <?php echo date('M d, Y', strtotime($fd['updated_at'])); ?>
+                                </td>
+                                <td>
+                                    <a href="department_complaints_admin.php?search=<?php echo $fd['complaint_id']; ?>" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-eye mr-1"></i> View & Respond
+                                    </a>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <!-- Reports Section -->
         <div class="card mb-4">
             <div class="card-header">

@@ -60,6 +60,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_feedback'])) {
         $status = 'Under Review';
     }
 
+    // Process response image uploads
+    $response_image_paths = array();
+    if(isset($_FILES["response_images"]) && !empty($_FILES["response_images"]["name"][0])){
+        $allowed = array("jpg" => "image/jpg", "jpeg" => "image/jpeg", "gif" => "image/gif", "png" => "image/png");
+        $target_dir = "uploads/";
+        
+        if (!file_exists($target_dir)) {
+            mkdir($target_dir, 0755, true);
+        }
+        
+        foreach($_FILES["response_images"]["tmp_name"] as $key => $tmp_name){
+            if($_FILES["response_images"]["error"][$key] == 0){
+                $filename = $_FILES["response_images"]["name"][$key];
+                $filetype = $_FILES["response_images"]["type"][$key];
+                $filesize = $_FILES["response_images"]["size"][$key];
+                
+                $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+                if(!array_key_exists($ext, $allowed)) continue;
+                
+                $maxsize = 5 * 1024 * 1024;
+                if($filesize > $maxsize) continue;
+                
+                if(in_array($filetype, $allowed)){
+                    $new_filename = "response_" . uniqid() . "." . $ext;
+                    $target_file = $target_dir . $new_filename;
+                    
+                    if(move_uploaded_file($tmp_name, $target_file)){
+                        chmod($target_file, 0644);
+                        $response_image_paths[] = $target_file;
+                    }
+                }
+            }
+        }
+    }
+    
+    // Append attached images to the response
+    if (!empty($response_image_paths)) {
+        foreach ($response_image_paths as $path) {
+            $response .= "\n[Attached Image: " . $path . "]";
+        }
+    }
+
     $upd = mysqli_prepare($conn,
         "UPDATE student_ict_complaints
          SET status=?, admin_response=?, handled_by=?, forwarded_to=?, updated_at=NOW()
@@ -1036,6 +1078,11 @@ function extractAIText(result) {
 }
 
 $(function() {
+    // Initialize clipboard paste for complaint response feedback
+    if (typeof initializeClipboardPaste === 'function') {
+        initializeClipboardPaste(document.getElementById('feedbackResponse'), document.getElementById('feedbackImages'));
+    }
+
     // Auto-dismiss alerts
     $('.alert').delay(4000).fadeOut();
 
@@ -1365,7 +1412,29 @@ Return ONLY the response text that the admin should send to the student. Do not 
         return d.innerHTML;
     }
 });
+
+function showImageModal(src) {
+    $('#modalImage').attr('src', src);
+    $('#imageModal').modal('show');
+}
 </script>
+
+<!-- Image Attachment Lightbox Modal -->
+<div class="modal fade" id="imageModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-dark text-white border-0">
+                <h5 class="modal-title font-weight-bold">Response Image Viewer</h5>
+                <button type="button" class="close text-white" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body text-center p-3">
+                <img id="modalImage" src="" class="img-fluid rounded" alt="Attachment Image" style="max-height: 80vh;">
+            </div>
+        </div>
+    </div>
+</div>
 </body>
 </html>
 

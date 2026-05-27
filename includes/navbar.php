@@ -386,12 +386,15 @@ function nb_active(string $page, string $current): string {
                 <?php endif; ?>
             </button>
             <div class="nb-dropdown-menu nb-notif-menu" id="nbNotifMenu">
-                <div class="nb-dm-header"><i class="fas fa-bell mr-1"></i> Notifications</div>
+                <div class="nb-dm-header d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-bell mr-1"></i> Notifications</span>
+                    <a href="#" id="nbMarkAllReadBtn" style="font-size: .75rem; text-transform: none; font-weight: normal; color: #1e3c72; text-decoration: none; display: none;">Mark all read</a>
+                </div>
                 <div id="notificationList">
                     <div class="nb-notif-empty"><i class="fas fa-spinner fa-spin"></i> Loading…</div>
                 </div>
                 <hr class="nb-dm-divider">
-                <a class="nb-dm-item" href="notifications.php"><i class="fas fa-eye"></i> View all notifications</a>
+                <a class="nb-dm-item" href="<?php echo isset($_SESSION['student_loggedin']) && $_SESSION['student_loggedin'] === true ? 'student_notifications.php' : 'notifications.php'; ?>"><i class="fas fa-eye"></i> View all notifications</a>
             </div>
         </div>
 
@@ -583,9 +586,31 @@ function nb_active(string $page, string $current): string {
 
     function updateBadge(count) {
         const b = document.getElementById('notificationBadge');
+        const markAllBtn = document.getElementById('nbMarkAllReadBtn');
+        if (markAllBtn) {
+            if (count > 0) markAllBtn.style.display = 'inline';
+            else markAllBtn.style.display = 'none';
+        }
         if (!b) return;
         if (count > 0) { b.textContent = count; b.style.display = ''; }
         else b.style.display = 'none';
+    }
+
+    const markAllBtn = document.getElementById('nbMarkAllReadBtn');
+    if (markAllBtn) {
+        markAllBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            fetch('mark_all_notifications_read.php', {
+                method: 'POST'
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data && data.success) {
+                    loadNotifications();
+                }
+            });
+        });
     }
 
     function timeAgo(ds) {

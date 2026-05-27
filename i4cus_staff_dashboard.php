@@ -8,6 +8,13 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true || $_SESSION[
 }
 
 require_once "config.php";
+
+// Self-heal: Ensure forwarded_to column exists in complaints table
+$col_check = mysqli_query($conn, "SHOW COLUMNS FROM complaints LIKE 'forwarded_to'");
+if ($col_check && mysqli_num_rows($col_check) === 0) {
+    mysqli_query($conn, "ALTER TABLE complaints ADD COLUMN forwarded_to VARCHAR(100) NULL DEFAULT NULL AFTER handled_by");
+}
+
 require_once "includes/notifications.php";
 require_once "includes/notification_prefs.php";
 require_once "calendar_helper.php";
@@ -185,6 +192,20 @@ if ($fwd_ict_col && mysqli_num_rows($fwd_ict_col) > 0) {
                     ORDER BY c.created_at DESC";
     $fi = mysqli_query($conn, $fwd_ict_sql);
     if ($fi) $fwd_ict_i4 = mysqli_fetch_all($fi, MYSQLI_ASSOC);
+}
+
+// Fetch department complaints forwarded to i4Cus Staff
+$fwd_dept_i4 = [];
+$fwd_dept_sql = "SELECT c.*, u.full_name as department_name 
+                 FROM complaints c 
+                 JOIN users u ON c.lodged_by = u.user_id 
+                 WHERE c.forwarded_to = 'i4cus' AND c.status != 'Treated'
+                 ORDER BY c.created_at DESC";
+$fwd_dept_res = mysqli_query($conn, $fwd_dept_sql);
+if ($fwd_dept_res) {
+    while ($row = mysqli_fetch_assoc($fwd_dept_res)) {
+        $fwd_dept_i4[] = $row;
+    }
 }
 
 // Helper function to normalize image paths
@@ -385,7 +406,53 @@ function getImagePath($image) {
         </div>
         <?php endforeach; ?>
 
-        <div class="card mb-4">
+        <?php if (!empty($fwd_dept_i4)): ?>
+        <div class="card mb-4 border-warning">
+            <div class="card-header" style="background:#fff3cd;color:#856404">
+                <h5 class="mb-0">
+                    <i class="fas fa-building mr-2"></i>
+                    Department Complaints Forwarded to You
+                    <span class="badge badge-warning ml-2"><?php echo count($fwd_dept_i4); ?></span>
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Department Name</th>
+                                <th style="width: 50%;">Complaint</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        <?php foreach ($fwd_dept_i4 as $fd_row):
+                            $fd_colors = ['Pending'=>'warning','Under Review'=>'info','Treated'=>'success','Resolved'=>'success','Rejected'=>'danger'];
+                            $fd_bc = $fd_colors[$fd_row['status']] ?? 'secondary';
+                        ?>
+                            <tr>
+                                <td><?php echo $fd_row['complaint_id']; ?></td>
+                                <td><strong><?php echo htmlspecialchars($fd_row['department_name']); ?></strong></td>
+                                <td><?php echo htmlspecialchars(mb_substr($fd_row['complaint_text'], 0, 150)) . (mb_strlen($fd_row['complaint_text']) > 150 ? '…' : ''); ?></td>
+                                <td><span class="badge badge-<?php echo $fd_bc; ?>"><?php echo htmlspecialchars($fd_row['status']); ?></span></td>
+                                <td><?php echo date('M d, Y', strtotime($fd_row['created_at'])); ?></td>
+                                <td>
+                                    <a href="view_complaint.php?id=<?php echo $fd_row['complaint_id']; ?>&i4cus=1" class="btn btn-sm btn-outline-warning">
+                                        <i class="fas fa-eye"></i> View/Treat
+                                    </a>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <?php
         $fwd_student_i4 = [];
         $fwd_sc_col_i4 = mysqli_query($conn, "SHOW COLUMNS FROM student_complaints LIKE 'forwarded_to'");

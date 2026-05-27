@@ -22,6 +22,8 @@ $date_from = $_GET['date_from'] ?? '';
 $date_to = $_GET['date_to'] ?? '';
 $faculty_filter = $_GET['faculty_id'] ?? '';
 $status_filter = $_GET['status'] ?? '';
+$sort_order = $_GET['sort_order'] ?? 'oldest';
+$order_by_sql = ($sort_order === 'newest') ? 'DESC' : 'ASC';
 
 // Build query conditions
 $where_conditions = ["1=1"];
@@ -120,7 +122,7 @@ JOIN student_departments sd ON s.department_id = sd.department_id
 JOIN faculties f ON sd.faculty_id = f.faculty_id
 JOIN programmes p ON s.programme_id = p.programme_id
 WHERE $where_clause
-ORDER BY f.faculty_name, sd.department_name, sc.created_at DESC";
+ORDER BY f.faculty_name, sd.department_name, sc.created_at $order_by_sql";
 
 $complaints = [];
 if ($stmt = mysqli_prepare($conn, $complaints_sql)) {
@@ -273,6 +275,13 @@ foreach ($complaints as $complaint) {
                         <option value="Under Review" <?php echo ($status_filter == 'Under Review') ? 'selected' : ''; ?>>Under Review</option>
                         <option value="Resolved" <?php echo ($status_filter == 'Resolved') ? 'selected' : ''; ?>>Resolved</option>
                         <option value="Rejected" <?php echo ($status_filter == 'Rejected') ? 'selected' : ''; ?>>Rejected</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-6 col-lg-3 mb-3">
+                    <label for="sort_order" class="font-weight-bold text-muted">Sort Order:</label>
+                    <select id="sort_order" name="sort_order" class="form-control">
+                        <option value="oldest" <?php echo ($sort_order == 'oldest') ? 'selected' : ''; ?>>Oldest to Newest (Default)</option>
+                        <option value="newest" <?php echo ($sort_order == 'newest') ? 'selected' : ''; ?>>Newest to Oldest</option>
                     </select>
                 </div>
                 <div class="col-12 mt-2">

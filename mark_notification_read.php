@@ -23,10 +23,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $notification_id = isset($input['notification_id']) ? intval($input['notification_id']) : 0;
     
     if ($notification_id > 0) {
-        $success = markNotificationAsRead($conn, $notification_id, $user_id);
+        if ($is_student) {
+            $success = mysqli_query($conn, "UPDATE student_notifications SET is_read = 1 WHERE notification_id = $notification_id AND student_id = $user_id");
+        } else {
+            $success = markNotificationAsRead($conn, $notification_id, $user_id);
+        }
         
         header('Content-Type: application/json');
-        echo json_encode(['success' => $success]);
+        echo json_encode(['success' => (bool)$success]);
     } else {
         http_response_code(400);
         echo json_encode(['error' => 'Invalid notification ID']);

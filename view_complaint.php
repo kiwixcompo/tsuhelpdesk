@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 session_start();
 
 // Check if user is logged in
@@ -398,9 +398,46 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_feedback_reply'
     $sender_id = $_SESSION['user_id'];
     
     if (!empty($feedback_reply)) {
-        $sql = "INSERT INTO complaint_replies (complaint_id, sender_id, reply_text) VALUES (?, ?, ?)";
+        // Handle feedback reply image uploads
+        $reply_image_paths = array();
+        if(isset($_FILES["feedback_reply_images"]) && !empty($_FILES["feedback_reply_images"]["name"][0])){
+            $allowed = array("jpg" => "image/jpg", "jpeg" => "image/jpeg", "gif" => "image/gif", "png" => "image/png");
+            $target_dir = "uploads/";
+            
+            if (!file_exists($target_dir)) {
+                mkdir($target_dir, 0755, true);
+            }
+            
+            foreach($_FILES["feedback_reply_images"]["tmp_name"] as $key => $tmp_name){
+                if($_FILES["feedback_reply_images"]["error"][$key] == 0){
+                    $filename = $_FILES["feedback_reply_images"]["name"][$key];
+                    $filetype = $_FILES["feedback_reply_images"]["type"][$key];
+                    $filesize = $_FILES["feedback_reply_images"]["size"][$key];
+                    
+                    $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+                    if(!array_key_exists($ext, $allowed)) continue;
+                    
+                    $maxsize = 5 * 1024 * 1024;
+                    if($filesize > $maxsize) continue;
+                    
+                    if(in_array($filetype, $allowed)){
+                        $new_filename = "reply_" . uniqid() . "." . $ext;
+                        $target_file = $target_dir . $new_filename;
+                        
+                        if(move_uploaded_file($tmp_name, $target_file)){
+                            chmod($target_file, 0644);
+                            $reply_image_paths[] = $new_filename;
+                        }
+                    }
+                }
+            }
+        }
+        
+        $reply_images_str = !empty($reply_image_paths) ? implode(",", $reply_image_paths) : null;
+
+        $sql = "INSERT INTO complaint_replies (complaint_id, sender_id, reply_text, reply_images) VALUES (?, ?, ?, ?)";
         if ($stmt = mysqli_prepare($conn, $sql)) {
-            mysqli_stmt_bind_param($stmt, "iis", $complaint_id, $sender_id, $feedback_reply);
+            mysqli_stmt_bind_param($stmt, "iiss", $complaint_id, $sender_id, $feedback_reply, $reply_images_str);
             if (mysqli_stmt_execute($stmt)) {
                 // Create notification for admin/handler
                 require_once "includes/notifications.php";
@@ -917,9 +954,10 @@ function getDirectImagePath($image) {
                                             <h6><i class="fas fa-reply"></i> Reply to Feedback</h6>
                                         </div>
                                         <div class="card-body">
-                                            <form method="post" id="feedbackReplyForm">
+                                            <form method="post" id="feedbackReplyForm" enctype="multipart/form-data">
                                                 <div class="form-group">
-                                                    <textarea name="feedback_reply" class="form-control" rows="3" placeholder="Write your reply to the feedback..." required></textarea>
+                                                    <textarea name="feedback_reply" class="form-control manual-clipboard-init" rows="3" placeholder="Write your reply to the feedback..." required></textarea>
+                                                    <input type="file" id="feedback_reply_images" name="feedback_reply_images[]" accept="image/*" multiple style="display:none;">
                                                 </div>
                                                 <button type="submit" name="submit_feedback_reply" class="btn btn-primary btn-sm">
                                                     <i class="fas fa-paper-plane"></i> Send Reply
@@ -991,7 +1029,7 @@ function getDirectImagePath($image) {
                                     <?php if ($complaint['status'] != 'Treated' && ($_SESSION['role_id'] == 1 || $_SESSION['role_id'] == 2)): ?>
                                     <form method="post" class="mt-2" enctype="multipart/form-data">
                                         <div class="form-group">
-                                            <textarea name="reply_text" class="form-control" rows="2" placeholder="Type your reply..." required></textarea>
+                                            <textarea name="reply_text" class="form-control manual-clipboard-init" rows="2" placeholder="Type your reply..." required></textarea>
                                         </div>
                                         <div class="form-group">
                                             <label for="reply_images">Attach Images (Optional)</label>
@@ -1007,7 +1045,7 @@ function getDirectImagePath($image) {
                                     <?php if ($complaint['status'] != 'Treated' && $_SESSION['user_id'] == $complaint['lodged_by']): ?>
                                     <form method="post" class="mt-2" enctype="multipart/form-data">
                                         <div class="form-group">
-                                            <textarea name="reply_text" class="form-control" rows="2" placeholder="Type your reply..." required></textarea>
+                                            <textarea name="reply_text" class="form-control manual-clipboard-init" rows="2" placeholder="Type your reply..." required></textarea>
                                         </div>
                                         <div class="form-group">
                                             <label for="user_reply_images">Attach Images (Optional)</label>
@@ -1039,7 +1077,7 @@ function getDirectImagePath($image) {
                                     </div>
                                     <div class="form-group">
                                         <label for="feedback">Feedback</label>
-                                        <textarea name="feedback" class="form-control" rows="3" placeholder="Provide feedback... (Paste images with Ctrl+V)"><?php echo htmlspecialchars($complaint['feedback']??''); ?></textarea>
+                                         <textarea id="i4cus_feedback" name="feedback" class="form-control manual-clipboard-init" rows="3" placeholder="Provide feedback... (Paste images with Ctrl+V)"><?php echo htmlspecialchars($complaint['feedback']??''); ?></textarea>
                                         <small class="form-text text-muted">
                                             <i class="fas fa-paperclip text-primary"></i> 
                                             Paste images directly while typing or click the attachment icon
@@ -1261,16 +1299,33 @@ function getDirectImagePath($image) {
     
     // Initialize clipboard paste functionality when document is ready
     $(document).ready(function() {
-        // Initialize clipboard paste for payment feedback textarea
-        if (window.clipboardPasteHandler) {
-            const paymentFeedbackTextarea = document.getElementById('payment_feedback');
-            const paymentFeedbackFileInput = document.getElementById('payment_feedback_images');
+        if (window.clipboardPasteHandler && typeof initializeClipboardPaste === 'function') {
+            // 1. Payment feedback
+            const paymentTextarea = document.getElementById('payment_feedback');
+            const paymentFileInput = document.getElementById('payment_feedback_images');
+            if (paymentTextarea && paymentFileInput && !paymentTextarea.classList.contains('textarea-with-paste')) {
+                initializeClipboardPaste(paymentTextarea, paymentFileInput);
+            }
             
-            if (paymentFeedbackTextarea && paymentFeedbackFileInput && !paymentFeedbackTextarea.classList.contains('textarea-with-paste')) {
-                // Use the initializeClipboardPaste function for proper manual initialization
-                if (typeof initializeClipboardPaste === 'function') {
-                    initializeClipboardPaste(paymentFeedbackTextarea, paymentFeedbackFileInput);
-                }
+            // 2. i4cus feedback
+            const i4cusTextarea = document.getElementById('i4cus_feedback');
+            const i4cusFileInput = document.getElementById('i4cus_feedback_images');
+            if (i4cusTextarea && i4cusFileInput && !i4cusTextarea.classList.contains('textarea-with-paste')) {
+                initializeClipboardPaste(i4cusTextarea, i4cusFileInput);
+            }
+            
+            // 3. Threaded reply (staff or user)
+            const threadedTextarea = document.querySelector('textarea[name="reply_text"]');
+            const threadedFileInput = document.getElementById('staff_reply_images') || document.getElementById('user_reply_images');
+            if (threadedTextarea && threadedFileInput && !threadedTextarea.classList.contains('textarea-with-paste')) {
+                initializeClipboardPaste(threadedTextarea, threadedFileInput);
+            }
+            
+            // 4. Feedback reply
+            const feedbackReplyTextarea = document.querySelector('textarea[name="feedback_reply"]');
+            const feedbackReplyFileInput = document.getElementById('feedback_reply_images');
+            if (feedbackReplyTextarea && feedbackReplyFileInput && !feedbackReplyTextarea.classList.contains('textarea-with-paste')) {
+                initializeClipboardPaste(feedbackReplyTextarea, feedbackReplyFileInput);
             }
         }
     });

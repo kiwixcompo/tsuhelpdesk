@@ -204,6 +204,48 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
     // Format the response and update the DB
     $formatted_response = "Response from " . $_SESSION['full_name'] . ":\n" . $response;
     
+    // Process response image uploads
+    $reply_image_paths = array();
+    if(isset($_FILES["reply_images"]) && !empty($_FILES["reply_images"]["name"][0])){
+        $allowed = array("jpg" => "image/jpg", "jpeg" => "image/jpeg", "gif" => "image/gif", "png" => "image/png");
+        $target_dir = "uploads/";
+        
+        if (!file_exists($target_dir)) {
+            mkdir($target_dir, 0755, true);
+        }
+        
+        foreach($_FILES["reply_images"]["tmp_name"] as $key => $tmp_name){
+            if($_FILES["reply_images"]["error"][$key] == 0){
+                $filename = $_FILES["reply_images"]["name"][$key];
+                $filetype = $_FILES["reply_images"]["type"][$key];
+                $filesize = $_FILES["reply_images"]["size"][$key];
+                
+                $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+                if(!array_key_exists($ext, $allowed)) continue;
+                
+                $maxsize = 5 * 1024 * 1024;
+                if($filesize > $maxsize) continue;
+                
+                if(in_array($filetype, $allowed)){
+                    $new_filename = "reply_" . uniqid() . "." . $ext;
+                    $target_file = $target_dir . $new_filename;
+                    
+                    if(move_uploaded_file($tmp_name, $target_file)){
+                        chmod($target_file, 0644);
+                        $reply_image_paths[] = $target_file;
+                    }
+                }
+            }
+        }
+    }
+    
+    // Append attached images to the response
+    if (!empty($reply_image_paths)) {
+        foreach ($reply_image_paths as $path) {
+            $formatted_response .= "\n[Attached Image: " . $path . "]";
+        }
+    }
+    
     $upd = mysqli_prepare($conn, "UPDATE student_ict_complaints SET status=?, admin_response=?, handled_by=?, updated_at=NOW() WHERE complaint_id=? AND forwarded_to=?");
     if($upd) {
         mysqli_stmt_bind_param($upd, "ssiis", $status, $formatted_response, $_SESSION['user_id'], $cid, $dept_full_name);
@@ -768,7 +810,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
-                <form method="POST">
+                <form method="POST" enctype="multipart/form-data">
                     <div class="modal-body p-4">
                         <input type="hidden" name="complaint_id" id="fwReplyId">
                         
@@ -800,8 +842,9 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
                         
                         <div class="form-group mb-0">
                             <label class="font-weight-bold text-primary">Department Response</label>
-                            <textarea name="dept_response" class="form-control border-primary shadow-sm" rows="5" required placeholder="Type the resolution, instructions, or feedback for ICT and the student..."></textarea>
-                            <small class="form-text text-muted mt-2"><i class="fas fa-info-circle mr-1"></i> This response will be visible to ICT admins.</small>
+                            <textarea name="dept_response" class="form-control border-primary shadow-sm manual-clipboard-init" rows="5" required placeholder="Type the resolution, instructions, or feedback for ICT and the student..."></textarea>
+                            <input type="file" id="fw_reply_images" name="reply_images[]" accept="image/*" multiple style="display:none;">
+                            <small class="form-text text-muted mt-2"><i class="fas fa-info-circle mr-1"></i> This response will be visible to ICT admins. You can paste screenshots with Ctrl+V.</small>
                         </div>
                     </div>
                     <div class="modal-footer bg-light border-0 rounded-bottom">
@@ -820,6 +863,19 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
         const d = document.createElement('div');
         d.textContent = String(str || '');
         return d.innerHTML;
+    }
+
+    function parseResponseImagesJS(text) {
+        if (!text) return '';
+        let escaped = esc(text);
+        const pattern = /\[Attached Image: (uploads\/[a-zA-Z0-9_.-]+)\]/g;
+        escaped = escaped.replace(pattern, '<div class="mt-2"><img src="$1" class="img-thumbnail" style="max-height: 150px; cursor: pointer; border: 1px solid #dee2e6;" onclick="showImageModal(\'$1\')"></div>');
+        return escaped.replace(/\n/g, '<br>');
+    }
+
+    function showImageModal(src) {
+        $('#modalImage').attr('src', src);
+        $('#imageModal').modal('show');
     }
 
     // Store current view data for "Respond" button inside view modal
@@ -864,7 +920,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
                 ? `<div class="alert alert-info mt-4 border-info shadow-sm"><strong class="d-block mb-2 text-info"><i class="fas fa-robot mr-2"></i>Auto-Response Shown to Student:</strong><p class="mb-0 small">${esc(d.auto).replace(/\n/g,'<br>')}</p></div>`
                 : '';
             const ictRespHtml = d.ictResponse
-                ? `<div class="alert alert-success mt-4 border-success shadow-sm"><strong class="d-block mb-2 text-success"><i class="fas fa-user-shield mr-2"></i>ICT Response:</strong><p class="mb-0 text-dark">${esc(d.ictResponse).replace(/\n/g,'<br>')}</p></div>`
+                ? `<div class="alert alert-success mt-4 border-success shadow-sm"><strong class="d-block mb-2 text-success"><i class="fas fa-user-shield mr-2"></i>ICT Response:</strong><p class="mb-0 text-dark">${parseResponseImagesJS(d.ictResponse)}</p></div>`
                 : '';
             const descHtml = d.desc
                 ? `<h6 class="mt-4 font-weight-bold text-primary border-bottom pb-2">Additional Details from Student</h6><p class="text-dark bg-light p-3 rounded mt-2 border">${esc(d.desc).replace(/\n/g,'<br>')}</p>`
@@ -953,6 +1009,15 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
                 initializeClipboardPaste(complaintTextarea, complaintFileInput);
             }
         }
+
+        // Initialize clipboard paste for forwarded reply response
+        if (window.clipboardPasteHandler) {
+            const replyTextarea = document.querySelector('textarea[name="dept_response"]');
+            const replyFileInput = document.getElementById('fw_reply_images');
+            if (replyTextarea && replyFileInput && typeof initializeClipboardPaste === 'function') {
+                initializeClipboardPaste(replyTextarea, replyFileInput);
+            }
+        }
         
         // Auto-dismiss alerts
         $('.alert').delay(5000).fadeOut();
@@ -980,6 +1045,23 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
         });
     });
     </script>
+
+    <!-- Image Attachment Lightbox Modal -->
+    <div class="modal fade" id="imageModal" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-dark text-white border-0">
+                    <h5 class="modal-title font-weight-bold">Response Image Viewer</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body text-center p-3">
+                    <img id="modalImage" src="" class="img-fluid rounded" alt="Attachment Image" style="max-height: 80vh;">
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
 

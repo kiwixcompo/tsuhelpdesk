@@ -42,6 +42,8 @@ $session_filter = $_GET['academic_session'] ?? '';
 $status_filter = $_GET['status'] ?? '';
 $show_archive  = isset($_GET['archive']) && $_GET['archive'] === '1';
 $complaint_type_filter = $_GET['complaint_type'] ?? '';
+$sort_order = $_GET['sort_order'] ?? 'oldest';
+$order_by_sql = ($sort_order === 'newest') ? 'DESC' : 'ASC';
 
 // Build query conditions
 $where_conditions = ["1=1"];
@@ -190,7 +192,7 @@ JOIN student_departments sd ON s.department_id = sd.department_id
 JOIN faculties f ON sd.faculty_id = f.faculty_id
 JOIN programmes p ON s.programme_id = p.programme_id
 WHERE $where_clause
-ORDER BY sc.created_at DESC";
+ORDER BY sc.created_at $order_by_sql";
 
 $complaints = [];
 if ($stmt = mysqli_prepare($conn, $complaints_sql)) {
@@ -451,6 +453,13 @@ if ($fwd_users) {
                             <option value="FA"             <?php echo ($complaint_type_filter == 'FA')             ? 'selected' : ''; ?>>Fail Absent (FA)</option>
                             <option value="F"              <?php echo ($complaint_type_filter == 'F')              ? 'selected' : ''; ?>>Fail (F)</option>
                             <option value="Incorrect Grade"<?php echo ($complaint_type_filter == 'Incorrect Grade')? 'selected' : ''; ?>>Incorrect Grade</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-2">
+                        <label class="small font-weight-bold">Sort Order</label>
+                        <select name="sort_order" class="form-control">
+                            <option value="oldest" <?php echo ($sort_order == 'oldest') ? 'selected' : ''; ?>>Oldest to Newest (Default)</option>
+                            <option value="newest" <?php echo ($sort_order == 'newest') ? 'selected' : ''; ?>>Newest to Oldest</option>
                         </select>
                     </div>
                     <div class="col-md-3 col-sm-6 mb-2 d-flex align-items-end">

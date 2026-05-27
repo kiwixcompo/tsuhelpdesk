@@ -535,7 +535,7 @@ if (mysqli_num_rows($notif_table_check) > 0) {
                                                 <?php if(!empty($complaint['admin_response'])): ?>
                                                     <hr>
                                                     <p><strong>Admin Response:</strong></p>
-                                                    <p class="text-info"><?php echo nl2br(htmlspecialchars($complaint['admin_response'])); ?></p>
+                                                    <p class="text-info"><?php echo parse_response_images($complaint['admin_response']); ?></p>
                                                 <?php endif; ?>
                                             </div>
                                             <div class="modal-footer">
@@ -612,7 +612,7 @@ if (mysqli_num_rows($notif_table_check) > 0) {
                                                 <hr>
                                                 <div class="alert alert-success">
                                                     <strong><i class="fas fa-check-circle mr-1"></i>Admin Response:</strong><br>
-                                                    <?php echo nl2br(htmlspecialchars($complaint['admin_response'])); ?>
+                                                    <?php echo parse_response_images($complaint['admin_response']); ?>
                                                 </div>
                                             <?php endif; ?>
                                         </div>
@@ -750,7 +750,7 @@ if (mysqli_num_rows($notif_table_check) > 0) {
 <hr>
 <div class="alert alert-<?php echo in_array($ic['status'], ['Resolved','Auto-Resolved']) ? 'success' : 'info'; ?>">
     <strong><i class="fas fa-reply mr-1"></i>Response from ICT:</strong><br>
-    <?php echo nl2br(htmlspecialchars($ic['admin_response'])); ?>
+    <?php echo parse_response_images($ic['admin_response']); ?>
 </div>
 <small class="text-muted">Responded by TSU ICT Help Desk</small>
 <?php if (!in_array($ic['status'], ['Resolved', 'Auto-Resolved', 'Rejected'])): ?>
@@ -858,7 +858,7 @@ if (mysqli_num_rows($notif_table_check) > 0) {
                                             <?php endforeach; ?>
                                         </table>
                                         <?php endif; ?>
-                                        <?php if ($ic['admin_response']): ?><hr><div class="alert alert-success"><strong><i class="fas fa-check-circle mr-1"></i>Response from ICT:</strong><br><?php echo nl2br(htmlspecialchars($ic['admin_response'])); ?></div><?php endif; ?>
+                                        <?php if ($ic['admin_response']): ?><hr><div class="alert alert-success"><strong><i class="fas fa-check-circle mr-1"></i>Response from ICT:</strong><br><?php echo parse_response_images($ic['admin_response']); ?></div><?php endif; ?>
                                     </div>
                                     <div class="modal-footer">
                                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
@@ -1354,7 +1354,29 @@ $(document).ready(function() {
         }, 400);
     });
 });
+
+function showImageModal(src) {
+    $('#modalImage').attr('src', src);
+    $('#imageModal').modal('show');
+}
 </script>
 <?php endif; ?>
+
+<!-- Image Attachment Lightbox Modal -->
+<div class="modal fade" id="imageModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-dark text-white border-0">
+                <h5 class="modal-title font-weight-bold">Response Image Viewer</h5>
+                <button type="button" class="close text-white" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body text-center p-3">
+                <img id="modalImage" src="" class="img-fluid rounded" alt="Attachment Image" style="max-height: 80vh;">
+            </div>
+        </div>
+    </div>
+</div>
 </body>
 </html>

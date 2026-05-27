@@ -28,12 +28,19 @@ if (!empty($_GET['msg'])) {
     }
 }
 
+// Self-heal: Ensure forwarded_to column exists in complaints table
+$col_check = mysqli_query($conn, "SHOW COLUMNS FROM complaints LIKE 'forwarded_to'");
+if ($col_check && mysqli_num_rows($col_check) === 0) {
+    mysqli_query($conn, "ALTER TABLE complaints ADD COLUMN forwarded_to VARCHAR(100) NULL DEFAULT NULL AFTER handled_by");
+}
+
 // ── Handle feedback submission ────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_feedback'])) {
     $cid      = (int) $_POST['complaint_id'];
     $status   = $_POST['status'] ?? 'Pending';
     $response = trim($_POST['feedback'] ?? '');
     $is_urgent = isset($_POST['is_urgent']) ? 1 : 0;
+    $forwarded_to = isset($_POST['forwarded_to']) ? trim($_POST['forwarded_to']) : '';
     
     // Handle admin feedback image uploads
     $admin_feedback_image_paths = array();
@@ -74,10 +81,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_feedback'])) {
 
     $upd = mysqli_prepare($conn,
         "UPDATE complaints
-         SET status=?, feedback=?, feedback_images=?, is_urgent=?, handled_by=?, updated_at=NOW()
+         SET status=?, feedback=?, feedback_images=?, is_urgent=?, forwarded_to=?, handled_by=?, updated_at=NOW()
          WHERE complaint_id=?");
     if ($upd) {
-        mysqli_stmt_bind_param($upd, 'sssiii', $status, $response, $admin_feedback_images_str, $is_urgent, $_SESSION['user_id'], $cid);
+        mysqli_stmt_bind_param($upd, 'ssssiii', $status, $response, $admin_feedback_images_str, $is_urgent, $forwarded_to, $_SESSION['user_id'], $cid);
         if (mysqli_stmt_execute($upd)) {
             $success_msg = "Department Complaint #$cid updated successfully.";
             
@@ -467,6 +474,7 @@ include 'includes/dashboard_header.php';
                                 data-feedback="<?php echo htmlspecialchars($c['feedback'] ?? '', ENT_QUOTES); ?>"
                                 data-attachment="<?php echo htmlspecialchars($c['image_path'] ?? '', ENT_QUOTES); ?>"
                                 data-handler="<?php echo htmlspecialchars($c['handler_name'] ?? 'Not assigned', ENT_QUOTES); ?>"
+                                data-forwarded="<?php echo htmlspecialchars($c['forwarded_to'] ?? '', ENT_QUOTES); ?>"
                                 title="View & Respond">
                             <i class="fas fa-eye mr-1"></i>View & Respond
                         </button>
@@ -626,13 +634,22 @@ include 'includes/dashboard_header.php';
                     
                     <div class="form-group mt-3">
                         <label class="font-weight-bold text-muted">Response / Feedback to Department</label>
-                        <textarea name="feedback" id="modal_feedback" class="form-control" rows="4" placeholder="Write feedback details to send to the department..."></textarea>
+                        <textarea name="feedback" id="modal_feedback" class="form-control manual-clipboard-init" rows="4" placeholder="Write feedback details to send to the department..."></textarea>
                     </div>
 
                     <div class="form-group mt-3">
                         <label class="font-weight-bold text-muted">Attach Images to Response (Optional)</label>
                         <input type="file" name="admin_feedback_images[]" class="form-control-file" accept="image/*" multiple>
                         <small class="form-text text-muted">Paste screenshots with Ctrl+V or upload JPG, JPEG, PNG, GIF</small>
+                    </div>
+                    
+                    <div class="form-group mt-3">
+                        <label class="font-weight-bold text-muted"><i class="fas fa-share mr-1"></i>Forward Department Complaint <span class="text-muted font-weight-normal">(optional)</span></label>
+                        <select name="forwarded_to" id="modal_forwarded_to" class="form-control">
+                            <option value="">— Do not forward / Leave in general queue —</option>
+                            <option value="director">Forward to ICT Director</option>
+                            <option value="i4cus">Forward to i4Cus Staff</option>
+                        </select>
                     </div>
                 </div>
                 <div class="modal-footer bg-light border-0">
@@ -681,9 +698,15 @@ include 'includes/dashboard_header.php';
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script src="js/clipboard-paste.js"></script>
 
 <script>
 $(document).ready(function() {
+    // Initialize clipboard paste for feedback response
+    if (typeof initializeClipboardPaste === 'function') {
+        initializeClipboardPaste(document.getElementById('modal_feedback'), document.querySelector('input[name="admin_feedback_images[]"]'));
+    }
+
     $('.btn-view-respond').on('click', function() {
         const id = $(this).data('id');
         const dept = $(this).data('dept');
@@ -694,6 +717,7 @@ $(document).ready(function() {
         const date = $(this).data('date');
         const feedback = $(this).data('feedback');
         const attachment = $(this).data('attachment');
+        const forwarded = $(this).data('forwarded');
         
         $('#modal_complaint_id').val(id);
         $('#modal_dept_name').text(dept);
@@ -703,6 +727,7 @@ $(document).ready(function() {
         $('#modal_urgent').prop('checked', urgent == 1);
         $('#modal_date').text(date);
         $('#modal_feedback').val(feedback);
+        $('#modal_forwarded_to').val(forwarded || '');
         
         // Handle attachments
         const attachGroup = $('#modal_attachments_group');
