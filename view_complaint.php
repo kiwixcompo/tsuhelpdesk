@@ -1023,12 +1023,29 @@ function getDirectImagePath($image) {
                                         <?php else : ?>
                                             <p class='text-muted'>No replies yet.</p>
                                         <?php endif; ?>
-                                    </div>
+                                    <?php
+                                    $most_recent_student_reply = '';
+                                    foreach (array_reverse($replies) as $r) {
+                                        if ($r['sender_id'] == $complaint['lodged_by']) {
+                                            $most_recent_student_reply = $r['reply_text'];
+                                            break;
+                                        }
+                                    }
+                                    if (empty($most_recent_student_reply)) {
+                                        $most_recent_student_reply = $complaint['complaint_text'];
+                                    }
+                                    ?>
                                     
                                     <!-- Reply form - available until complaint is treated -->
                                     <?php if ($complaint['status'] != 'Treated' && ($_SESSION['role_id'] == 1 || $_SESSION['role_id'] == 2)): ?>
                                     <form method="post" class="mt-2" enctype="multipart/form-data">
                                         <div class="form-group">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <label class="font-weight-bold mb-0">Type your reply...</label>
+                                                <button type="button" id="btnDraftWithAI" class="btn btn-sm" data-student-reply="<?php echo htmlspecialchars($most_recent_student_reply, ENT_QUOTES, 'UTF-8'); ?>" style="background: linear-gradient(135deg, #7F00FF, #E100FF); color: white; border: none; border-radius: 20px; padding: 0.25rem 0.85rem; font-size: 0.75rem; font-weight: 600; box-shadow: 0 2px 8px rgba(225, 0, 255, 0.3); transition: all 0.2s;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(225, 0, 255, 0.5)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(225, 0, 255, 0.3)';">
+                                                    <i class="fas fa-robot mr-1"></i> Draft with AI
+                                                </button>
+                                            </div>
                                             <textarea name="reply_text" class="form-control manual-clipboard-init" rows="2" placeholder="Type your reply..." required></textarea>
                                         </div>
                                         <div class="form-group">
@@ -1184,6 +1201,7 @@ function getDirectImagePath($image) {
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="https://js.puter.com/v2/"></script>
     <script src="js/clipboard-paste.js"></script>
     <script>
     // Enhanced gallery functionality
@@ -1297,6 +1315,110 @@ function getDirectImagePath($image) {
         }
     }
     
+    function extractAIText(result) {
+        console.log('extractAIText received:', result);
+        if (!result) return '';
+        if (typeof result === 'string') {
+            return result.trim();
+        }
+        if (typeof result === 'object') {
+            if (result.message) {
+                if (typeof result.message === 'string') {
+                    return result.message.trim();
+                }
+                if (result.message.content && typeof result.message.content === 'string') {
+                    return result.message.content.trim();
+                }
+                if (result.message.text && typeof result.message.text === 'string') {
+                    return result.message.text.trim();
+                }
+            }
+            if (typeof result.content === 'string') {
+                return result.content.trim();
+            }
+            if (typeof result.text === 'string') {
+                return result.text.trim();
+            }
+            
+            let longestStr = '';
+            const excludeValues = ['assistant', 'user', 'system', 'role', 'text'];
+            
+            function search(obj) {
+                if (!obj) return;
+                if (typeof obj === 'string') {
+                    const trimmed = obj.trim();
+                    if (trimmed && !excludeValues.includes(trimmed.toLowerCase()) && trimmed.length > longestStr.length) {
+                        longestStr = trimmed;
+                    }
+                    return;
+                }
+                if (typeof obj === 'object') {
+                    for (const key in obj) {
+                        try {
+                            if (Object.prototype.hasOwnProperty.call(obj, key)) {
+                                search(obj[key]);
+                            }
+                        } catch (e) {}
+                    }
+                }
+            }
+            
+            search(result);
+            if (longestStr) return longestStr;
+        }
+        return '';
+    }
+
+    // Puter AI response generator click handler
+    $(document).on('click', '#btnDraftWithAI', async function() {
+        const btn = $(this);
+        const originalHtml = btn.html();
+        const studentReply = btn.data('student-reply');
+        
+        if (!studentReply) {
+            alert('No student message found in history to coin a reply.');
+            return;
+        }
+        
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Drafting...');
+        
+        try {
+            const prompt = `You are a helpful university ICT Support assistant.
+A student has posted the following message/reply in a result verification complaint conversation thread:
+"${studentReply}"
+
+Based on the student's message above, draft a highly professional, polite, and helpful response for the ICT support staff to send back to the student. 
+Tweak, refine, and polish the phrasing to make it clear, grammatically flawless, and exceptionally professional.
+
+Return ONLY the response text that the support staff should send to the student. Do not write any intro or outro (e.g. do not say "Here is a draft" or "Dear Support"). Just output the exact text to be pasted into the reply box.`;
+
+            const result = await puter.ai.chat(prompt);
+            const generatedResponse = extractAIText(result);
+            
+            if (generatedResponse) {
+                $('textarea[name="reply_text"]').val(generatedResponse);
+                
+                // Glimmering green glow effect to show AI success
+                const ta = $('textarea[name="reply_text"]');
+                ta.css('transition', 'all 0.4s');
+                ta.css('box-shadow', '0 0 15px rgba(46, 196, 182, 0.8)');
+                ta.css('border-color', '#2ec4b6');
+                
+                setTimeout(() => {
+                    ta.css('box-shadow', '');
+                    ta.css('border-color', '');
+                }, 2000);
+            } else {
+                alert('AI generated an empty response. Please try again.');
+            }
+        } catch (e) {
+            console.error('Puter AI error:', e);
+            alert('Could not generate response with AI: ' + e.message);
+        } finally {
+            btn.prop('disabled', false).html(originalHtml);
+        }
+    });
+
     // Initialize clipboard paste functionality when document is ready
     $(document).ready(function() {
         if (window.clipboardPasteHandler && typeof initializeClipboardPaste === 'function') {

@@ -335,6 +335,8 @@ $f_category = $_GET['category'] ?? '';
 $f_from     = $_GET['date_from'] ?? '';
 $f_to       = $_GET['date_to']   ?? '';
 $show_archive = isset($_GET['archive']) && $_GET['archive'] === '1';
+$f_sort_order = $_GET['sort_order'] ?? 'oldest';
+$order_by_sql = ($f_sort_order === 'newest') ? 'DESC' : 'ASC';
 
 $where = ['1=1'];
 $params = []; $types = '';
@@ -452,7 +454,7 @@ $sql = "SELECT c.*,
         LEFT JOIN student_departments sd ON s.department_id = sd.department_id
         LEFT JOIN faculties f ON sd.faculty_id = f.faculty_id
         WHERE $wc
-        ORDER BY c.created_at DESC
+        ORDER BY c.created_at $order_by_sql
         $limit_clause";
 
 $complaints = [];
@@ -595,12 +597,12 @@ $val_map = [
     <div class="card-body py-3">
         <form method="GET" class="form-row align-items-end">
             <!-- Search Keyword -->
-            <div class="col-md-3 mb-2">
+            <div class="col-md-2 col-sm-6 mb-2">
                 <label class="small font-weight-bold"><i class="fas fa-search mr-1"></i>Search Keyword</label>
                 <input type="text" name="search" class="form-control form-control-sm" placeholder="Name, matric, or details…" value="<?php echo htmlspecialchars($f_search); ?>">
             </div>
             <!-- Status Filter -->
-            <div class="col-md-2 mb-2">
+            <div class="col-md-2 col-sm-6 mb-2">
                 <label class="small font-weight-bold">Status</label>
                 <select name="status" class="form-control form-control-sm">
                     <option value="" <?php echo $f_status===''?'selected':''; ?>>Active (Queue)</option>
@@ -611,7 +613,7 @@ $val_map = [
                 </select>
             </div>
             <!-- Category Filter -->
-            <div class="col-md-3 mb-2">
+            <div class="col-md-2 col-sm-6 mb-2">
                 <label class="small font-weight-bold">Category</label>
                 <select name="category" class="form-control form-control-sm">
                     <option value="">All Categories</option>
@@ -622,13 +624,21 @@ $val_map = [
                     <?php endforeach; ?>
                 </select>
             </div>
+            <!-- Sort Order Filter -->
+            <div class="col-md-2 col-sm-6 mb-2">
+                <label class="small font-weight-bold"><i class="fas fa-sort-amount-down-alt mr-1"></i>Sort Order</label>
+                <select name="sort_order" class="form-control form-control-sm">
+                    <option value="oldest" <?php echo $f_sort_order==='oldest'?'selected':''; ?>>Oldest First</option>
+                    <option value="newest" <?php echo $f_sort_order==='newest'?'selected':''; ?>>Newest First</option>
+                </select>
+            </div>
             <!-- Date range: From -->
-            <div class="col-md-2 mb-2">
+            <div class="col-md-2 col-sm-6 mb-2">
                 <label class="small font-weight-bold">From</label>
                 <input type="date" name="date_from" class="form-control form-control-sm" value="<?php echo htmlspecialchars($f_from); ?>">
             </div>
             <!-- Date range: To -->
-            <div class="col-md-2 mb-2">
+            <div class="col-md-2 col-sm-6 mb-2">
                 <label class="small font-weight-bold">To</label>
                 <input type="date" name="date_to" class="form-control form-control-sm" value="<?php echo htmlspecialchars($f_to); ?>">
             </div>
@@ -1079,8 +1089,12 @@ function extractAIText(result) {
 
 $(function() {
     // Initialize clipboard paste for complaint response feedback
-    if (typeof initializeClipboardPaste === 'function') {
-        initializeClipboardPaste(document.getElementById('feedbackResponse'), document.getElementById('feedbackImages'));
+    try {
+        if (typeof initializeClipboardPaste === 'function') {
+            initializeClipboardPaste(document.getElementById('feedbackResponse'), document.getElementById('feedbackImages'));
+        }
+    } catch (e) {
+        console.error("Clipboard paste handler ready initialization failed:", e);
     }
 
     // Auto-dismiss alerts
@@ -1218,8 +1232,12 @@ $(function() {
         $('#sharedViewModal').one('shown.bs.modal', function() {
             const ta = document.getElementById('feedbackResponse');
             const fi = document.getElementById('feedbackImages');
-            if (ta && fi && typeof initializeClipboardPaste === 'function') {
-                initializeClipboardPaste(ta, fi);
+            try {
+                if (ta && fi && typeof initializeClipboardPaste === 'function') {
+                    initializeClipboardPaste(ta, fi);
+                }
+            } catch (e) {
+                console.error("Clipboard paste handler modal initialization failed:", e);
             }
         });
     });
