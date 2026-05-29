@@ -894,9 +894,14 @@ $val_map = [
                         <div class="form-group">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <label class="font-weight-bold mb-0">Response to Student</label>
-                                <button type="button" id="btnDraftWithAI" class="btn btn-sm" style="display: none; background: linear-gradient(135deg, #7F00FF, #E100FF); color: white; border: none; border-radius: 20px; padding: 0.25rem 0.85rem; font-size: 0.75rem; font-weight: 600; box-shadow: 0 2px 8px rgba(225, 0, 255, 0.3); transition: all 0.2s;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(225, 0, 255, 0.5)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(225, 0, 255, 0.3)';">
-                                    <i class="fas fa-robot mr-1"></i> Draft with AI
-                                </button>
+                                <div class="d-flex align-items-center" style="gap: 8px;">
+                                    <button type="button" id="btnDraftWithAI" class="btn btn-sm" style="display: none; background: linear-gradient(135deg, #7F00FF, #E100FF); color: white; border: none; border-radius: 20px; padding: 0.25rem 0.85rem; font-size: 0.75rem; font-weight: 600; box-shadow: 0 2px 8px rgba(225, 0, 255, 0.3); transition: all 0.2s;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(225, 0, 255, 0.5)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(225, 0, 255, 0.3)';">
+                                        <i class="fas fa-robot mr-1"></i> Draft with AI
+                                    </button>
+                                    <button type="button" id="btnRephraseWithAI" class="btn btn-sm" style="background: linear-gradient(135deg, #00b4db, #0083b0); color: white; border: none; border-radius: 20px; padding: 0.25rem 0.85rem; font-size: 0.75rem; font-weight: 600; box-shadow: 0 2px 8px rgba(0, 180, 219, 0.3); transition: all 0.2s;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(0, 180, 219, 0.5)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0, 180, 219, 0.3)';">
+                                        <i class="fas fa-magic mr-1"></i> Rephrase
+                                    </button>
+                                </div>
                             </div>
                             <textarea name="admin_response" id="feedbackResponse" class="form-control manual-clipboard-init" rows="4"
                                       placeholder="Your response will be shown to the student. Your identity will not be revealed."></textarea>
@@ -1303,6 +1308,54 @@ Return ONLY the response text that the admin should send to the student. Do not 
         } catch (e) {
             console.error('Puter AI error:', e);
             alert('Could not generate response with AI: ' + e.message);
+        } finally {
+            btn.prop('disabled', false).html(originalHtml);
+        }
+    });
+
+    // ── Puter AI rephrase click handler ────────────────────────
+    $(document).on('click', '#btnRephraseWithAI', async function() {
+        const btn = $(this);
+        const originalHtml = btn.html();
+        const textarea = $('#feedbackResponse');
+        const currentText = textarea.val().trim();
+        
+        if (!currentText) {
+            alert('Please type some text in the response box first before rephrasing.');
+            return;
+        }
+        
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Rephrasing...');
+        
+        try {
+            const prompt = `You are a helpful university ICT Support assistant.
+An ICT admin has drafted a response to a student's complaint. Help rephrase, polish, and refine this draft to make it sound highly professional, exceptionally polite, clear, and grammatically flawless, while keeping all original meaning, key technical details, instructions, and facts exactly the same:
+
+Draft response: "${currentText}"
+
+Return ONLY the professionally rephrased response text that the admin should send to the student. Do not write any intro or outro (e.g. do not say "Here is the rephrased version:" or "Dear student"). Just output the exact text to be pasted into the response box.`;
+
+            const result = await puter.ai.chat(prompt);
+            const generatedResponse = extractAIText(result);
+            
+            if (generatedResponse) {
+                textarea.val(generatedResponse);
+                
+                // Glimmering teal glow effect to show AI success
+                textarea.css('transition', 'all 0.4s');
+                textarea.css('box-shadow', '0 0 15px rgba(0, 180, 219, 0.8)');
+                textarea.css('border-color', '#00b4db');
+                
+                setTimeout(() => {
+                    textarea.css('box-shadow', '');
+                    textarea.css('border-color', '');
+                }, 2000);
+            } else {
+                alert('AI generated an empty response. Please try again.');
+            }
+        } catch (e) {
+            console.error('Puter AI error:', e);
+            alert('Could not rephrase response with AI: ' + e.message);
         } finally {
             btn.prop('disabled', false).html(originalHtml);
         }
