@@ -201,7 +201,7 @@ if ($fwd_ict_col && mysqli_num_rows($fwd_ict_col) > 0) {
                            s.registration_number, s.email
                     FROM student_ict_complaints c
                     JOIN students s ON c.student_id = s.student_id
-                    WHERE c.forwarded_to = 'i4cus'
+                    WHERE c.forwarded_to = 'i4cus' AND c.status NOT IN ('Resolved', 'Rejected', 'Auto-Resolved')
                     ORDER BY c.created_at DESC";
     $fi = mysqli_query($conn, $fwd_ict_sql);
     if ($fi) $fwd_ict_i4 = mysqli_fetch_all($fi, MYSQLI_ASSOC);
