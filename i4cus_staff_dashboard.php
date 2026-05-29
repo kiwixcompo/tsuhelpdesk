@@ -116,29 +116,33 @@ $per_page = 10;
 $offset = ($page - 1) * $per_page;
 
 // Base WHERE conditions — i4cus complaints only
-$where_base = ["is_i4cus = 1"];
+$where_base = ["c.is_i4cus = 1"];
 if ($search_id) {
-    $where_base[] = "student_id LIKE '%" . mysqli_real_escape_string($conn, $search_id) . "%'";
+    $where_base[] = "c.student_id LIKE '%" . mysqli_real_escape_string($conn, $search_id) . "%'";
 }
 if ($filter_date) {
-    $where_base[] = "DATE(created_at) = '" . mysqli_real_escape_string($conn, $filter_date) . "'";
+    $where_base[] = "DATE(c.created_at) = '" . mysqli_real_escape_string($conn, $filter_date) . "'";
 }
 
 // Archived = Treated OR Resolved (anything that has been handled)
 $archived_statuses = "'Treated','Resolved','Rejected'";
 
-// Active = everything NOT archived, unless a specific status filter is applied
-$where_active   = array_merge($where_base, ["status NOT IN ($archived_statuses)"]);
-$where_archived = array_merge($where_base, ["status IN ($archived_statuses)"]);
+// Subquery to check if student replied after the complaint was last updated by staff
+$student_replied_sql = "(SELECT COUNT(*) FROM complaint_replies r WHERE r.complaint_id = c.complaint_id AND r.sender_id = c.lodged_by AND r.created_at > c.updated_at)";
 
-// If a specific status filter is requested, apply it to the active list
+// Active = everything NOT archived OR those that are archived but have new student replies
+$where_active   = array_merge($where_base, ["(c.status NOT IN ($archived_statuses) OR (c.status IN ($archived_statuses) AND $student_replied_sql > 0))"]);
+$where_archived = array_merge($where_base, ["c.status IN ($archived_statuses) AND $student_replied_sql = 0"]);
+
+// If a specific status filter is requested
 if ($filter_status) {
     if (in_array($filter_status, ['Treated','Resolved','Rejected'])) {
-        // Searching for an archived status — show in archive tab
-        $where_archived = array_merge($where_base, ["status = '" . mysqli_real_escape_string($conn, $filter_status) . "'"]);
-        $where_active   = array_merge($where_base, ["status NOT IN ($archived_statuses)"]);
+        // Searching for an archived status — show in archive tab if no student replies (meaning it's fully resolved)
+        $where_archived = array_merge($where_base, ["c.status = '" . mysqli_real_escape_string($conn, $filter_status) . "' AND $student_replied_sql = 0"]);
+        $where_active   = array_merge($where_base, ["(c.status NOT IN ($archived_statuses) OR (c.status IN ($archived_statuses) AND $student_replied_sql > 0))"]);
     } else {
-        $where_active = array_merge($where_base, ["status = '" . mysqli_real_escape_string($conn, $filter_status) . "'"]);
+        // Active status filter (Pending or Needs More Info)
+        $where_active = array_merge($where_base, ["c.status = '" . mysqli_real_escape_string($conn, $filter_status) . "'"]);
     }
 }
 
@@ -149,35 +153,44 @@ $where_clause_archived = 'WHERE ' . implode(' AND ', $where_archived);
 // Fetch paginated active complaints with lodger name
 $sql_active = "SELECT c.*, u.full_name as lodged_by_name,
                COALESCE(c.department_name, '') as department_name,
-               COALESCE(c.staff_name, '') as staff_name
+               COALESCE(c.staff_name, '') as staff_name,
+               $student_replied_sql AS student_replied
                FROM complaints c 
                LEFT JOIN users u ON c.lodged_by = u.user_id 
                $where_clause_active 
                ORDER BY c.created_at DESC LIMIT $per_page OFFSET $offset";
 $result_active = mysqli_query($conn, $sql_active);
 $active_complaints = [];
-while($row = mysqli_fetch_assoc($result_active)){
-    $active_complaints[] = $row;
+if ($result_active) {
+    while($row = mysqli_fetch_assoc($result_active)){
+        $active_complaints[] = $row;
+    }
 }
 
 // Count total active complaints for pagination
-$sql_count = "SELECT COUNT(*) as total FROM complaints $where_clause_active";
+$sql_count = "SELECT COUNT(*) as total FROM complaints c $where_clause_active";
 $result_count = mysqli_query($conn, $sql_count);
-$total_active = ($row = mysqli_fetch_assoc($result_count)) ? $row['total'] : 0;
+$total_active = 0;
+if ($result_count && $row = mysqli_fetch_assoc($result_count)) {
+    $total_active = $row['total'];
+}
 $total_pages = ceil($total_active / $per_page);
 
 // Fetch archived complaints (all treated) with lodger name
 $sql_archived = "SELECT c.*, u.full_name as lodged_by_name,
                 COALESCE(c.department_name, '') as department_name,
-                COALESCE(c.staff_name, '') as staff_name
+                COALESCE(c.staff_name, '') as staff_name,
+                $student_replied_sql AS student_replied
                 FROM complaints c 
                 LEFT JOIN users u ON c.lodged_by = u.user_id 
                 $where_clause_archived 
                 ORDER BY c.created_at DESC";
 $result_archived = mysqli_query($conn, $sql_archived);
 $archived_complaints = [];
-while($row = mysqli_fetch_assoc($result_archived)){
-    $archived_complaints[] = $row;
+if ($result_archived) {
+    while($row = mysqli_fetch_assoc($result_archived)){
+        $archived_complaints[] = $row;
+    }
 }
 
 // ── Fetch ICT complaints forwarded to i4Cus Staff (role-based, not user-specific) ──
@@ -273,7 +286,7 @@ function getImagePath($image) {
         <?php if (isset($_GET['treated'])): ?>
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             <i class="fas fa-check-circle mr-2"></i>
-            <strong>Complaint marked as Treated.</strong> It has been moved to the Archive tab below.
+            <strong>Complaint marked as Treated.</strong> It has been moved to the Resolved Cases tab below.
             <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
         </div>
         <?php endif; ?>
@@ -592,7 +605,7 @@ function getImagePath($image) {
 
         <div class="card mb-4">
             <div class="card-header bg-primary text-white">
-                <h4 class="mb-0"><i class="fas fa-filter mr-2"></i>Search & Filter i4Cus Complaints</h4>
+                <h4 class="mb-0"><i class="fas fa-list mr-2"></i>i4Cus Complaints Queue</h4>
             </div>
                 <ul class="nav nav-tabs mb-3" id="complaintTabs" role="tablist">
                     <li class="nav-item">
@@ -605,7 +618,7 @@ function getImagePath($image) {
                     </li>
                     <li class="nav-item">
                         <a class="nav-link <?php echo isset($_GET['treated']) ? 'active' : ''; ?>" id="archive-tab" data-toggle="tab" href="#archive" role="tab">
-                            Archive
+                            Resolved Cases
                             <?php if (!empty($archived_complaints)): ?>
                             <span class="badge badge-secondary ml-1"><?php echo count($archived_complaints); ?></span>
                             <?php endif; ?>
@@ -674,7 +687,19 @@ if (!empty($found_ids)):
     </div>
 <?php endif; ?>
 </td>
-                                            <td><?php echo htmlspecialchars($row['status']); ?></td>
+                                            <td>
+                                                <?php
+                                                $sc = ['Pending'=>'warning','Under Review'=>'info','Treated'=>'success','Resolved'=>'success','Rejected'=>'danger'];
+                                                $bc = $sc[$row['status']] ?? 'secondary';
+                                                ?>
+                                                <span class="badge badge-<?php echo $bc; ?>"><?php echo htmlspecialchars($row['status']); ?></span>
+                                                <?php if (isset($row['student_replied']) && $row['student_replied'] > 0): ?>
+                                                    <br>
+                                                    <span class="badge badge-success mt-1 d-inline-block" style="background-color: #2ec4b6; border-color: #2ec4b6; color: white;">
+                                                        <i class="fas fa-reply mr-1"></i>Student Responded
+                                                    </span>
+                                                <?php endif; ?>
+                                            </td>
                                             <td><?php echo date('Y-m-d', strtotime($row['created_at'])); ?></td>
                                             <td>
                                                 <a href="view_complaint.php?id=<?php echo $row['complaint_id']; ?>&i4cus=1" class="btn btn-sm btn-info">View/Treat</a>
@@ -701,10 +726,10 @@ if (!empty($found_ids)):
                     <div class="tab-pane fade <?php echo isset($_GET['treated']) ? 'show active' : ''; ?>" id="archive" role="tabpanel">
                         <?php if (empty($archived_complaints)): ?>
                             <div class="alert alert-info">
-                                No archived i4Cus complaints found.
+                                No resolved i4Cus complaints found.
                             </div>
                         <?php else: ?>
-                            <h5 class="mb-3 text-success"><i class="fas fa-archive mr-2"></i>Archived i4Cus Complaints (<?php echo count($archived_complaints); ?>)</h5>
+                            <h5 class="mb-3 text-success"><i class="fas fa-check-circle mr-2"></i>Resolved i4Cus Complaints (<?php echo count($archived_complaints); ?>)</h5>
                             <div class="table-responsive">
                                 <table class="table table-bordered table-hover">
                                     <thead>
@@ -801,7 +826,13 @@ if (!empty($found_ids)):
                     return `<div class=\"mr-2 mb-2\"><a href=\"${directPath}\" target=\"_blank\"><img src=\"${directPath}\" class=\"img-thumbnail\" alt=\"Complaint Image\" style=\"max-height: 80px; width: 80px; object-fit: cover;\"></a></div>`;
                 }).join('') + '</div>';
             }
-            return `<tr class=\"new-complaint\"><td>${complaint.student_id || ''}</td><td>${complaint.department_name || ''}</td><td>${complaint.staff_name || ''}</td><td>${complaint.lodged_by_name || ''}</td><td style=\"width: 30%;\">${complaint.complaint_text || ''}${imagesHtml}</td><td>${complaint.status}</td><td>${complaint.created_at ? complaint.created_at.substr(0,10) : ''}</td><td><a href=\"view_complaint.php?id=${complaint.complaint_id}&i4cus=1\" class=\"btn btn-sm btn-info\">View/Treat</a></td></tr>`;
+            const statusColors = {
+                'Pending': 'warning', 'Under Review': 'info',
+                'Treated': 'success', 'Resolved': 'success', 'Rejected': 'danger'
+            };
+            const bc = statusColors[complaint.status] || 'secondary';
+            const statusBadge = `<span class=\"badge badge-${bc}\">${complaint.status}</span>`;
+            return `<tr class=\"new-complaint\"><td>${complaint.student_id || ''}</td><td>${complaint.department_name || ''}</td><td>${complaint.staff_name || ''}</td><td>${complaint.lodged_by_name || ''}</td><td style=\"width: 30%;\">${complaint.complaint_text || ''}${imagesHtml}</td><td>${statusBadge}</td><td>${complaint.created_at ? complaint.created_at.substr(0,10) : ''}</td><td><a href=\"view_complaint.php?id=${complaint.complaint_id}&i4cus=1\" class=\"btn btn-sm btn-info\">View/Treat</a></td></tr>`;
         }
         function getLastComplaintId() {
             let first = $('#active table tbody tr').first();

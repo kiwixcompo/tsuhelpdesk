@@ -665,7 +665,7 @@ $val_map = [
         <div>
             <?php if (!$show_archive): ?>
                 <a href="?<?php echo http_build_query(array_merge($_GET, ['archive'=>'1'])); ?>"
-                   class="btn btn-sm btn-outline-secondary">
+                   class="btn btn-sm btn-outline-primary">
                     <i class="fas fa-archive mr-1"></i>View Archive
                 </a>
             <?php else: ?>
