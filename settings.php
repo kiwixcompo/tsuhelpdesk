@@ -227,51 +227,19 @@ foreach($settings as $setting){
                                                                 </div>
                                                                 <div class="card-body bg-light py-3">
                                                                     <p class="small text-muted mb-3" style="line-height: 1.45;">
-                                                                        <i class="fas fa-info-circle text-primary"></i> <strong>Log in directly in your browser</strong> to run all AI features (Draft with AI, Rephrase, Auto-response suggestion) under your chosen upgraded Puter account credits and rate limits.
+                                                                        <i class="fas fa-info-circle text-primary"></i> <strong>Log in directly in your browser</strong> to run all AI features (Draft with AI, Rephrase, Auto-response matching) under your chosen upgraded Puter account credits and rate limits.
                                                                     </p>
                                                                     <div id="puterLiveUserPanel" class="d-flex align-items-center justify-content-between flex-wrap" style="gap: 12px;">
                                                                         <div>
-                                                                            <strong style="font-size: 1.05rem; color: #1e3c72;" id="puterLiveUsername"><i class="fas fa-spinner fa-spin mr-1"></i> Loading...</strong>
-                                                                            <div class="text-muted small mt-1" id="puterLiveUserQuota">Connecting to Puter auth session...</div>
+                                                                            <strong style="font-size: 1.05rem; color: #1e3c72;" id="puterLiveUsername"><i class="fas fa-spinner fa-spin mr-1"></i> Checking session...</strong>
+                                                                            <div class="text-muted small mt-1" id="puterLiveUserQuota">Verifying browser auth session...</div>
                                                                         </div>
-                                                                        <button type="button" id="btnPuterLiveConnect" class="btn btn-sm btn-primary px-3 font-weight-bold" style="border-radius: 6px; box-shadow: 0 2px 6px rgba(30, 60, 114, 0.2);">
-                                                                            <i class="fas fa-sign-in-alt mr-1"></i> Connect Account
+                                                                        <button type="button" id="btnPuterLiveConnect" class="btn btn-sm btn-success px-4 font-weight-bold" style="border-radius: 6px; box-shadow: 0 2px 6px rgba(40, 167, 69, 0.2);">
+                                                                            <i class="fas fa-sign-in-alt mr-1"></i> Connect Upgraded Account
                                                                         </button>
                                                                     </div>
                                                                 </div>
                                                             </div>
-
-                                                            <div class="border rounded p-3 mb-3 bg-white" style="border-style: dashed !important; border-width: 2px !important;">
-                                                                <label class="font-weight-bold text-muted small uppercase mb-2"><i class="fas fa-tools mr-1"></i> Advanced: Enterprise Global API Auth Token (Optional)</label>
-                                                                <div class="input-group">
-                                                                    <input type="password" name="setting_<?php echo $setting['setting_key']; ?>" 
-                                                                           id="puterTokenField"
-                                                                           class="form-control form-control-sm" value="<?php echo htmlspecialchars($setting['setting_value'] ?? ''); ?>"
-                                                                           placeholder="Enter Puter Auth Token">
-                                                                    <div class="input-group-append">
-                                                                        <button class="btn btn-outline-secondary btn-sm" type="button" id="togglePuterToken">
-                                                                            <i class="fas fa-eye" id="togglePuterTokenIcon"></i>
-                                                                        </button>
-                                                                    </div>
-                                                                </div>
-                                                                <small class="form-text text-muted mt-2" style="font-size: 0.78rem;">
-                                                                    Provide a global API Auth Token to authenticate all student/staff browsers universally without requiring individual logins. Leave blank to prioritize the active browser login above.
-                                                                </small>
-                                                            </div>
-                                                             
-                                                             <!-- Puter Diagnostics Console -->
-                                                             <div class="mt-3 p-3 bg-light rounded border" id="puterDiagnosticContainer" style="display:none; font-size: 0.85rem;">
-                                                                 <div class="font-weight-bold mb-2 text-secondary" style="border-bottom: 1px solid #dee2e6; padding-bottom: 4px;"><i class="fas fa-terminal"></i> Puter AI Integration Status</div>
-                                                                 <div class="mb-1">
-                                                                     <strong>Active Account:</strong> <span id="diagPuterAccount" class="text-muted"><i class="fas fa-spinner fa-spin"></i> Checking...</span>
-                                                                 </div>
-                                                                 <div class="mb-2">
-                                                                     <strong>AI Usage Test:</strong> <span id="diagPuterStatus" class="text-muted">Awaiting test...</span>
-                                                                 </div>
-                                                                 <button type="button" class="btn btn-xs btn-outline-info" id="btnTestPuterAI" style="font-size: 0.75rem; padding: 2px 8px; border-radius: 4px;">
-                                                                     <i class="fas fa-play mr-1"></i> Run Connection & Quota Test
-                                                                 </button>
-                                                             </div>
                                                         <?php else: ?>
                                                             <input type="text" name="setting_<?php echo $setting['setting_key']; ?>" 
                                                                    class="form-control" value="<?php echo htmlspecialchars($setting['setting_value'] ?? ''); ?>"
@@ -423,20 +391,55 @@ foreach($settings as $setting){
             }
         });
 
-        // Puter AI Diagnostics & Interactive Live Session Manager
+        // Puter AI Direct Session Connection (Timeout-Safe & Highly Reliable)
         if (typeof puter !== 'undefined') {
             function updatePuterLiveStatus() {
-                puter.auth.getUser().then(function(user) {
+                // Initial state
+                $('#puterLiveStatusBadge').removeClass('badge-success badge-warning').addClass('badge-light').text('Checking...');
+                $('#puterLiveUsername').html('<i class="fas fa-spinner fa-spin mr-1"></i> Checking session...');
+                $('#puterLiveUserQuota').text('Verifying browser auth session...');
+
+                getPuterUserWithTimeout(1500).then(function(user) {
                     $('#puterLiveStatusBadge').removeClass('badge-light badge-warning').addClass('badge-success').text('Connected');
                     $('#puterLiveUsername').html('<i class="fas fa-check-circle text-success mr-1"></i> Connected: ' + esc(user.username));
-                    $('#puterLiveUserQuota').html('<span class="text-success"><i class="fas fa-check"></i> Browser is logged into this Puter account for AI requests.</span>');
-                    $('#btnPuterLiveConnect').removeClass('btn-primary').addClass('btn-outline-danger').html('<i class="fas fa-sign-out-alt mr-1"></i> Switch / Sign Out');
-                }).catch(function() {
-                    $('#puterLiveStatusBadge').removeClass('badge-success badge-light').addClass('badge-warning').text('Not Connected');
-                    $('#puterLiveUsername').text('No Account Linked');
-                    $('#puterLiveUserQuota').html('<span class="text-warning"><i class="fas fa-exclamation-triangle"></i> Not authenticated. AI calls will prompt for login.</span>');
-                    $('#btnPuterLiveConnect').removeClass('btn-outline-danger').addClass('btn-primary').html('<i class="fas fa-sign-in-alt mr-1"></i> Connect Account');
+                    $('#puterLiveUserQuota').html('<span class="text-success"><i class="fas fa-check"></i> Browser is logged in to this Puter account.</span>');
+                    $('#btnPuterLiveConnect').removeClass('btn-success btn-primary').addClass('btn-outline-danger').html('<i class="fas fa-sign-out-alt mr-1"></i> Switch / Sign Out');
+                }).catch(function(err) {
+                    // Fallback to localStorage check if getUser hangs or errors
+                    const hasCachedToken = localStorage.getItem('puter-auth-token') || localStorage.getItem('puter_auth_token');
+                    if (hasCachedToken) {
+                        $('#puterLiveStatusBadge').removeClass('badge-light badge-warning').addClass('badge-success').text('Connected');
+                        $('#puterLiveUsername').html('<i class="fas fa-check-circle text-success mr-1"></i> Connected (Active Session)');
+                        $('#puterLiveUserQuota').html('<span class="text-success"><i class="fas fa-check"></i> Session is active in this browser. AI features are ready.</span>');
+                        $('#btnPuterLiveConnect').removeClass('btn-success btn-primary').addClass('btn-outline-danger').html('<i class="fas fa-sign-out-alt mr-1"></i> Switch / Sign Out');
+                    } else {
+                        $('#puterLiveStatusBadge').removeClass('badge-success badge-light').addClass('badge-warning').text('Not Connected');
+                        $('#puterLiveUsername').text('No Account Linked');
+                        $('#puterLiveUserQuota').html('<span class="text-warning"><i class="fas fa-exclamation-triangle"></i> Not authenticated. AI features will prompt for login.</span>');
+                        $('#btnPuterLiveConnect').removeClass('btn-outline-danger').addClass('btn-success').html('<i class="fas fa-sign-in-alt mr-1"></i> Connect Upgraded Account');
+                    }
                 });
+            }
+
+            function getPuterUserWithTimeout(timeoutMs) {
+                return new Promise(function(resolve, reject) {
+                    const timer = setTimeout(function() {
+                        reject(new Error("Timeout"));
+                    }, timeoutMs);
+                    puter.auth.getUser().then(function(user) {
+                        clearTimeout(timer);
+                        resolve(user);
+                    }).catch(function(err) {
+                        clearTimeout(timer);
+                        reject(err);
+                    });
+                });
+            }
+
+            function esc(str) {
+                const d = document.createElement('div');
+                d.textContent = String(str || '');
+                return d.innerHTML;
             }
 
             // Run live status check on load
@@ -446,77 +449,27 @@ foreach($settings as $setting){
             $('#btnPuterLiveConnect').on('click', function() {
                 const btn = $(this);
                 if (btn.hasClass('btn-outline-danger')) {
-                    // Sign out and reload to clear state and bypass browser popup blockers
-                    puter.auth.signOut().then(function() {
-                        try {
-                            localStorage.removeItem('puter-auth-token');
-                            localStorage.removeItem('puter_auth_token');
-                        } catch(e) {}
-                        updatePuterLiveStatus();
-                        window.location.reload();
-                    });
+                    if (confirm("Sign out of Puter AI and clear all cached credentials in this browser?")) {
+                        puter.auth.signOut().then(function() {
+                            try {
+                                localStorage.removeItem('puter-auth-token');
+                                localStorage.removeItem('puter_auth_token');
+                            } catch(e) {}
+                            alert("Puter AI session cleared successfully.");
+                            updatePuterLiveStatus();
+                        });
+                    }
                 } else {
-                    // Direct click action to open popup without browser block
+                    const originalText = btn.html();
+                    btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Opening Popup...');
                     puter.auth.signIn().then(function() {
+                        alert("Successfully connected your browser session to Puter AI!");
                         updatePuterLiveStatus();
-                        window.location.reload();
                     }).catch(function(err) {
-                        console.error("Sign in popup closed or failed:", err);
+                        console.error("Sign in failed:", err);
+                        btn.prop('disabled', false).html(originalText);
+                        alert("Connection canceled or blocked. Please ensure popups are allowed.");
                     });
-                }
-            });
-
-            const configuredToken = <?php echo json_encode($_SESSION['app_settings']['puter_auth_token'] ?? ''); ?>;
-            if (configuredToken) {
-                puter.authToken = configuredToken;
-                try {
-                    localStorage.setItem('puter-auth-token', configuredToken);
-                    localStorage.setItem('puter_auth_token', configuredToken);
-                } catch(e) {}
-                
-                $('#puterDiagnosticContainer').show();
-                
-                // Fetch active Puter user details
-                puter.auth.getUser().then(function(user) {
-                    $('#diagPuterAccount').html('<span class="text-success font-weight-bold"><i class="fas fa-check-circle"></i> ' + esc(user.username) + '</span>');
-                }).catch(function(err) {
-                    $('#diagPuterAccount').html('<span class="text-danger"><i class="fas fa-times-circle"></i> Invalid Token or Session expired</span>');
-                });
-            }
-            
-            function esc(str) {
-                return $('<div>').text(str).html();
-            }
-
-            // Connection & Quota Test click handler
-            $('#btnTestPuterAI').on('click', async function() {
-                const btn = $(this);
-                const originalHtml = btn.html();
-                $('#diagPuterStatus').html('<span class="text-info"><i class="fas fa-spinner fa-spin"></i> Contacting Puter AI...</span>');
-                btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Testing...');
-                
-                try {
-                    // Try to send a simple AI request to test the quota
-                    const result = await puter.ai.chat("Respond with the single word: OK.");
-                    let responseText = '';
-                    if (typeof result === 'string') responseText = result;
-                    else if (result && result.message) responseText = result.message.content || '';
-                    
-                    if (responseText.toUpperCase().includes('OK')) {
-                        $('#diagPuterStatus').html('<span class="text-success font-weight-bold"><i class="fas fa-check-circle"></i> Success (Quota Active & Working)</span>');
-                    } else {
-                        $('#diagPuterStatus').html('<span class="text-warning"><i class="fas fa-exclamation-triangle"></i> Unexpected response: "' + esc(responseText) + '"</span>');
-                    }
-                } catch (err) {
-                    console.error("Quota test error:", err);
-                    const errMsg = err.message || String(err);
-                    if (errMsg.includes("usage") || errMsg.includes("usage left") || errMsg.includes("quota")) {
-                        $('#diagPuterStatus').html('<span class="text-danger font-weight-bold"><i class="fas fa-ban"></i> No Usage Left (Account needs upgrade/funding)</span>');
-                    } else {
-                        $('#diagPuterStatus').html('<span class="text-danger font-weight-bold"><i class="fas fa-times-circle"></i> Failed: ' + esc(errMsg) + '</span>');
-                    }
-                } finally {
-                    btn.prop('disabled', false).html(originalHtml);
                 }
             });
         }

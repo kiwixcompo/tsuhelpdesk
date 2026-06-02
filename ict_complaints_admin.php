@@ -1495,12 +1495,33 @@ Return ONLY the professionally rephrased response text that the admin should sen
     // Puter Active Session Status Pill logic
     if (typeof puter !== 'undefined') {
         function updatePuterPill() {
-            puter.auth.getUser().then(function(user) {
+            getPuterUserWithTimeout(1500).then(function(user) {
                 $('#puterActiveUser').text(esc(user.username));
                 $('#puterStatusPill').removeClass('badge-warning').addClass('badge-light').show();
             }).catch(function() {
-                $('#puterActiveUser').text('Not Connected');
-                $('#puterStatusPill').removeClass('badge-light').addClass('badge-warning').show();
+                const hasCachedToken = localStorage.getItem('puter-auth-token') || localStorage.getItem('puter_auth_token');
+                if (hasCachedToken) {
+                    $('#puterActiveUser').text('Session Active');
+                    $('#puterStatusPill').removeClass('badge-warning').addClass('badge-light').show();
+                } else {
+                    $('#puterActiveUser').text('Not Connected');
+                    $('#puterStatusPill').removeClass('badge-light').addClass('badge-warning').show();
+                }
+            });
+        }
+
+        function getPuterUserWithTimeout(timeoutMs) {
+            return new Promise(function(resolve, reject) {
+                const timer = setTimeout(function() {
+                    reject(new Error("Timeout"));
+                }, timeoutMs);
+                puter.auth.getUser().then(function(user) {
+                    clearTimeout(timer);
+                    resolve(user);
+                }).catch(function(err) {
+                    clearTimeout(timer);
+                    reject(err);
+                });
             });
         }
 
