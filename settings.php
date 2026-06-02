@@ -235,6 +235,20 @@ foreach($settings as $setting){
                                                                 <br><strong>How to get it:</strong> Sign in to <a href="https://puter.com/dashboard" target="_blank" class="font-weight-bold text-primary">Puter Dashboard</a> &rarr; click on your <strong>Account</strong> in the sidebar &rarr; scroll to <strong>Auth Token</strong> &rarr; click <strong>Copy</strong>.
                                                                 <br><i class="fas fa-magic text-success"></i> Leave blank to prompt staff and students to sign in with their individual Puter accounts.
                                                             </small>
+                                                             
+                                                             <!-- Puter Diagnostics Console -->
+                                                             <div class="mt-3 p-3 bg-light rounded border" id="puterDiagnosticContainer" style="display:none; font-size: 0.85rem;">
+                                                                 <div class="font-weight-bold mb-2 text-secondary" style="border-bottom: 1px solid #dee2e6; padding-bottom: 4px;"><i class="fas fa-terminal"></i> Puter AI Integration Status</div>
+                                                                 <div class="mb-1">
+                                                                     <strong>Active Account:</strong> <span id="diagPuterAccount" class="text-muted"><i class="fas fa-spinner fa-spin"></i> Checking...</span>
+                                                                 </div>
+                                                                 <div class="mb-2">
+                                                                     <strong>AI Usage Test:</strong> <span id="diagPuterStatus" class="text-muted">Awaiting test...</span>
+                                                                 </div>
+                                                                 <button type="button" class="btn btn-xs btn-outline-info" id="btnTestPuterAI" style="font-size: 0.75rem; padding: 2px 8px; border-radius: 4px;">
+                                                                     <i class="fas fa-play mr-1"></i> Run Connection & Quota Test
+                                                                 </button>
+                                                             </div>
                                                         <?php else: ?>
                                                             <input type="text" name="setting_<?php echo $setting['setting_key']; ?>" 
                                                                    class="form-control" value="<?php echo htmlspecialchars($setting['setting_value'] ?? ''); ?>"
@@ -358,6 +372,8 @@ foreach($settings as $setting){
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     
+    <script src="https://js.puter.com/v2/"></script>
+    
     <script>
     // Auto-refresh favicon after upload
     $(document).ready(function() {
@@ -383,6 +399,63 @@ foreach($settings as $setting){
                 icon.removeClass('fa-eye-slash').addClass('fa-eye');
             }
         });
+
+        // Puter AI Diagnostics
+        if (typeof puter !== 'undefined') {
+            const configuredToken = <?php echo json_encode($_SESSION['app_settings']['puter_auth_token'] ?? ''); ?>;
+            if (configuredToken) {
+                puter.authToken = configuredToken;
+                try {
+                    localStorage.setItem('puter-auth-token', configuredToken);
+                    localStorage.setItem('puter_auth_token', configuredToken);
+                } catch(e) {}
+                
+                $('#puterDiagnosticContainer').show();
+                
+                // Fetch active Puter user details
+                puter.auth.getUser().then(function(user) {
+                    $('#diagPuterAccount').html('<span class="text-success font-weight-bold"><i class="fas fa-check-circle"></i> ' + esc(user.username) + '</span>');
+                }).catch(function(err) {
+                    $('#diagPuterAccount').html('<span class="text-danger"><i class="fas fa-times-circle"></i> Invalid Token or Session expired</span>');
+                });
+            }
+            
+            function esc(str) {
+                return $('<div>').text(str).html();
+            }
+
+            // Connection & Quota Test click handler
+            $('#btnTestPuterAI').on('click', async function() {
+                const btn = $(this);
+                const originalHtml = btn.html();
+                $('#diagPuterStatus').html('<span class="text-info"><i class="fas fa-spinner fa-spin"></i> Contacting Puter AI...</span>');
+                btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Testing...');
+                
+                try {
+                    // Try to send a simple AI request to test the quota
+                    const result = await puter.ai.chat("Respond with the single word: OK.");
+                    let responseText = '';
+                    if (typeof result === 'string') responseText = result;
+                    else if (result && result.message) responseText = result.message.content || '';
+                    
+                    if (responseText.toUpperCase().includes('OK')) {
+                        $('#diagPuterStatus').html('<span class="text-success font-weight-bold"><i class="fas fa-check-circle"></i> Success (Quota Active & Working)</span>');
+                    } else {
+                        $('#diagPuterStatus').html('<span class="text-warning"><i class="fas fa-exclamation-triangle"></i> Unexpected response: "' + esc(responseText) + '"</span>');
+                    }
+                } catch (err) {
+                    console.error("Quota test error:", err);
+                    const errMsg = err.message || String(err);
+                    if (errMsg.includes("usage") || errMsg.includes("usage left") || errMsg.includes("quota")) {
+                        $('#diagPuterStatus').html('<span class="text-danger font-weight-bold"><i class="fas fa-ban"></i> No Usage Left (Account needs upgrade/funding)</span>');
+                    } else {
+                        $('#diagPuterStatus').html('<span class="text-danger font-weight-bold"><i class="fas fa-times-circle"></i> Failed: ' + esc(errMsg) + '</span>');
+                    }
+                } finally {
+                    btn.prop('disabled', false).html(originalHtml);
+                }
+            });
+        }
     });
     </script>
 </body>

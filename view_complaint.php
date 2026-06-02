@@ -1212,6 +1212,10 @@ function getDirectImagePath($image) {
     <?php if (!empty($_SESSION['app_settings']['puter_auth_token'])): ?>
     if (typeof puter !== 'undefined') {
         puter.authToken = <?php echo json_encode($_SESSION['app_settings']['puter_auth_token']); ?>;
+        try {
+            localStorage.setItem('puter-auth-token', puter.authToken);
+            localStorage.setItem('puter_auth_token', puter.authToken);
+        } catch(e) {}
     }
     <?php endif; ?>
 
