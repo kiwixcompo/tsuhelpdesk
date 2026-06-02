@@ -1509,11 +1509,13 @@ Return ONLY the professionally rephrased response text that the admin should sen
 
         // Switch account button handler
         $('#puterStatusPill').on('click', function() {
-            if (confirm("You are currently using Puter AI. Would you like to switch accounts or sign in to a different account?")) {
+            if (confirm("Would you like to sign out of Puter AI? This will clear your session and let you connect a new account.")) {
                 puter.auth.signOut().then(function() {
-                    puter.auth.signIn().then(function() {
-                        updatePuterPill();
-                    });
+                    try {
+                        localStorage.removeItem('puter-auth-token');
+                        localStorage.removeItem('puter_auth_token');
+                    } catch(e) {}
+                    window.location.reload();
                 });
             }
         });

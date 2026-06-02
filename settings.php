@@ -446,17 +446,22 @@ foreach($settings as $setting){
             $('#btnPuterLiveConnect').on('click', function() {
                 const btn = $(this);
                 if (btn.hasClass('btn-outline-danger')) {
-                    // Sign out first to clear session
+                    // Sign out and reload to clear state and bypass browser popup blockers
                     puter.auth.signOut().then(function() {
-                        // Prompt new login immediately
-                        puter.auth.signIn().then(function() {
-                            updatePuterLiveStatus();
-                        });
+                        try {
+                            localStorage.removeItem('puter-auth-token');
+                            localStorage.removeItem('puter_auth_token');
+                        } catch(e) {}
+                        updatePuterLiveStatus();
+                        window.location.reload();
                     });
                 } else {
-                    // Prompt standard login popup
+                    // Direct click action to open popup without browser block
                     puter.auth.signIn().then(function() {
                         updatePuterLiveStatus();
+                        window.location.reload();
+                    }).catch(function(err) {
+                        console.error("Sign in popup closed or failed:", err);
                     });
                 }
             });
