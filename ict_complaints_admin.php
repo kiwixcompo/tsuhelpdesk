@@ -895,6 +895,9 @@ $val_map = [
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <label class="font-weight-bold mb-0">Response to Student</label>
                                 <div class="d-flex align-items-center" style="gap: 8px;">
+                                    <span id="puterStatusPill" class="badge badge-light border py-1 px-2" style="font-size: 0.72rem; cursor: pointer; display: none; border-radius: 20px; font-weight: 600;" title="Click to switch Puter accounts">
+                                        <i class="fas fa-robot text-purple mr-1" style="color: #7F00FF;"></i> Puter: <span id="puterActiveUser" class="text-primary">Loading...</span>
+                                    </span>
                                     <button type="button" id="btnDraftWithAI" class="btn btn-sm" style="display: none; background: linear-gradient(135deg, #7F00FF, #E100FF); color: white; border: none; border-radius: 20px; padding: 0.25rem 0.85rem; font-size: 0.75rem; font-weight: 600; box-shadow: 0 2px 8px rgba(225, 0, 255, 0.3); transition: all 0.2s;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(225, 0, 255, 0.5)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(225, 0, 255, 0.3)';">
                                         <i class="fas fa-robot mr-1"></i> Draft with AI
                                     </button>
@@ -1229,10 +1232,12 @@ $(function() {
 
         // Check if there is historical feedback to enable AI responses
         $('#btnDraftWithAI').hide().removeData('history');
+        $('#puterStatusPill').hide();
         if (d.category) {
             $.getJSON('api/get_historical_feedback.php', { category: d.category, complaint_id: d.id }, function(res) {
                 if (res.success && res.history && res.history.length > 0) {
                     $('#btnDraftWithAI').data('history', res.history).show();
+                    if (window.updatePuterPill) window.updatePuterPill();
                 }
             });
         }
@@ -1485,6 +1490,33 @@ Return ONLY the professionally rephrased response text that the admin should sen
                 window.location.search = urlParams.toString();
             }
         }
+    }
+
+    // Puter Active Session Status Pill logic
+    if (typeof puter !== 'undefined') {
+        function updatePuterPill() {
+            puter.auth.getUser().then(function(user) {
+                $('#puterActiveUser').text(esc(user.username));
+                $('#puterStatusPill').removeClass('badge-warning').addClass('badge-light').show();
+            }).catch(function() {
+                $('#puterActiveUser').text('Not Connected');
+                $('#puterStatusPill').removeClass('badge-light').addClass('badge-warning').show();
+            });
+        }
+
+        // Expose function globally so we can trigger it
+        window.updatePuterPill = updatePuterPill;
+
+        // Switch account button handler
+        $('#puterStatusPill').on('click', function() {
+            if (confirm("You are currently using Puter AI. Would you like to switch accounts or sign in to a different account?")) {
+                puter.auth.signOut().then(function() {
+                    puter.auth.signIn().then(function() {
+                        updatePuterPill();
+                    });
+                });
+            }
+        });
     }
 
     function esc(str) {

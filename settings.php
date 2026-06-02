@@ -219,22 +219,45 @@ foreach($settings as $setting){
                                                     
                                                     <?php if($setting['setting_type'] == 'text'): ?>
                                                         <?php if($setting['setting_key'] == 'puter_auth_token'): ?>
-                                                            <div class="input-group">
-                                                                <input type="password" name="setting_<?php echo $setting['setting_key']; ?>" 
-                                                                       id="puterTokenField"
-                                                                       class="form-control" value="<?php echo htmlspecialchars($setting['setting_value'] ?? ''); ?>"
-                                                                       placeholder="Enter Puter Auth Token">
-                                                                <div class="input-group-append">
-                                                                    <button class="btn btn-outline-secondary" type="button" id="togglePuterToken">
-                                                                        <i class="fas fa-eye" id="togglePuterTokenIcon"></i>
-                                                                    </button>
+                                                            <!-- Puter Live Interactive Account Manager -->
+                                                            <div class="card border-primary mb-3 shadow-sm">
+                                                                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-2" style="background: linear-gradient(135deg, #1e3c72, #2a5298) !important;">
+                                                                    <h6 class="mb-0 text-white font-weight-bold" style="font-size: 0.9rem;"><i class="fas fa-user-circle mr-1"></i> Puter AI Active Browser Session</h6>
+                                                                    <span id="puterLiveStatusBadge" class="badge badge-light" style="font-weight: 700;">Checking...</span>
+                                                                </div>
+                                                                <div class="card-body bg-light py-3">
+                                                                    <p class="small text-muted mb-3" style="line-height: 1.45;">
+                                                                        <i class="fas fa-info-circle text-primary"></i> <strong>Log in directly in your browser</strong> to run all AI features (Draft with AI, Rephrase, Auto-response suggestion) under your chosen upgraded Puter account credits and rate limits.
+                                                                    </p>
+                                                                    <div id="puterLiveUserPanel" class="d-flex align-items-center justify-content-between flex-wrap" style="gap: 12px;">
+                                                                        <div>
+                                                                            <strong style="font-size: 1.05rem; color: #1e3c72;" id="puterLiveUsername"><i class="fas fa-spinner fa-spin mr-1"></i> Loading...</strong>
+                                                                            <div class="text-muted small mt-1" id="puterLiveUserQuota">Connecting to Puter auth session...</div>
+                                                                        </div>
+                                                                        <button type="button" id="btnPuterLiveConnect" class="btn btn-sm btn-primary px-3 font-weight-bold" style="border-radius: 6px; box-shadow: 0 2px 6px rgba(30, 60, 114, 0.2);">
+                                                                            <i class="fas fa-sign-in-alt mr-1"></i> Connect Account
+                                                                        </button>
+                                                                    </div>
                                                                 </div>
                                                             </div>
-                                                            <small class="form-text text-muted mt-2">
-                                                                <i class="fas fa-info-circle text-info"></i> Paste your Puter Auth Token here to configure a shared billing account for all users.
-                                                                <br><strong>How to get it:</strong> Sign in to <a href="https://puter.com/dashboard" target="_blank" class="font-weight-bold text-primary">Puter Dashboard</a> &rarr; click on your <strong>Account</strong> in the sidebar &rarr; scroll to <strong>Auth Token</strong> &rarr; click <strong>Copy</strong>.
-                                                                <br><i class="fas fa-magic text-success"></i> Leave blank to prompt staff and students to sign in with their individual Puter accounts.
-                                                            </small>
+
+                                                            <div class="border rounded p-3 mb-3 bg-white" style="border-style: dashed !important; border-width: 2px !important;">
+                                                                <label class="font-weight-bold text-muted small uppercase mb-2"><i class="fas fa-tools mr-1"></i> Advanced: Enterprise Global API Auth Token (Optional)</label>
+                                                                <div class="input-group">
+                                                                    <input type="password" name="setting_<?php echo $setting['setting_key']; ?>" 
+                                                                           id="puterTokenField"
+                                                                           class="form-control form-control-sm" value="<?php echo htmlspecialchars($setting['setting_value'] ?? ''); ?>"
+                                                                           placeholder="Enter Puter Auth Token">
+                                                                    <div class="input-group-append">
+                                                                        <button class="btn btn-outline-secondary btn-sm" type="button" id="togglePuterToken">
+                                                                            <i class="fas fa-eye" id="togglePuterTokenIcon"></i>
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                                <small class="form-text text-muted mt-2" style="font-size: 0.78rem;">
+                                                                    Provide a global API Auth Token to authenticate all student/staff browsers universally without requiring individual logins. Leave blank to prioritize the active browser login above.
+                                                                </small>
+                                                            </div>
                                                              
                                                              <!-- Puter Diagnostics Console -->
                                                              <div class="mt-3 p-3 bg-light rounded border" id="puterDiagnosticContainer" style="display:none; font-size: 0.85rem;">
@@ -400,8 +423,44 @@ foreach($settings as $setting){
             }
         });
 
-        // Puter AI Diagnostics
+        // Puter AI Diagnostics & Interactive Live Session Manager
         if (typeof puter !== 'undefined') {
+            function updatePuterLiveStatus() {
+                puter.auth.getUser().then(function(user) {
+                    $('#puterLiveStatusBadge').removeClass('badge-light badge-warning').addClass('badge-success').text('Connected');
+                    $('#puterLiveUsername').html('<i class="fas fa-check-circle text-success mr-1"></i> Connected: ' + esc(user.username));
+                    $('#puterLiveUserQuota').html('<span class="text-success"><i class="fas fa-check"></i> Browser is logged into this Puter account for AI requests.</span>');
+                    $('#btnPuterLiveConnect').removeClass('btn-primary').addClass('btn-outline-danger').html('<i class="fas fa-sign-out-alt mr-1"></i> Switch / Sign Out');
+                }).catch(function() {
+                    $('#puterLiveStatusBadge').removeClass('badge-success badge-light').addClass('badge-warning').text('Not Connected');
+                    $('#puterLiveUsername').text('No Account Linked');
+                    $('#puterLiveUserQuota').html('<span class="text-warning"><i class="fas fa-exclamation-triangle"></i> Not authenticated. AI calls will prompt for login.</span>');
+                    $('#btnPuterLiveConnect').removeClass('btn-outline-danger').addClass('btn-primary').html('<i class="fas fa-sign-in-alt mr-1"></i> Connect Account');
+                });
+            }
+
+            // Run live status check on load
+            updatePuterLiveStatus();
+
+            // Connect/Switch button click handler
+            $('#btnPuterLiveConnect').on('click', function() {
+                const btn = $(this);
+                if (btn.hasClass('btn-outline-danger')) {
+                    // Sign out first to clear session
+                    puter.auth.signOut().then(function() {
+                        // Prompt new login immediately
+                        puter.auth.signIn().then(function() {
+                            updatePuterLiveStatus();
+                        });
+                    });
+                } else {
+                    // Prompt standard login popup
+                    puter.auth.signIn().then(function() {
+                        updatePuterLiveStatus();
+                    });
+                }
+            });
+
             const configuredToken = <?php echo json_encode($_SESSION['app_settings']['puter_auth_token'] ?? ''); ?>;
             if (configuredToken) {
                 puter.authToken = configuredToken;
