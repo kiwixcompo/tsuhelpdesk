@@ -168,6 +168,12 @@ body { background:#f4f7fb; font-family:'Segoe UI',sans-serif; }
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script src="https://js.puter.com/v2/"></script>
 <script>
+<?php if (!empty($_SESSION['app_settings']['puter_auth_token'])): ?>
+if (typeof puter !== 'undefined') {
+    puter.authToken = <?php echo json_encode($_SESSION['app_settings']['puter_auth_token']); ?>;
+}
+<?php endif; ?>
+
 function extractAIText(result) {
     console.log('extractAIText received:', result);
     if (!result) return '';

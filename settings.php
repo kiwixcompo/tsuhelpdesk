@@ -210,6 +210,7 @@ foreach($settings as $setting){
                                                             case 'app_favicon': $icon = '<i class="fas fa-star"></i> '; break;
                                                             case 'primary_color': $icon = '<i class="fas fa-palette"></i> '; break;
                                                             case 'secondary_color': $icon = '<i class="fas fa-palette"></i> '; break;
+                                                            case 'puter_auth_token': $icon = '<i class="fas fa-key text-warning"></i> '; break;
                                                             default: $icon = '<i class="fas fa-cog"></i> '; break;
                                                         }
                                                         echo $icon . htmlspecialchars($setting['setting_label']); 
@@ -217,9 +218,28 @@ foreach($settings as $setting){
                                                     </label>
                                                     
                                                     <?php if($setting['setting_type'] == 'text'): ?>
-                                                        <input type="text" name="setting_<?php echo $setting['setting_key']; ?>" 
-                                                               class="form-control" value="<?php echo htmlspecialchars($setting['setting_value']); ?>"
-                                                               placeholder="Enter <?php echo strtolower($setting['setting_label']); ?>">
+                                                        <?php if($setting['setting_key'] == 'puter_auth_token'): ?>
+                                                            <div class="input-group">
+                                                                <input type="password" name="setting_<?php echo $setting['setting_key']; ?>" 
+                                                                       id="puterTokenField"
+                                                                       class="form-control" value="<?php echo htmlspecialchars($setting['setting_value'] ?? ''); ?>"
+                                                                       placeholder="Enter Puter Auth Token">
+                                                                <div class="input-group-append">
+                                                                    <button class="btn btn-outline-secondary" type="button" id="togglePuterToken">
+                                                                        <i class="fas fa-eye" id="togglePuterTokenIcon"></i>
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                            <small class="form-text text-muted mt-2">
+                                                                <i class="fas fa-info-circle text-info"></i> Paste your Puter Auth Token here to configure a shared billing account for all users.
+                                                                <br><strong>How to get it:</strong> Sign in to <a href="https://puter.com/dashboard" target="_blank" class="font-weight-bold text-primary">Puter Dashboard</a> &rarr; click on your <strong>Account</strong> in the sidebar &rarr; scroll to <strong>Auth Token</strong> &rarr; click <strong>Copy</strong>.
+                                                                <br><i class="fas fa-magic text-success"></i> Leave blank to prompt staff and students to sign in with their individual Puter accounts.
+                                                            </small>
+                                                        <?php else: ?>
+                                                            <input type="text" name="setting_<?php echo $setting['setting_key']; ?>" 
+                                                                   class="form-control" value="<?php echo htmlspecialchars($setting['setting_value'] ?? ''); ?>"
+                                                                   placeholder="Enter <?php echo strtolower($setting['setting_label']); ?>">
+                                                        <?php endif; ?>
                                                     
                                                     <?php elseif($setting['setting_type'] == 'textarea'): ?>
                                                         <textarea name="setting_<?php echo $setting['setting_key']; ?>" 
@@ -349,6 +369,19 @@ foreach($settings as $setting){
         // Color picker preview
         $('input[type="color"]').on('change', function() {
             $(this).next('.input-group-append').find('.input-group-text').text($(this).val());
+        });
+
+        // Toggle Puter Token visibility
+        $('#togglePuterToken').on('click', function() {
+            const tokenField = $('#puterTokenField');
+            const icon = $('#togglePuterTokenIcon');
+            if (tokenField.attr('type') === 'password') {
+                tokenField.attr('type', 'text');
+                icon.removeClass('fa-eye').addClass('fa-eye-slash');
+            } else {
+                tokenField.attr('type', 'password');
+                icon.removeClass('fa-eye-slash').addClass('fa-eye');
+            }
         });
     });
     </script>

@@ -1209,6 +1209,12 @@ function getDirectImagePath($image) {
     <script src="https://js.puter.com/v2/"></script>
     <script src="js/clipboard-paste.js"></script>
     <script>
+    <?php if (!empty($_SESSION['app_settings']['puter_auth_token'])): ?>
+    if (typeof puter !== 'undefined') {
+        puter.authToken = <?php echo json_encode($_SESSION['app_settings']['puter_auth_token']); ?>;
+    }
+    <?php endif; ?>
+
     // Enhanced gallery functionality
     let currentImages = [];
     let currentIndex = 0;
