@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * TSU ICT Help Desk - Online Database Update Script
  * This script safely updates the online database with all new features
@@ -525,6 +525,15 @@ if ($dept_check) {
     } else {
         logWarning("Department data already exists");
     }
+}
+
+// Ensure puter_auth_token setting row exists in settings table
+logInfo("Ensuring Puter AI Auth Token setting exists in settings table...");
+$sql = "INSERT INTO settings (setting_key, setting_value, setting_type, setting_label) 
+        VALUES ('puter_auth_token', '', 'text', 'Puter AI Auth Token') 
+        ON DUPLICATE KEY UPDATE setting_label = 'Puter AI Auth Token'";
+if (!executeQuery($conn, $sql, "Ensured 'puter_auth_token' exists in settings table")) {
+    $update_success = false;
 }
 
 // =====================================================
