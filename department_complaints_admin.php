@@ -5,6 +5,19 @@ require_once "config.php";
 require_once "includes/notifications.php";
 require_once "includes/logger.php";
 
+if (!function_exists('getImagePath')) {
+    function getImagePath($image) {
+        $image = trim($image);
+        if (empty($image)) return '';
+        
+        // Clean the filename
+        $filename = basename($image);
+        
+        // Always use the public image serving script
+        return 'public_image.php?img=' . urlencode($filename);
+    }
+}
+
 if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
     header("location: staff_login.php"); exit;
 }

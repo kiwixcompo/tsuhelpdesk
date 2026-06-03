@@ -27,20 +27,42 @@ if (!$data) {
 }
 
 $attachment_path = null;
-if (isset($_FILES['attachment']) && $_FILES['attachment']['error'] === UPLOAD_ERR_OK) {
+if (isset($_FILES['attachment']) && $_FILES['attachment']['error'] !== UPLOAD_ERR_NO_FILE) {
+    if ($_FILES['attachment']['error'] !== UPLOAD_ERR_OK) {
+        $errMsg = 'File upload error occurred.';
+        if ($_FILES['attachment']['error'] === UPLOAD_ERR_INI_SIZE || $_FILES['attachment']['error'] === UPLOAD_ERR_FORM_SIZE) {
+            $errMsg = 'Attachment file size exceeds the server limit.';
+        }
+        echo json_encode(['success' => false, 'message' => $errMsg]);
+        exit;
+    }
+
+    $maxsize = 5 * 1024 * 1024; // 5MB
+    if ($_FILES['attachment']['size'] > $maxsize) {
+        echo json_encode(['success' => false, 'message' => 'Attachment file size exceeds the 5MB limit.']);
+        exit;
+    }
+
     $upload_dir = '../uploads/complaints/';
     if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
-    
+
     $ext = strtolower(pathinfo($_FILES['attachment']['name'], PATHINFO_EXTENSION));
     $allowed = ['jpg','jpeg','png','pdf','doc','docx'];
-    if (in_array($ext, $allowed)) {
-        $filename = uniqid('comp_') . '_' . time() . '.' . $ext;
-        $dest = $upload_dir . $filename;
-        if (move_uploaded_file($_FILES['attachment']['tmp_name'], $dest)) {
-            $attachment_path = 'uploads/complaints/' . $filename;
-        }
+    if (!in_array($ext, $allowed)) {
+        echo json_encode(['success' => false, 'message' => 'Invalid file format. Only JPG, JPEG, PNG, PDF, DOC, and DOCX are allowed.']);
+        exit;
+    }
+
+    $filename = uniqid('comp_') . '_' . time() . '.' . $ext;
+    $dest = $upload_dir . $filename;
+    if (move_uploaded_file($_FILES['attachment']['tmp_name'], $dest)) {
+        $attachment_path = 'uploads/complaints/' . $filename;
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Failed to save the uploaded attachment.']);
+        exit;
     }
 }
+
 
 $student_id    = (int) $_SESSION['student_id'];
 $node_id       = substr($data['node_id']        ?? '', 0, 100);

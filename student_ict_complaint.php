@@ -344,7 +344,7 @@ function renderLeaf(node, c) {
                     </div>
                     <div id="aiAutoResponseContainer" style="display:none; margin-top: 1rem; margin-bottom: 1rem;"></div>
                     <div class="form-group mb-2">
-                        <label>Upload or Paste Screenshot <span class="text-muted">(optional)</span></label>
+                        <label>Upload or Paste Screenshot <span class="text-muted">(optional, max 5MB)</span></label>
                         <input type="file" id="attachmentField" class="form-control-file text-muted" accept="image/*,.pdf,.doc,.docx" style="font-size:0.85rem;">
                         <div id="pastePreview" style="display:none;margin-top:.5rem">
                             <img id="pastePreviewImg" src="" style="max-height:120px;border-radius:6px;border:1px solid #dee2e6" alt="Pasted image">
@@ -457,6 +457,21 @@ function goBack() {
 // ── Submit ────────────────────────────────────────────────
 async function submitComplaint(escalated, node, btn) {
     node = node || state.currentNode;
+
+    // Validate attachment file size (5MB maximum)
+    const attachField = document.getElementById('attachmentField');
+    const pastedFile  = window._pastedAttachment || null;
+    const maxsize = 5 * 1024 * 1024; // 5MB
+
+    if (pastedFile && pastedFile.size > maxsize) {
+        alert('The pasted screenshot exceeds the 5MB size limit.');
+        return;
+    } else if (attachField && attachField.files.length > 0) {
+        if (attachField.files[0].size > maxsize) {
+            alert('The attached file exceeds the 5MB size limit.');
+            return;
+        }
+    }
 
     // Collect description
     const descEl = document.getElementById('descField');
