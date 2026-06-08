@@ -1247,10 +1247,11 @@ $(function() {
                     
                     res.history.forEach((h, index) => {
                         let shortLabel = h.admin_response;
-                        if (shortLabel.length > 50) {
-                            shortLabel = shortLabel.substring(0, 47) + '...';
+                        if (shortLabel.length > 40) {
+                            shortLabel = shortLabel.substring(0, 37) + '...';
                         }
-                        let optText = `Past Match #${index + 1}: ${shortLabel}`;
+                        let categoryText = h.node_label ? `[${h.node_label}] ` : '';
+                        let optText = `${categoryText}Past Match #${index + 1}: ${shortLabel}`;
                         let optTitle = `Complaint: ${h.description}`;
                         $('#selPastResponse').append(
                             $('<option></option>')

@@ -834,10 +834,11 @@ $(document).ready(function() {
             if (res.success && res.history && res.history.length > 0) {
                 res.history.forEach((h, index) => {
                     let shortLabel = h.feedback;
-                    if (shortLabel.length > 50) {
-                        shortLabel = shortLabel.substring(0, 47) + '...';
+                    if (shortLabel.length > 40) {
+                        shortLabel = shortLabel.substring(0, 37) + '...';
                     }
-                    let optText = `Past Match #${index + 1}: ${shortLabel}`;
+                    let deptText = h.department_name ? `[${h.department_name}] ` : '';
+                    let optText = `${deptText}Past Match #${index + 1}: ${shortLabel}`;
                     let optTitle = `Complaint: ${h.complaint_text}`;
                     $('#modal_sel_past_feedback').append(
                         $('<option></option>')

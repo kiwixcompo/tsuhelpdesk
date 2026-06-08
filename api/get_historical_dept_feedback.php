@@ -20,7 +20,7 @@ if (!isset($_SESSION["loggedin"])) {
 $complaint_id = (int) ($_GET['complaint_id'] ?? 0);
 
 // Fetch past resolved department complaints with feedback (role 7 users are departments)
-$sql = "SELECT c.complaint_text, c.feedback 
+$sql = "SELECT c.complaint_text, c.feedback, u.full_name as department_name 
         FROM complaints c 
         JOIN users u ON c.lodged_by = u.user_id
         WHERE u.role_id = 7 
@@ -44,7 +44,8 @@ $history = [];
 while ($row = mysqli_fetch_assoc($result)) {
     $history[] = [
         'complaint_text' => $row['complaint_text'],
-        'feedback' => $row['feedback']
+        'feedback' => $row['feedback'],
+        'department_name' => $row['department_name']
     ];
 }
 mysqli_stmt_close($stmt);
