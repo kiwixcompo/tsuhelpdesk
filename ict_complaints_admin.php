@@ -893,7 +893,12 @@ $val_map = [
                         </div>
                         <div class="form-group">
                             <div class="d-flex justify-content-between align-items-center mb-2">
-                                <label class="font-weight-bold mb-0">Response to Student</label>
+                                <div class="d-flex align-items-center" style="gap: 10px;">
+                                    <label class="font-weight-bold mb-0">Response to Student</label>
+                                    <select id="selPastResponse" class="form-control form-control-sm" style="display: none; max-width: 220px; border-radius: 20px; height: 28px; padding: 2px 8px; font-size: 0.8rem; border-color: #ced4da;">
+                                        <option value="">— Select a past response —</option>
+                                    </select>
+                                </div>
                                 <div class="d-flex align-items-center" style="gap: 8px;">
                                     <span id="puterStatusPill" class="badge badge-light border py-1 px-2" style="font-size: 0.72rem; cursor: pointer; display: none; border-radius: 20px; font-weight: 600;" title="Click to switch Puter accounts">
                                         <i class="fas fa-robot text-purple mr-1" style="color: #7F00FF;"></i> Puter: <span id="puterActiveUser" class="text-primary">Loading...</span>
@@ -1233,11 +1238,28 @@ $(function() {
         // Check if there is historical feedback to enable AI responses
         $('#btnDraftWithAI').hide().removeData('history');
         $('#puterStatusPill').hide();
+        $('#selPastResponse').empty().append('<option value="">— Select a past response —</option>').hide();
         if (d.category) {
             $.getJSON('api/get_historical_feedback.php', { category: d.category, complaint_id: d.id }, function(res) {
                 if (res.success && res.history && res.history.length > 0) {
                     $('#btnDraftWithAI').data('history', res.history).show();
                     if (window.updatePuterPill) window.updatePuterPill();
+                    
+                    res.history.forEach((h, index) => {
+                        let shortLabel = h.admin_response;
+                        if (shortLabel.length > 50) {
+                            shortLabel = shortLabel.substring(0, 47) + '...';
+                        }
+                        let optText = `Past Match #${index + 1}: ${shortLabel}`;
+                        let optTitle = `Complaint: ${h.description}`;
+                        $('#selPastResponse').append(
+                            $('<option></option>')
+                                .val(h.admin_response)
+                                .text(optText)
+                                .attr('title', optTitle)
+                        );
+                    });
+                    $('#selPastResponse').show();
                 }
             });
         }
@@ -1325,6 +1347,24 @@ Return ONLY the response text that the admin should send to the student. Do not 
             alert('Could not generate response with AI: ' + e.message);
         } finally {
             btn.prop('disabled', false).html(originalHtml);
+        }
+    });
+
+    // Handle past response selection
+    $(document).on('change', '#selPastResponse', function() {
+        const val = $(this).val();
+        if (val) {
+            $('#feedbackResponse').val(val);
+            
+            // Glow effect
+            const ta = $('#feedbackResponse');
+            ta.css('transition', 'all 0.4s');
+            ta.css('box-shadow', '0 0 15px rgba(40, 167, 69, 0.8)');
+            ta.css('border-color', '#28a745');
+            setTimeout(() => {
+                ta.css('box-shadow', '');
+                ta.css('border-color', '');
+            }, 1500);
         }
     });
 

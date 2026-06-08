@@ -122,6 +122,17 @@ if (!$stmt || !mysqli_stmt_execute($stmt)) {
 }
 mysqli_stmt_close($stmt);
 
+// Learning mechanism: if status is Resolved and node_id exists, learn and replace the auto-response in the tree
+if ($status === 'Resolved' && !empty($response)) {
+    $node_query = mysqli_query($conn, "SELECT node_id FROM student_ict_complaints WHERE complaint_id = $complaint_id");
+    if ($node_query && $node_row = mysqli_fetch_assoc($node_query)) {
+        $node_id = $node_row['node_id'] ?? '';
+        if (!empty($node_id)) {
+            learnAndReplaceAutoResponse($node_id, $response);
+        }
+    }
+}
+
 // Notify student (in-app + email)
 $get = mysqli_prepare($conn, "SELECT c.student_id, c.node_label, s.email, s.first_name, s.last_name FROM student_ict_complaints c JOIN students s ON c.student_id = s.student_id WHERE c.complaint_id=?");
 if ($get) {
@@ -169,3 +180,38 @@ echo json_encode([
     'message'      => 'Response saved successfully.',
     'image_count'  => count($image_paths),
 ]);
+
+/**
+ * Update the static responseText for a node in the complaint tree JSON file.
+ */
+function learnAndReplaceAutoResponse($node_id, $new_response) {
+    if (empty($node_id) || empty($new_response)) return;
+    $tree_file = __DIR__ . '/../data/complaint_tree.json';
+    if (!file_exists($tree_file)) return;
+    
+    $tree_data = json_decode(file_get_contents($tree_file), true);
+    if (!$tree_data) return;
+    
+    $updated = false;
+    
+    // Recursive helper to update matching node
+    $updateNode = function(&$node) use ($node_id, $new_response, &$updated, &$updateNode) {
+        if (isset($node['id']) && $node['id'] === $node_id) {
+            $node['responseText'] = $new_response;
+            $updated = true;
+            return;
+        }
+        if (isset($node['children']) && is_array($node['children'])) {
+            foreach ($node['children'] as &$child) {
+                $updateNode($child);
+                if ($updated) return;
+            }
+        }
+    };
+    
+    $updateNode($tree_data);
+    
+    if ($updated) {
+        file_put_contents($tree_file, json_encode($tree_data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+    }
+}

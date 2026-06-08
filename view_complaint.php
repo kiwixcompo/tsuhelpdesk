@@ -1037,7 +1037,7 @@ function getDirectImagePath($image) {
                                     ?>
                                     
                                     <!-- Reply form - available until complaint is treated -->
-                                    <?php if ($complaint['status'] != 'Treated' && ($_SESSION['role_id'] == 1 || $_SESSION['role_id'] == 2)): ?>
+                                    <?php if ($complaint['status'] != 'Treated' && in_array($_SESSION['role_id'], [1, 2, 3, 5, 6, 8])): ?>
                                     <form method="post" class="mt-2" enctype="multipart/form-data">
                                         <div class="form-group">
                                             <div class="d-flex justify-content-between align-items-center mb-2">
@@ -1101,7 +1101,12 @@ function getDirectImagePath($image) {
                                         </select>
                                     </div>
                                     <div class="form-group">
-                                        <label for="feedback">Feedback</label>
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <label for="feedback" class="mb-0">Feedback</label>
+                                            <select id="i4cus_sel_past_feedback" class="form-control form-control-sm" style="display: none; max-width: 250px; border-radius: 20px; height: 28px; padding: 2px 8px; font-size: 0.8rem; border-color: #ced4da;">
+                                                <option value="">— Select a past response —</option>
+                                            </select>
+                                        </div>
                                          <textarea id="i4cus_feedback" name="feedback" class="form-control manual-clipboard-init" rows="3" placeholder="Provide feedback... (Paste images with Ctrl+V)"><?php echo htmlspecialchars($complaint['feedback']??''); ?></textarea>
                                         <small class="form-text text-muted">
                                             <i class="fas fa-paperclip text-primary"></i> 
@@ -1487,6 +1492,47 @@ Return ONLY the professionally rephrased response text that the support staff sh
 
     // Initialize clipboard paste functionality when document is ready
     $(document).ready(function() {
+        // Load past feedback options if i4cus form is visible
+        if ($('#i4cus_sel_past_feedback').length > 0) {
+            const complaintId = <?php echo json_encode($complaint_id); ?>;
+            $.getJSON('api/get_historical_dept_feedback.php', { complaint_id: complaintId }, function(res) {
+                if (res.success && res.history && res.history.length > 0) {
+                    res.history.forEach((h, index) => {
+                        let shortLabel = h.feedback;
+                        if (shortLabel.length > 50) {
+                            shortLabel = shortLabel.substring(0, 47) + '...';
+                        }
+                        let optText = `Past Match #${index + 1}: ${shortLabel}`;
+                        let optTitle = `Complaint: ${h.complaint_text}`;
+                        $('#i4cus_sel_past_feedback').append(
+                            $('<option></option>')
+                                .val(h.feedback)
+                                .text(optText)
+                                .attr('title', optTitle)
+                        );
+                    });
+                    $('#i4cus_sel_past_feedback').show();
+                }
+            });
+            
+            $(document).on('change', '#i4cus_sel_past_feedback', function() {
+                const val = $(this).val();
+                if (val) {
+                    $('#i4cus_feedback').val(val);
+                    
+                    // Glow effect
+                    const ta = $('#i4cus_feedback');
+                    ta.css('transition', 'all 0.4s');
+                    ta.css('box-shadow', '0 0 15px rgba(40, 167, 69, 0.8)');
+                    ta.css('border-color', '#28a745');
+                    setTimeout(() => {
+                        ta.css('box-shadow', '');
+                        ta.css('border-color', '');
+                    }, 1500);
+                }
+            });
+        }
+
         if (window.clipboardPasteHandler && typeof initializeClipboardPaste === 'function') {
             // 1. Payment feedback
             const paymentTextarea = document.getElementById('payment_feedback');

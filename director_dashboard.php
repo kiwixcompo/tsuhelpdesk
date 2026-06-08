@@ -216,7 +216,7 @@ $forwarded_dept_complaints = [];
 $fwd_dept_sql = "SELECT c.*, u.full_name as department_name 
                  FROM complaints c 
                  JOIN users u ON c.lodged_by = u.user_id 
-                 WHERE c.forwarded_to = 'director' AND c.status != 'Treated'
+                 WHERE (c.forwarded_to = 'director' OR c.forwarded_to = 'i4cus') AND c.status != 'Treated'
                  ORDER BY c.created_at DESC";
 $fwd_dept_res = mysqli_query($conn, $fwd_dept_sql);
 if ($fwd_dept_res) {
@@ -475,9 +475,10 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["submit_i4cus_complaint"
                                 <th style="width: 80px;">#</th>
                                 <th>Department</th>
                                 <th>Complaint Details</th>
+                                <th>Forwarded To</th>
                                 <th style="width: 120px;">Status</th>
                                 <th style="width: 120px;">Date Forwarded</th>
-                                <th style="width: 150px;">Action</th>
+                                <th style="width: 280px;">Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -496,14 +497,26 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["submit_i4cus_complaint"
                                     </div>
                                 </td>
                                 <td>
+                                    <?php if (($fd['forwarded_to'] ?? '') === 'director'): ?>
+                                        <span class="badge badge-success"><i class="fas fa-user-shield mr-1"></i>Directly to You</span>
+                                    <?php elseif (($fd['forwarded_to'] ?? '') === 'i4cus'): ?>
+                                        <span class="badge badge-info"><i class="fas fa-users mr-1"></i>i4Cus - Copied</span>
+                                    <?php else: ?>
+                                        <span class="badge badge-secondary"><?php echo htmlspecialchars($fd['forwarded_to'] ?? 'Unassigned'); ?></span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
                                     <span class="badge badge-<?php echo $sc_color; ?>"><?php echo htmlspecialchars($fd['status']); ?></span>
                                 </td>
                                 <td>
                                     <i class="far fa-calendar-alt text-muted mr-1"></i> <?php echo date('M d, Y', strtotime($fd['updated_at'])); ?>
                                 </td>
                                 <td>
-                                    <a href="department_complaints_admin.php?search=<?php echo $fd['complaint_id']; ?>" class="btn btn-sm btn-primary">
-                                        <i class="fas fa-eye mr-1"></i> View & Respond
+                                    <a href="department_complaints_admin.php?search=<?php echo $fd['complaint_id']; ?>" class="btn btn-sm btn-primary mr-1" title="Respond in Admin panel">
+                                        <i class="fas fa-edit mr-1"></i> Respond
+                                    </a>
+                                    <a href="view_complaint.php?id=<?php echo $fd['complaint_id']; ?>" class="btn btn-sm btn-info" title="Track activities on this complaint">
+                                        <i class="fas fa-history mr-1"></i> Track Activities
                                     </a>
                                 </td>
                             </tr>

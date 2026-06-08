@@ -415,13 +415,12 @@
                     "label": "I made a payment but it is not reflecting on my portal",
                     "type": "leaf",
                     "actionType": "escalate",
-                    "responseText": "Payment sync issues are common and usually resolve within 24-48 hours. If your payment is not reflecting after 48 hours: (1) Confirm the payment was successful with your bank. (2) Provide your RRR (Remita Retrieval Reference) or transaction ID. (3) Upload your payment receipt. ICT will sync the payment manually.",
+                    "responseText": "Payment sync issues are common and usually resolve within 24-48 hours. If your payment is not reflecting after 48 hours: (1) Confirm the payment was successful with your bank. (2) Provide your transaction ID. (3) Upload your payment receipt. ICT will sync the payment manually.",
                     "allowEscalation": true,
                     "escalationTarget": "ICT",
                     "requiredFields": [
                         "student_id",
-                        "transaction_id",
-                        "rrr"
+                        "transaction_id"
                     ]
                 },
                 {
@@ -478,7 +477,7 @@
                     "label": "I paid for ID card but it is not reflecting",
                     "type": "leaf",
                     "actionType": "escalate",
-                    "responseText": "ID card payment issues require verification of the payment module. Please provide your transaction ID or RRR for the ID card payment. ICT will confirm the payment and activate your ID card printing access.",
+                    "responseText": "ID card payment issues require verification of the payment module. Please provide your transaction ID for the ID card payment. ICT will confirm the payment and activate your ID card printing access.",
                     "allowEscalation": true,
                     "escalationTarget": "ICT",
                     "requiredFields": [

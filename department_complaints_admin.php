@@ -55,6 +55,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_feedback'])) {
     $is_urgent = isset($_POST['is_urgent']) ? 1 : 0;
     $forwarded_to = isset($_POST['forwarded_to']) ? trim($_POST['forwarded_to']) : '';
     
+    // Fetch previous forwarded_to
+    $prev_forwarded_to = '';
+    $check_stmt = mysqli_prepare($conn, "SELECT forwarded_to FROM complaints WHERE complaint_id = ?");
+    if ($check_stmt) {
+        mysqli_stmt_bind_param($check_stmt, 'i', $cid);
+        mysqli_stmt_execute($check_stmt);
+        mysqli_stmt_bind_result($check_stmt, $db_forwarded_to);
+        if (mysqli_stmt_fetch($check_stmt)) {
+            $prev_forwarded_to = $db_forwarded_to ?? '';
+        }
+        mysqli_stmt_close($check_stmt);
+    }
+    
     // Handle admin feedback image uploads
     $admin_feedback_image_paths = array();
     if(isset($_FILES["admin_feedback_images"]) && !empty($_FILES["admin_feedback_images"]["name"][0])){
@@ -100,6 +113,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_feedback'])) {
         mysqli_stmt_bind_param($upd, 'ssssiii', $status, $response, $admin_feedback_images_str, $is_urgent, $forwarded_to, $_SESSION['user_id'], $cid);
         if (mysqli_stmt_execute($upd)) {
             $success_msg = "Department Complaint #$cid updated successfully.";
+            
+            // Handle forwarding notifications if changed
+            if ($forwarded_to !== $prev_forwarded_to && !empty($forwarded_to)) {
+                if ($forwarded_to === 'director') {
+                    // Notify Director (role_id = 3)
+                    $dir_res = mysqli_query($conn, "SELECT user_id FROM users WHERE role_id = 3");
+                    if ($dir_res) {
+                        while ($dir_row = mysqli_fetch_assoc($dir_res)) {
+                            createNotification(
+                                $conn, 
+                                $dir_row['user_id'], 
+                                $cid, 
+                                'feedback_given', 
+                                "Department Complaint Forwarded", 
+                                "Department Complaint #$cid has been forwarded to you."
+                            );
+                        }
+                    }
+                } elseif ($forwarded_to === 'i4cus') {
+                    // Notify i4Cus Staff (role_id = 5)
+                    $i4_res = mysqli_query($conn, "SELECT user_id FROM users WHERE role_id = 5");
+                    if ($i4_res) {
+                        while ($i4_row = mysqli_fetch_assoc($i4_res)) {
+                            createNotification(
+                                $conn, 
+                                $i4_row['user_id'], 
+                                $cid, 
+                                'feedback_given', 
+                                "Department Complaint Forwarded", 
+                                "Department Complaint #$cid has been forwarded to i4Cus Staff."
+                            );
+                        }
+                    }
+                    
+                    // Also notify the Director (role_id = 3) as copied
+                    $dir_res = mysqli_query($conn, "SELECT user_id FROM users WHERE role_id = 3");
+                    if ($dir_res) {
+                        while ($dir_row = mysqli_fetch_assoc($dir_res)) {
+                            createNotification(
+                                $conn, 
+                                $dir_row['user_id'], 
+                                $cid, 
+                                'feedback_given', 
+                                "Copied: Department Complaint", 
+                                "Department Complaint #$cid has been forwarded to i4Cus Staff and you have been copied."
+                            );
+                        }
+                    }
+                }
+            }
             
             // Notify the department user
             $get = mysqli_prepare($conn,
@@ -646,7 +709,12 @@ include 'includes/dashboard_header.php';
                     </div>
                     
                     <div class="form-group mt-3">
-                        <label class="font-weight-bold text-muted">Response / Feedback to Department</label>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="font-weight-bold text-muted mb-0">Response / Feedback to Department</label>
+                            <select id="modal_sel_past_feedback" class="form-control form-control-sm" style="display: none; max-width: 250px; border-radius: 20px; height: 28px; padding: 2px 8px; font-size: 0.8rem; border-color: #ced4da;">
+                                <option value="">— Select a past response —</option>
+                            </select>
+                        </div>
                         <textarea name="feedback" id="modal_feedback" class="form-control manual-clipboard-init" rows="4" placeholder="Write feedback details to send to the department..."></textarea>
                     </div>
 
@@ -720,6 +788,24 @@ $(document).ready(function() {
         initializeClipboardPaste(document.getElementById('modal_feedback'), document.querySelector('input[name="admin_feedback_images[]"]'));
     }
 
+    // Handle past feedback selection
+    $(document).on('change', '#modal_sel_past_feedback', function() {
+        const val = $(this).val();
+        if (val) {
+            $('#modal_feedback').val(val);
+            
+            // Glow effect
+            const ta = $('#modal_feedback');
+            ta.css('transition', 'all 0.4s');
+            ta.css('box-shadow', '0 0 15px rgba(40, 167, 69, 0.8)');
+            ta.css('border-color', '#28a745');
+            setTimeout(() => {
+                ta.css('box-shadow', '');
+                ta.css('border-color', '');
+            }, 1500);
+        }
+    });
+
     $('.btn-view-respond').on('click', function() {
         const id = $(this).data('id');
         const dept = $(this).data('dept');
@@ -741,6 +827,28 @@ $(document).ready(function() {
         $('#modal_date').text(date);
         $('#modal_feedback').val(feedback);
         $('#modal_forwarded_to').val(forwarded || '');
+        
+        // Load past feedback options
+        $('#modal_sel_past_feedback').empty().append('<option value="">— Select a past response —</option>').hide();
+        $.getJSON('api/get_historical_dept_feedback.php', { complaint_id: id }, function(res) {
+            if (res.success && res.history && res.history.length > 0) {
+                res.history.forEach((h, index) => {
+                    let shortLabel = h.feedback;
+                    if (shortLabel.length > 50) {
+                        shortLabel = shortLabel.substring(0, 47) + '...';
+                    }
+                    let optText = `Past Match #${index + 1}: ${shortLabel}`;
+                    let optTitle = `Complaint: ${h.complaint_text}`;
+                    $('#modal_sel_past_feedback').append(
+                        $('<option></option>')
+                            .val(h.feedback)
+                            .text(optText)
+                            .attr('title', optTitle)
+                    );
+                });
+                $('#modal_sel_past_feedback').show();
+            }
+        });
         
         // Handle attachments
         const attachGroup = $('#modal_attachments_group');
