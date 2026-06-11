@@ -749,40 +749,42 @@ function getDirectImagePath($image) {
             border-radius: 4px;
         }
         
-        /* Autocomplete Suggestions */
-        .autocomplete-suggestions {
+        /* Inline Autocomplete Suggestions */
+        .textarea-autocomplete-wrapper {
+            position: relative;
+            width: 100%;
+        }
+        .autocomplete-backdrop {
             position: absolute;
-            z-index: 1050;
-            background: rgba(255, 255, 255, 0.98);
-            border: 1px solid rgba(30, 60, 114, 0.15);
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-            max-height: 200px;
-            overflow-y: auto;
-            backdrop-filter: blur(5px);
-            margin-top: 2px;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            color: transparent;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow: hidden;
+            background: transparent;
+            margin: 0;
+            box-sizing: border-box;
         }
-        .autocomplete-suggestion {
-            padding: 8px 12px;
-            cursor: pointer;
-            border-bottom: 1px solid #f1f3f5;
-            font-size: 0.85rem;
-            color: #495057;
-            transition: background-color 0.15s, color 0.15s;
-            text-align: left;
+        .autocomplete-backdrop .mirrored-text {
+            color: transparent;
+            white-space: pre-wrap;
+            font-family: inherit;
+            font-size: inherit;
+            font-weight: inherit;
+            line-height: inherit;
         }
-        .autocomplete-suggestion:last-child {
-            border-bottom: none;
-        }
-        .autocomplete-suggestion:hover, .autocomplete-suggestion.active {
-            background-color: #1e3c72;
-            color: #ffffff;
-        }
-        .autocomplete-suggestion small {
-            display: block;
-            color: inherit;
-            opacity: 0.75;
-            margin-top: 2px;
+        .autocomplete-backdrop .ghost-text {
+            color: #868e96;
+            opacity: 0.6;
+            white-space: pre-wrap;
+            font-family: inherit;
+            font-size: inherit;
+            font-weight: inherit;
+            line-height: inherit;
         }
     </style>
 </head>
@@ -1524,131 +1526,162 @@ Return ONLY the professionally rephrased response text that the support staff sh
     // Initialize clipboard paste functionality when document is ready
     $(document).ready(function() {
         let currentComplaintHistory = [];
+        let currentComplaintContext = {
+            category: <?php echo json_encode($complaint['category'] ?? 'General'); ?>,
+            description: <?php echo json_encode($complaint['complaint_text'] ?? ''); ?>
+        };
 
-        // Helper for autocomplete past response
-        function initResponseAutocomplete(textareaId, getHistoryFn) {
+        // Helper for AI inline ghost-text autocomplete completions
+        function initResponseAutocomplete(textareaId, getHistoryFn, getContextFn) {
             const $textarea = $(textareaId);
             if ($textarea.length === 0) return;
             
-            if ($textarea.parent().css('position') === 'static') {
-                $textarea.parent().css('position', 'relative');
-            }
+            // Wrap textarea
+            const $wrapper = $('<div class="textarea-autocomplete-wrapper" style="position: relative; width: 100%;"></div>');
+            $textarea.wrap($wrapper);
             
-            const $suggestions = $('<div class="autocomplete-suggestions" style="display: none;"></div>');
-            $textarea.after($suggestions);
+            // Create backdrop
+            const $backdrop = $('<div class="autocomplete-backdrop" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; color: transparent; white-space: pre-wrap; word-wrap: break-word; overflow: hidden; background: transparent; margin: 0; box-sizing: border-box;">' +
+                '<span class="mirrored-text" style="color: transparent; white-space: pre-wrap; font-family: inherit; font-size: inherit; font-weight: inherit; line-height: inherit;"></span>' +
+                '<span class="ghost-text" style="color: #868e96; opacity: 0.6; white-space: pre-wrap; font-family: inherit; font-size: inherit; font-weight: inherit; line-height: inherit;"></span>' +
+                '</div>');
+            $textarea.before($backdrop);
             
-            let activeIndex = -1;
-            
-            function showSuggestions(filterText) {
-                const history = getHistoryFn() || [];
-                if (history.length === 0) {
-                    $suggestions.hide();
-                    return;
-                }
-                
-                $suggestions.empty();
-                let matches = [];
-                const query = (filterText || '').toLowerCase().trim();
-                
-                history.forEach(item => {
-                    const text = item.feedback || item.admin_response || '';
-                    const context = item.complaint_text || item.description || '';
-                    const meta = item.department_name || item.node_label || '';
-                    
-                    if (!text) return;
-                    
-                    if (!query || text.toLowerCase().includes(query) || context.toLowerCase().includes(query) || meta.toLowerCase().includes(query)) {
-                        if (!matches.some(m => m.text === text)) {
-                            matches.push({ text, context, meta });
-                        }
-                    }
-                });
-                
-                if (matches.length === 0) {
-                    $suggestions.hide();
-                    return;
-                }
-                
-                matches.forEach((match, index) => {
-                    let displayTitle = match.text;
-                    if (displayTitle.length > 80) {
-                        displayTitle = displayTitle.substring(0, 77) + '...';
-                    }
-                    
-                    let metaHtml = match.meta ? `[${match.meta}] ` : '';
-                    let contextHtml = match.context ? `<small class="text-muted d-block" style="font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Context: ${match.context}</small>` : '';
-                    
-                    const $item = $(`
-                        <div class="autocomplete-suggestion" data-index="${index}">
-                            <strong>${metaHtml}${esc(displayTitle)}</strong>
-                            ${contextHtml}
-                        </div>
-                    `);
-                    
-                    $item.data('full-text', match.text);
-                    
-                    $item.on('click', function() {
-                        $textarea.val($(this).data('full-text')).trigger('input');
-                        $suggestions.hide();
-                    });
-                    
-                    $suggestions.append($item);
-                });
-                
-                $suggestions.css({
-                    width: $textarea.outerWidth() + 'px'
-                }).show();
-                
-                activeIndex = -1;
-            }
-            
-            function esc(str) {
-                if (!str) return '';
-                return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-            }
-            
-            $textarea.on('input focus', function() {
-                showSuggestions($(this).val());
+            $textarea.css({
+                'background-color': 'transparent',
+                'position': 'relative',
+                'z-index': 1
             });
             
-            $(document).on('click', function(e) {
-                if (!$(e.target).closest($textarea).length && !$(e.target).closest($suggestions).length) {
-                    $suggestions.hide();
+            function syncStyles() {
+                const stylesToCopy = [
+                    'font-family', 'font-size', 'font-weight', 'line-height',
+                    'padding-top', 'padding-right', 'padding-bottom', 'padding-left',
+                    'border-top-width', 'border-right-width', 'border-bottom-width', 'border-left-width',
+                    'border-style', 'box-sizing', 'text-align', 'text-transform', 'letter-spacing', 'word-spacing',
+                    'width', 'height', 'min-height', 'max-height', 'margin-top', 'margin-right', 'margin-bottom', 'margin-left'
+                ];
+                stylesToCopy.forEach(style => {
+                    $backdrop.css(style, $textarea.css(style));
+                });
+                $backdrop.find('.mirrored-text, .ghost-text').css({
+                    'font-family': $textarea.css('font-family'),
+                    'font-size': $textarea.css('font-size'),
+                    'font-weight': $textarea.css('font-weight'),
+                    'line-height': $textarea.css('line-height')
+                });
+            }
+            
+            syncStyles();
+            $(window).on('resize', syncStyles);
+            
+            $textarea.on('scroll', function() {
+                $backdrop.scrollTop($textarea.scrollTop());
+                $backdrop.scrollLeft($textarea.scrollLeft());
+            });
+            
+            let currentGhostText = '';
+            let typingTimer;
+            const typingDelay = 650;
+            
+            function setGhostText(text) {
+                currentGhostText = text;
+                $backdrop.find('.ghost-text').text(text);
+            }
+            
+            function syncMirroredText() {
+                const typedVal = $textarea.val();
+                $backdrop.find('.mirrored-text').text(typedVal);
+                $backdrop.scrollTop($textarea.scrollTop());
+            }
+            
+            $textarea.on('input', function() {
+                setGhostText('');
+                syncMirroredText();
+                
+                clearTimeout(typingTimer);
+                const typedVal = $(this).val();
+                
+                typingTimer = setTimeout(function() {
+                    triggerAICompletion(typedVal);
+                }, typingDelay);
+            });
+            
+            $textarea.on('focus', function() {
+                syncStyles();
+                syncMirroredText();
+                if (!$textarea.val().trim()) {
+                    triggerAICompletion('');
                 }
             });
             
             $textarea.on('keydown', function(e) {
-                const $items = $suggestions.find('.autocomplete-suggestion');
-                if (!$suggestions.is(':visible') || $items.length === 0) return;
-                
-                if (e.key === 'ArrowDown') {
+                if (e.key === 'Tab' && currentGhostText) {
                     e.preventDefault();
-                    activeIndex = (activeIndex + 1) % $items.length;
-                    $items.removeClass('active');
-                    $items.eq(activeIndex).addClass('active');
-                    const activeEl = $items.eq(activeIndex)[0];
-                    activeEl.scrollIntoView({ block: 'nearest' });
-                } else if (e.key === 'ArrowUp') {
-                    e.preventDefault();
-                    activeIndex = (activeIndex - 1 + $items.length) % $items.length;
-                    $items.removeClass('active');
-                    $items.eq(activeIndex).addClass('active');
-                    const activeEl = $items.eq(activeIndex)[0];
-                    activeEl.scrollIntoView({ block: 'nearest' });
-                } else if (e.key === 'Enter') {
-                    if (activeIndex >= 0) {
-                        e.preventDefault();
-                        $items.eq(activeIndex).click();
-                    }
+                    const currentVal = $textarea.val();
+                    $textarea.val(currentVal + currentGhostText);
+                    setGhostText('');
+                    syncMirroredText();
+                    $textarea.trigger('input');
                 } else if (e.key === 'Escape') {
-                    $suggestions.hide();
+                    setGhostText('');
+                    syncMirroredText();
                 }
             });
+            
+            async function triggerAICompletion(typedText) {
+                if (typeof puter === 'undefined') return;
+                
+                const context = getContextFn() || {};
+                const history = getHistoryFn() || [];
+                
+                if (!context.category && !context.description) return;
+                
+                let historyStr = '';
+                if (history && history.length > 0) {
+                    historyStr = history.map((item, index) => {
+                        const text = item.feedback || item.admin_response || '';
+                        const desc = item.complaint_text || item.description || '';
+                        return `Past Match #${index + 1}:\nComplaint: "${desc}"\nResponse: "${text}"`;
+                    }).join('\n\n');
+                }
+                
+                try {
+                    const prompt = `You are a helpful university Support Staff assistant responding to a student complaint.
+Complaint Details:
+Category/Issue: "${context.category || 'General'}"
+Description: "${context.description || ''}"
+
+Here are some past responses given to similar complaints:
+${historyStr || 'None available.'}
+
+The support agent has started typing their response:
+"${typedText}"
+
+Your task:
+1. Continue and complete the response they started.
+2. Return ONLY the continuation text (what comes immediately after the typed text).
+3. Do NOT repeat the typed text.
+4. Keep the continuation natural, polite, and professional. The English should be polished and paraphrased, not exactly matching the past reference.
+5. The continuation must be short (1 to 2 sentences max) and merge seamlessly.
+6. If the typed text is empty, output a full professional suggested response.
+7. Return ONLY the text to be appended. No explanations, no quotes, no markdown wrappers.`;
+
+                    const result = await puter.ai.chat(prompt);
+                    const rawText = extractAIText(result);
+                    
+                    if (rawText && $textarea.is(':focus') && $textarea.val() === typedText) {
+                        setGhostText(rawText);
+                    }
+                } catch (err) {
+                    console.error('Puter Autocomplete Error:', err);
+                }
+            }
         }
 
         // Initialize autocomplete on feedback response if i4cus form is visible
         if ($('#i4cus_feedback').length > 0) {
-            initResponseAutocomplete('#i4cus_feedback', function() { return currentComplaintHistory; });
+            initResponseAutocomplete('#i4cus_feedback', function() { return currentComplaintHistory; }, function() { return currentComplaintContext; });
             
             const complaintId = <?php echo json_encode($complaint_id); ?>;
             $.getJSON('api/get_historical_dept_feedback.php', { complaint_id: complaintId }, function(res) {
