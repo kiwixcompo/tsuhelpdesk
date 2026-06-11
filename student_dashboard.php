@@ -17,7 +17,13 @@ $success_msg = $error_msg = "";
 
 // Handle complaint submission
 if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_complaint'])){
-    $course_codes = $_POST['course_code'];
+    $result_enabled = ($_SESSION['app_settings']['result_verification_enabled'] ?? '1') == '1';
+    if (!isWorkHours()) {
+        $error_msg = "Complaints can only be lodged during official work hours (Mondays to Fridays, 8:00 AM to 4:00 PM).";
+    } elseif (!$result_enabled) {
+        $error_msg = "Result verification complaints are currently disabled by the administrator.";
+    } else {
+        $course_codes = $_POST['course_code'];
     $course_titles = $_POST['course_title'];
     $complaint_types = $_POST['complaint_type'];
     $academic_sessions = $_POST['academic_session'];
@@ -70,11 +76,12 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_complaint'])){
         }
     }
     
-    if($complaints_added > 0){
-        $success_msg = "$complaints_added complaint(s) submitted successfully!";
-    }
-    if(!empty($errors)){
-        $error_msg = implode(", ", $errors);
+        if($complaints_added > 0){
+            $success_msg = "$complaints_added complaint(s) submitted successfully!";
+        }
+        if(!empty($errors)){
+            $error_msg = implode(", ", $errors);
+        }
     }
 }
 
@@ -349,122 +356,162 @@ if (mysqli_num_rows($notif_table_check) > 0) {
         <?php endif; ?>
 
         <!-- Lodge New Complaint -->
-        <!-- Complaint Type Selector -->
-        <div class="row mb-4">
-            <div class="col-md-6 mb-3">
-                <div class="card h-100" style="border:2px solid #1e3c72;border-radius:12px;cursor:pointer" onclick="document.getElementById('resultSection').scrollIntoView({behavior:'smooth'})">
-                    <div class="card-body text-center py-4">
-                        <i class="fas fa-clipboard-check fa-2x mb-3" style="color:#1e3c72"></i>
-                        <h5 style="color:#1e3c72;font-weight:700">Result Verification</h5>
-                        <p class="text-muted mb-3" style="font-size:.88rem">FA, incorrect grade, or missing result</p>
-                        <span class="badge badge-primary px-3 py-2">Lodge Below ↓</span>
+        <?php if (!isWorkHours()): ?>
+            <div class="alert alert-warning border-left border-warning shadow-sm mb-4 py-4" style="border-left-width: 5px !important; border-radius: 12px; background: #fff3cd; color: #856404;">
+                <div class="d-flex align-items-center">
+                    <div class="mr-4 text-warning" style="font-size: 3rem; opacity: 0.85;">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div>
+                        <h4 class="alert-heading font-weight-bold" style="color: #856404;">Complaint Lodging Closed</h4>
+                        <p class="mb-0 text-muted" style="font-size: 1.05rem;">
+                            We are currently closed. Student complaint lodging is only available during official work hours:<br>
+                            <strong>Mondays to Fridays, 8:00 AM to 4:00 PM</strong>.
+                        </p>
+                        <p class="mb-0 mt-2 text-info small font-weight-bold">
+                            <i class="fas fa-info-circle mr-1"></i> You can still view and check the status of your existing complaints below.
+                        </p>
                     </div>
                 </div>
             </div>
-            <div class="col-md-6 mb-3">
-                <a href="student_ict_complaint.php" style="text-decoration:none">
-                    <div class="card h-100" style="border:2px solid #28a745;border-radius:12px;cursor:pointer">
+        <?php else: ?>
+            <?php 
+            $result_enabled = ($_SESSION['app_settings']['result_verification_enabled'] ?? '1') == '1'; 
+            ?>
+            <!-- Complaint Type Selector -->
+            <div class="row mb-4">
+                <?php if ($result_enabled): ?>
+                <div class="col-md-6 mb-3">
+                    <div class="card h-100" style="border:2px solid #1e3c72;border-radius:12px;cursor:pointer" onclick="document.getElementById('resultSection').scrollIntoView({behavior:'smooth'})">
                         <div class="card-body text-center py-4">
-                            <i class="fas fa-headset fa-2x mb-3" style="color:#28a745"></i>
-                            <h5 style="color:#28a745;font-weight:700">ICT / Portal Complaint</h5>
-                            <p class="text-muted mb-3" style="font-size:.88rem">Login issues, payments, course registration, printing & more</p>
-                            <span class="badge badge-success px-3 py-2">Start Wizard →</span>
+                            <i class="fas fa-clipboard-check fa-2x mb-3" style="color:#1e3c72"></i>
+                            <h5 style="color:#1e3c72;font-weight:700">Result Verification</h5>
+                            <p class="text-muted mb-3" style="font-size:.88rem">FA, incorrect grade, or missing result</p>
+                            <span class="badge badge-primary px-3 py-2">Lodge Below ↓</span>
                         </div>
                     </div>
-                </a>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <a href="student_ict_complaint.php" style="text-decoration:none">
+                        <div class="card h-100" style="border:2px solid #28a745;border-radius:12px;cursor:pointer">
+                            <div class="card-body text-center py-4">
+                                <i class="fas fa-headset fa-2x mb-3" style="color:#28a745"></i>
+                                <h5 style="color:#28a745;font-weight:700">ICT / Portal Complaint</h5>
+                                <p class="text-muted mb-3" style="font-size:.88rem">Login issues, payments, course registration, printing & more</p>
+                                <span class="badge badge-success px-3 py-2">Start Wizard →</span>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                <?php else: ?>
+                <div class="col-md-8 mx-auto mb-3">
+                    <a href="student_ict_complaint.php" style="text-decoration:none">
+                        <div class="card h-100" style="border:2px solid #28a745;border-radius:12px;cursor:pointer">
+                            <div class="card-body text-center py-5">
+                                <i class="fas fa-headset fa-3x mb-3" style="color:#28a745"></i>
+                                <h5 style="color:#28a745;font-weight:700;font-size:1.4rem">ICT / Portal Complaint</h5>
+                                <p class="text-muted mb-4" style="font-size:1rem">Login issues, payments, course registration, printing & more</p>
+                                <span class="badge badge-success px-4 py-3" style="font-size:1rem">Start Complaint Wizard →</span>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                <?php endif; ?>
             </div>
-        </div>
 
-        <div id="resultSection">
-        <div class="card dashboard-card">
-            <div class="card-header">
-                <h4 class="mb-0"><i class="fas fa-plus-circle mr-2"></i>Lodge Result Verification Complaint</h4>
-            </div>
-            <div class="card-body">
-                <form method="post" id="complaintForm">
-                    <div id="complaintsContainer">
-                        <div class="complaint-row" data-index="0">
-                            <div class="row">
-                                <div class="col-md-3">
-                                    <div class="form-group">
-                                        <label>Course Code *</label>
-                                        <input type="text" name="course_code[]" class="form-control" placeholder="e.g., CSC301" required>
+            <?php if ($result_enabled): ?>
+            <div id="resultSection">
+            <div class="card dashboard-card">
+                <div class="card-header">
+                    <h4 class="mb-0"><i class="fas fa-plus-circle mr-2"></i>Lodge Result Verification Complaint</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="complaintForm">
+                        <div id="complaintsContainer">
+                            <div class="complaint-row" data-index="0">
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <div class="form-group">
+                                            <label>Course Code *</label>
+                                            <input type="text" name="course_code[]" class="form-control" placeholder="e.g., CSC301" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-group">
+                                            <label>Course Title *</label>
+                                            <input type="text" name="course_title[]" class="form-control" placeholder="e.g., Data Structures" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="form-group">
+                                            <label>Complaint Type *</label>
+                                            <select name="complaint_type[]" class="form-control" required>
+                                                <option value="">Select Type</option>
+                                                <option value="FA">Fail Absent (FA)</option>
+                                                <option value="F">Fail (F)</option>
+                                                <option value="Incorrect Grade">Incorrect Grade</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="form-group">
+                                            <label>Academic Session *</label>
+                                            <select name="academic_session[]" class="form-control session-select" required>
+                                                <option value="">Select Session</option>
+                                                <?php 
+                                                $sessions = generateAcademicSessions();
+                                                foreach($sessions as $session): ?>
+                                                    <option value="<?php echo $session; ?>"><?php echo $session; ?></option>
+                                                <?php endforeach; ?>
+                                                <option value="other">Other (Type manually)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="form-group">
+                                            <label>&nbsp;</label>
+                                            <button type="button" class="btn btn-danger btn-block remove-complaint" style="display: none;">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="col-md-3">
-                                    <div class="form-group">
-                                        <label>Course Title *</label>
-                                        <input type="text" name="course_title[]" class="form-control" placeholder="e.g., Data Structures" required>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group custom-session-group" style="display: none;">
+                                            <label>Custom Academic Session *</label>
+                                            <input type="text" name="custom_session[]" class="form-control" placeholder="e.g., 2025/2026">
+                                            <small class="form-text text-muted">Format: YYYY/YYYY (e.g., 2025/2026)</small>
+                                        </div>
                                     </div>
-                                </div>
-                                <div class="col-md-2">
-                                    <div class="form-group">
-                                        <label>Complaint Type *</label>
-                                        <select name="complaint_type[]" class="form-control" required>
-                                            <option value="">Select Type</option>
-                                            <option value="FA">Fail Absent (FA)</option>
-                                            <option value="F">Fail (F)</option>
-                                            <option value="Incorrect Grade">Incorrect Grade</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="col-md-2">
-                                    <div class="form-group">
-                                        <label>Academic Session *</label>
-                                        <select name="academic_session[]" class="form-control session-select" required>
-                                            <option value="">Select Session</option>
-                                            <?php 
-                                            $sessions = generateAcademicSessions();
-                                            foreach($sessions as $session): ?>
-                                                <option value="<?php echo $session; ?>"><?php echo $session; ?></option>
-                                            <?php endforeach; ?>
-                                            <option value="other">Other (Type manually)</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="col-md-2">
-                                    <div class="form-group">
-                                        <label>&nbsp;</label>
-                                        <button type="button" class="btn btn-danger btn-block remove-complaint" style="display: none;">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
+                                    <div class="col-12">
+                                        <div class="form-group">
+                                            <label>Additional Description (Optional)</label>
+                                            <textarea name="description[]" class="form-control" rows="2" placeholder="Provide any additional details about your complaint..."></textarea>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-group custom-session-group" style="display: none;">
-                                        <label>Custom Academic Session *</label>
-                                        <input type="text" name="custom_session[]" class="form-control" placeholder="e.g., 2025/2026">
-                                        <small class="form-text text-muted">Format: YYYY/YYYY (e.g., 2025/2026)</small>
-                                    </div>
-                                </div>
-                                <div class="col-12">
-                                    <div class="form-group">
-                                        <label>Additional Description (Optional)</label>
-                                        <textarea name="description[]" class="form-control" rows="2" placeholder="Provide any additional details about your complaint..."></textarea>
-                                    </div>
-                                </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <button type="button" class="btn btn-success" id="addComplaint">
+                                    <i class="fas fa-plus mr-2"></i>Add Another Course
+                                </button>
+                            </div>
+                            <div class="col-md-6 text-right">
+                                <button type="submit" name="submit_complaint" class="btn btn-primary">
+                                    <i class="fas fa-paper-plane mr-2"></i>Submit Complaints
+                                </button>
                             </div>
                         </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            <button type="button" class="btn btn-success" id="addComplaint">
-                                <i class="fas fa-plus mr-2"></i>Add Another Course
-                            </button>
-                        </div>
-                        <div class="col-md-6 text-right">
-                            <button type="submit" name="submit_complaint" class="btn btn-primary">
-                                <i class="fas fa-paper-plane mr-2"></i>Submit Complaints
-                            </button>
-                        </div>
-                    </div>
-                </form>
+                    </form>
+                </div>
             </div>
-        </div>
-        </div><!-- /resultSection -->
+            </div><!-- /resultSection -->
+            <?php endif; ?>
+        <?php endif; ?>
 
         <!-- My Active Complaints -->
         <div class="card dashboard-card">

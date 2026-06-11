@@ -39,6 +39,8 @@ if (session_status() === PHP_SESSION_NONE) {
 // Cache global application settings to minimize database query overhead
 if (!isset($_SESSION['app_settings']) || !is_array($_SESSION['app_settings'])) {
     $_SESSION['app_settings'] = [];
+    // Self-healing check: ensure result_verification_enabled exists
+    mysqli_query($conn, "INSERT IGNORE INTO settings (setting_key, setting_value, setting_type, setting_label) VALUES ('result_verification_enabled', '1', 'boolean', 'Result Verification Enabled')");
     $settings_sql = "SELECT setting_key, setting_value FROM settings";
     $settings_result = mysqli_query($conn, $settings_sql);
     if ($settings_result) {
@@ -97,6 +99,30 @@ function parse_response_images($text) {
     $replacement = '<div class="mt-2"><img src="$1" class="img-thumbnail" style="max-height: 150px; cursor: pointer; border: 1px solid #dee2e6;" onclick="if(window.showImageModal){window.showImageModal(\'$1\');}else{window.open(\'$1\',\'_blank\');}"></div>';
     $text = preg_replace($pattern, $replacement, $text);
     return nl2br($text);
+}
+
+/**
+ * Check if the current time is within official work hours.
+ * Mondays to Fridays, 8:00 AM to 4:00 PM.
+ * Timezone set to Africa/Lagos.
+ */
+function isWorkHours() {
+    date_default_timezone_set('Africa/Lagos');
+    $now = time();
+    $dayOfWeek = (int) date('N', $now); // 1 (Mon) - 7 (Sun)
+    $hour = (int) date('H', $now);
+    
+    // Monday to Friday check
+    if ($dayOfWeek < 1 || $dayOfWeek > 5) {
+        return false;
+    }
+    
+    // 8am to 4pm check (8:00:00 to 15:59:59)
+    if ($hour < 8 || $hour >= 16) {
+        return false;
+    }
+    
+    return true;
 }
 ?>
 

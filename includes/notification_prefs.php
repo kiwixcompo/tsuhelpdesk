@@ -50,16 +50,7 @@ function ensureNotifPrefsTable($conn): void {
         }
     }
 
-    // Fix: ensure every admin has on_new_student_complaint = 1 and on_new_complaint = 1
-    // UPDATE existing rows where the admin has opted out (value = 0) — only if they
-    // haven't explicitly changed it themselves (we can't tell, so we just ensure ON for admins)
-    mysqli_query($conn,
-        "UPDATE user_notification_prefs unp
-         JOIN users u ON unp.user_id = u.user_id
-         SET unp.on_new_student_complaint = 1,
-             unp.on_new_complaint = 1
-         WHERE u.role_id = 1"
-    );
+
 
     // Ensure every admin has a prefs row (INSERT IGNORE = skip if already exists)
     $admin_res = mysqli_query($conn,

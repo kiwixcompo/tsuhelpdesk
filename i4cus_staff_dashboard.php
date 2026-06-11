@@ -628,8 +628,19 @@ function getImagePath($image) {
                 <div class="tab-content" id="complaintTabsContent">
                     <div class="tab-pane fade <?php echo !isset($_GET['treated']) ? 'show active' : ''; ?>" id="active" role="tabpanel">
                         <?php if (empty($active_complaints)): ?>
-                            <div class="alert alert-info">
-                                No active i4Cus complaints found.
+                            <div class="text-center py-5">
+                                <?php if ($search_id || $filter_status || $filter_date): ?>
+                                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                                    <h5 class="text-muted">No Results Found</h5>
+                                    <p class="text-muted">No complaints found matching your search filters.</p>
+                                    <a href="i4cus_staff_dashboard.php" class="btn btn-primary mt-2">
+                                        <i class="fas fa-times"></i> Clear Filters
+                                    </a>
+                                <?php else: ?>
+                                    <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                                    <h5 class="text-success font-weight-bold">All Caught Up!</h5>
+                                    <p class="text-muted mb-0">Excellent job! There are no active i4Cus-related complaints to handle right now.</p>
+                                <?php endif; ?>
                             </div>
                         <?php else: ?>
                             <div class="table-responsive">

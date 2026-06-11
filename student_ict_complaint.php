@@ -9,6 +9,11 @@ if (!isset($_SESSION["student_loggedin"]) || $_SESSION["student_loggedin"] !== t
 
 require_once "config.php";
 
+if (!isWorkHours()) {
+    header("location: student_dashboard.php");
+    exit;
+}
+
 // Load decision tree
 $tree_file = __DIR__ . '/data/complaint_tree.json';
 $tree_json = file_exists($tree_file) ? file_get_contents($tree_file) : '{}';

@@ -729,7 +729,15 @@ $val_map = [
             </thead>
             <tbody>
             <?php if (empty($complaints)): ?>
-                <tr><td colspan="7" class="text-center py-4 text-muted">No complaints found.</td></tr>
+                <tr>
+                    <td colspan="7" class="text-center py-5">
+                        <div class="py-3">
+                            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                            <h5 class="text-success font-weight-bold">All Caught Up!</h5>
+                            <p class="text-muted mb-0">Excellent job! There are no student ICT complaints to handle right now.</p>
+                        </div>
+                    </td>
+                </tr>
             <?php else: ?>
             <?php foreach ($complaints as $c): ?>
                 <tr class="complaint-row">

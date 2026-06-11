@@ -246,6 +246,17 @@ foreach($settings as $setting){
                                                                    placeholder="Enter <?php echo strtolower($setting['setting_label']); ?>">
                                                         <?php endif; ?>
                                                     
+                                                    <?php elseif($setting['setting_type'] == 'boolean'): ?>
+                                                        <div class="custom-control custom-switch custom-switch-md">
+                                                            <input type="hidden" name="setting_<?php echo $setting['setting_key']; ?>" value="0">
+                                                            <input type="checkbox" name="setting_<?php echo $setting['setting_key']; ?>" 
+                                                                   class="custom-control-input" id="setting_<?php echo $setting['setting_key']; ?>" 
+                                                                   value="1" <?php echo ($setting['setting_value'] == '1') ? 'checked' : ''; ?>>
+                                                            <label class="custom-control-label font-weight-bold" for="setting_<?php echo $setting['setting_key']; ?>" style="cursor: pointer;">
+                                                                Enabled
+                                                            </label>
+                                                        </div>
+                                                    
                                                     <?php elseif($setting['setting_type'] == 'textarea'): ?>
                                                         <textarea name="setting_<?php echo $setting['setting_key']; ?>" 
                                                                   class="form-control" rows="3" 

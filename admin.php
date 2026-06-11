@@ -629,7 +629,27 @@ function getImagePath($image) {
             <div class="alert alert-danger"><?php echo $error_message; ?></div>
         <?php endif; ?>
         
-
+        <!-- Result Verification Toggle Card -->
+        <div class="card mb-4 shadow-sm border-0" style="border-radius: 12px; background: #fff;">
+            <div class="card-body p-3 d-flex align-items-center justify-content-between flex-wrap">
+                <div class="d-flex align-items-center">
+                    <div class="icon-circle bg-light-primary mr-3" style="width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(30, 60, 114, 0.1); color: #1e3c72;">
+                        <i class="fas fa-clipboard-check fa-lg"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-0 font-weight-bold" style="color: #1e3c72;">Student Result Verification Complaints</h6>
+                        <small class="text-muted">Disable/Enable lodging of result verification complaints for students.</small>
+                    </div>
+                </div>
+                <div class="custom-control custom-switch custom-switch-md pr-3">
+                    <input type="checkbox" class="custom-control-input" id="resultVerificationToggle" 
+                           <?php echo ($_SESSION['app_settings']['result_verification_enabled'] ?? '1') == '1' ? 'checked' : ''; ?>>
+                    <label class="custom-control-label font-weight-bold" for="resultVerificationToggle" id="toggleStatusLabel" style="cursor: pointer;">
+                        <?php echo ($_SESSION['app_settings']['result_verification_enabled'] ?? '1') == '1' ? 'Activated' : 'Deactivated'; ?>
+                    </label>
+                </div>
+            </div>
+        </div>
 
         <div class="mb-4">
             <div class="btn-group w-100 flex-wrap">
@@ -892,7 +912,9 @@ function getImagePath($image) {
                                     <h5 class="text-muted">This user has not submitted any complaints</h5>
                                     <p class="text-muted">No complaints found for the selected user.</p>
                                 <?php else: ?>
-                                    <h5 class="text-muted">No complaints found in this category</h5>
+                                    <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                                    <h5 class="text-success font-weight-bold">All Caught Up!</h5>
+                                    <p class="text-muted mb-0">Excellent job! There are no student complaints to handle right now.</p>
                                 <?php endif; ?>
                             </div>
                         <?php else: ?>
@@ -1710,6 +1732,37 @@ function getImagePath($image) {
             } else {
                 $('#noComplaintsRow').hide();
             }
+
+            // Result Verification Toggle Change Handler
+            $('#resultVerificationToggle').on('change', function() {
+                var isChecked = this.checked ? '1' : '0';
+                var label = $('#toggleStatusLabel');
+                label.text(this.checked ? 'Activated' : 'Deactivated');
+                
+                var self = $(this);
+                self.prop('disabled', true);
+                
+                $.ajax({
+                    url: 'api/toggle_result_verification.php',
+                    method: 'POST',
+                    data: { enabled: isChecked },
+                    dataType: 'json',
+                    success: function(res) {
+                        self.prop('disabled', false);
+                        if (!res.success) {
+                            alert('Failed to update setting: ' + res.message);
+                            self.prop('checked', !self.prop('checked'));
+                            label.text(self.prop('checked') ? 'Activated' : 'Deactivated');
+                        }
+                    },
+                    error: function() {
+                        self.prop('disabled', false);
+                        alert('Network error updating setting.');
+                        self.prop('checked', !self.prop('checked'));
+                        label.text(self.prop('checked') ? 'Activated' : 'Deactivated');
+                    }
+                });
+            });
 
             // Debounced global search form submission (1000ms delay of inactivity)
             clearTimeout(searchTimeout);

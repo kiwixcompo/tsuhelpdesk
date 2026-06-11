@@ -528,8 +528,10 @@ function getImagePath($path) {
                                 <div class="tab-content" id="complaintTabsContent">
                                     <div class="tab-pane fade show active" id="active" role="tabpanel">
                                         <?php if (empty($active_complaints)): ?>
-                                            <div class="alert alert-info">
-                                                No active payment-related complaints found.
+                                            <div class="text-center py-5">
+                                                <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                                                <h5 class="text-success font-weight-bold">All Caught Up!</h5>
+                                                <p class="text-muted mb-0">Excellent job! There are no active payment-related complaints to handle right now.</p>
                                             </div>
                                         <?php else: ?>
                                             <div class="table-responsive">

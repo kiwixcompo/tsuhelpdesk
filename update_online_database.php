@@ -536,6 +536,15 @@ if (!executeQuery($conn, $sql, "Ensured 'puter_auth_token' exists in settings ta
     $update_success = false;
 }
 
+// Ensure result_verification_enabled setting row exists in settings table
+logInfo("Ensuring Result Verification Enabled setting exists in settings table...");
+$sql = "INSERT INTO settings (setting_key, setting_value, setting_type, setting_label) 
+        VALUES ('result_verification_enabled', '1', 'boolean', 'Result Verification Enabled') 
+        ON DUPLICATE KEY UPDATE setting_label = 'Result Verification Enabled'";
+if (!executeQuery($conn, $sql, "Ensured 'result_verification_enabled' exists in settings table")) {
+    $update_success = false;
+}
+
 // =====================================================
 // FINAL STATUS
 // =====================================================

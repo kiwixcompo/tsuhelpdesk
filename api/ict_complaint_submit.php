@@ -9,6 +9,11 @@ header('Content-Type: application/json');
 // Catch any PHP output that would break JSON
 ob_clean();
 
+if (!isWorkHours()) {
+    echo json_encode(['success' => false, 'message' => 'Complaints can only be lodged during work hours (Mondays to Fridays, 8am to 4pm).']);
+    exit;
+}
+
 if (!isset($_SESSION["student_loggedin"]) || $_SESSION["student_loggedin"] !== true) {
     echo json_encode(['success' => false, 'message' => 'Not authenticated']);
     exit;

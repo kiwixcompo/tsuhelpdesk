@@ -619,6 +619,21 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
                 </div>
             </div>
         </div>
+        <?php else: ?>
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-success shadow-sm">
+                    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center rounded-top">
+                        <h5 class="mb-0 font-weight-bold"><i class="fas fa-share-square mr-2"></i>Cases Forwarded From ICT</h5>
+                    </div>
+                    <div class="card-body text-center py-5">
+                        <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                        <h5 class="text-success font-weight-bold">All Caught Up!</h5>
+                        <p class="text-muted mb-0">There are no complaints forwarded to your department right now. Great job!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
         <?php endif; ?>
 
         <div class="row">
