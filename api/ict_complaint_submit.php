@@ -10,7 +10,7 @@ header('Content-Type: application/json');
 ob_clean();
 
 if (!isWorkHours()) {
-    echo json_encode(['success' => false, 'message' => 'Complaints can only be lodged during work hours (Mondays to Fridays, 8am to 4pm).']);
+    echo json_encode(['success' => false, 'message' => 'Complaints can only be lodged during official work hours (' . getWorkHoursDescription() . ').']);
     exit;
 }
 

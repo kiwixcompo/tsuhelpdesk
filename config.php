@@ -39,8 +39,11 @@ if (session_status() === PHP_SESSION_NONE) {
 // Cache global application settings to minimize database query overhead
 if (!isset($_SESSION['app_settings']) || !is_array($_SESSION['app_settings'])) {
     $_SESSION['app_settings'] = [];
-    // Self-healing check: ensure result_verification_enabled exists
+    // Self-healing check: ensure result_verification_enabled and lodging availability settings exist
     mysqli_query($conn, "INSERT IGNORE INTO settings (setting_key, setting_value, setting_type, setting_label) VALUES ('result_verification_enabled', '1', 'boolean', 'Result Verification Enabled')");
+    mysqli_query($conn, "INSERT IGNORE INTO settings (setting_key, setting_value, setting_type, setting_label) VALUES ('work_days', '1,2,3,4,5', 'text', 'Complaint Submission Days')");
+    mysqli_query($conn, "INSERT IGNORE INTO settings (setting_key, setting_value, setting_type, setting_label) VALUES ('work_start_time', '08:00', 'text', 'Complaint Submission Start Time')");
+    mysqli_query($conn, "INSERT IGNORE INTO settings (setting_key, setting_value, setting_type, setting_label) VALUES ('work_end_time', '16:00', 'text', 'Complaint Submission End Time')");
     $settings_sql = "SELECT setting_key, setting_value FROM settings";
     $settings_result = mysqli_query($conn, $settings_sql);
     if ($settings_result) {
@@ -103,26 +106,89 @@ function parse_response_images($text) {
 
 /**
  * Check if the current time is within official work hours.
- * Mondays to Fridays, 8:00 AM to 4:00 PM.
+ * Uses dynamic admin settings for days and hours.
  * Timezone set to Africa/Lagos.
  */
 function isWorkHours() {
     date_default_timezone_set('Africa/Lagos');
     $now = time();
     $dayOfWeek = (int) date('N', $now); // 1 (Mon) - 7 (Sun)
-    $hour = (int) date('H', $now);
+    $currentTimeStr = date('H:i', $now);
     
-    // Monday to Friday check
-    if ($dayOfWeek < 1 || $dayOfWeek > 5) {
+    $work_days_str = $_SESSION['app_settings']['work_days'] ?? '1,2,3,4,5';
+    $work_start_time = $_SESSION['app_settings']['work_start_time'] ?? '08:00';
+    $work_end_time = $_SESSION['app_settings']['work_end_time'] ?? '16:00';
+    
+    // Parse work days
+    $work_days = array_filter(array_map('intval', explode(',', $work_days_str)));
+    
+    // Check day of week
+    if (!in_array($dayOfWeek, $work_days)) {
         return false;
     }
     
-    // 8am to 4pm check (8:00:00 to 15:59:59)
-    if ($hour < 8 || $hour >= 16) {
+    // Check time range (compare HH:MM strings)
+    if ($currentTimeStr < $work_start_time || $currentTimeStr >= $work_end_time) {
         return false;
     }
     
     return true;
+}
+
+/**
+ * Compiles dynamic work hours configuration into a friendly string description.
+ */
+function getWorkHoursDescription() {
+    $work_days_str = $_SESSION['app_settings']['work_days'] ?? '1,2,3,4,5';
+    $work_start_time = $_SESSION['app_settings']['work_start_time'] ?? '08:00';
+    $work_end_time = $_SESSION['app_settings']['work_end_time'] ?? '16:00';
+    
+    // Parse time to friendly format, e.g. 08:00 -> 8:00 AM, 16:00 -> 4:00 PM
+    $start_dt = DateTime::createFromFormat('H:i', $work_start_time);
+    $end_dt = DateTime::createFromFormat('H:i', $work_end_time);
+    $start_formatted = $start_dt ? $start_dt->format('g:i A') : $work_start_time;
+    $end_formatted = $end_dt ? $end_dt->format('g:i A') : $work_end_time;
+    
+    $days_map = [
+        1 => 'Monday',
+        2 => 'Tuesday',
+        3 => 'Wednesday',
+        4 => 'Thursday',
+        5 => 'Friday',
+        6 => 'Saturday',
+        7 => 'Sunday'
+    ];
+    
+    $work_days = array_filter(array_map('intval', explode(',', $work_days_str)));
+    sort($work_days);
+    
+    if (empty($work_days)) {
+        return "Complaint lodging is currently disabled by the administrator";
+    }
+    
+    // Check if it's Mon-Fri
+    if ($work_days === [1, 2, 3, 4, 5]) {
+        $days_desc = 'Mondays to Fridays';
+    } elseif ($work_days === [1, 2, 3, 4, 5, 6, 7]) {
+        $days_desc = 'Every day (Monday to Sunday)';
+    } elseif ($work_days === [1, 2, 3, 4, 5, 6]) {
+        $days_desc = 'Mondays to Saturdays';
+    } else {
+        $day_names = [];
+        foreach ($work_days as $d) {
+            if (isset($days_map[$d])) {
+                $day_names[] = $days_map[$d] . 's';
+            }
+        }
+        if (count($day_names) > 1) {
+            $last_day = array_pop($day_names);
+            $days_desc = implode(', ', $day_names) . ' and ' . $last_day;
+        } else {
+            $days_desc = implode('', $day_names);
+        }
+    }
+    
+    return "$days_desc, from $start_formatted to $end_formatted";
 }
 ?>
 

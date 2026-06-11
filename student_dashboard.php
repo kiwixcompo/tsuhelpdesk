@@ -19,7 +19,7 @@ $success_msg = $error_msg = "";
 if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_complaint'])){
     $result_enabled = ($_SESSION['app_settings']['result_verification_enabled'] ?? '1') == '1';
     if (!isWorkHours()) {
-        $error_msg = "Complaints can only be lodged during official work hours (Mondays to Fridays, 8:00 AM to 4:00 PM).";
+        $error_msg = "Complaints can only be lodged during official work hours (" . getWorkHoursDescription() . ").";
     } elseif (!$result_enabled) {
         $error_msg = "Result verification complaints are currently disabled by the administrator.";
     } else {
@@ -366,7 +366,7 @@ if (mysqli_num_rows($notif_table_check) > 0) {
                         <h4 class="alert-heading font-weight-bold" style="color: #856404;">Complaint Lodging Closed</h4>
                         <p class="mb-0 text-muted" style="font-size: 1.05rem;">
                             We are currently closed. Student complaint lodging is only available during official work hours:<br>
-                            <strong>Mondays to Fridays, 8:00 AM to 4:00 PM</strong>.
+                            <strong><?php echo getWorkHoursDescription(); ?></strong>.
                         </p>
                         <p class="mb-0 mt-2 text-info small font-weight-bold">
                             <i class="fas fa-info-circle mr-1"></i> You can still view and check the status of your existing complaints below.

@@ -545,6 +545,33 @@ if (!executeQuery($conn, $sql, "Ensured 'result_verification_enabled' exists in 
     $update_success = false;
 }
 
+// Ensure work_days setting row exists in settings table
+logInfo("Ensuring Complaint Submission Days setting exists in settings table...");
+$sql = "INSERT INTO settings (setting_key, setting_value, setting_type, setting_label) 
+        VALUES ('work_days', '1,2,3,4,5', 'text', 'Complaint Submission Days') 
+        ON DUPLICATE KEY UPDATE setting_label = 'Complaint Submission Days'";
+if (!executeQuery($conn, $sql, "Ensured 'work_days' exists in settings table")) {
+    $update_success = false;
+}
+
+// Ensure work_start_time setting row exists in settings table
+logInfo("Ensuring Complaint Submission Start Time setting exists in settings table...");
+$sql = "INSERT INTO settings (setting_key, setting_value, setting_type, setting_label) 
+        VALUES ('work_start_time', '08:00', 'text', 'Complaint Submission Start Time') 
+        ON DUPLICATE KEY UPDATE setting_label = 'Complaint Submission Start Time'";
+if (!executeQuery($conn, $sql, "Ensured 'work_start_time' exists in settings table")) {
+    $update_success = false;
+}
+
+// Ensure work_end_time setting row exists in settings table
+logInfo("Ensuring Complaint Submission End Time setting exists in settings table...");
+$sql = "INSERT INTO settings (setting_key, setting_value, setting_type, setting_label) 
+        VALUES ('work_end_time', '16:00', 'text', 'Complaint Submission End Time') 
+        ON DUPLICATE KEY UPDATE setting_label = 'Complaint Submission End Time'";
+if (!executeQuery($conn, $sql, "Ensured 'work_end_time' exists in settings table")) {
+    $update_success = false;
+}
+
 // =====================================================
 // FINAL STATUS
 // =====================================================

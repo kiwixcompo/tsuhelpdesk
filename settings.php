@@ -13,6 +13,13 @@ $success_message = $error_message = "";
 
 // Process settings update
 if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["update_settings"])){
+    // Pre-process work_days checkboxes to a comma-separated string
+    if (isset($_POST['work_days']) && is_array($_POST['work_days'])) {
+        $_POST['setting_work_days'] = implode(',', $_POST['work_days']);
+    } else {
+        $_POST['setting_work_days'] = '';
+    }
+
     foreach($_POST as $key => $value){
         if(strpos($key, 'setting_') === 0){
             $setting_key = substr($key, 8); // Remove 'setting_' prefix
@@ -196,7 +203,87 @@ foreach($settings as $setting){
                         <?php else: ?>
                             <form method="post" enctype="multipart/form-data">
                                 <div class="row">
-                                    <?php foreach($settings as $setting): ?>
+                                    <?php 
+                                    // Separate settings into general settings and availability scheduler settings
+                                    $general_settings = [];
+                                    $availability_settings = [];
+                                    foreach($settings as $setting) {
+                                        if (in_array($setting['setting_key'], ['work_days', 'work_start_time', 'work_end_time'])) {
+                                            $availability_settings[$setting['setting_key']] = $setting['setting_value'];
+                                        } else {
+                                            $general_settings[] = $setting;
+                                        }
+                                    }
+                                    ?>
+                                    
+                                    <!-- Student Complaint Availability Scheduler Card -->
+                                    <div class="col-md-12 mb-4">
+                                        <div class="card border-primary shadow-sm">
+                                            <div class="card-header text-white" style="background: linear-gradient(135deg, #1e3c72, #2a5298) !important;">
+                                                <h5 class="mb-0 text-white font-weight-bold">
+                                                    <i class="fas fa-calendar-alt mr-2"></i>Student Complaint Availability Scheduler
+                                                </h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <p class="text-muted">
+                                                    Configure the days and daily time range during which students are permitted to submit new complaints. Outside this window, complaint lodging will be blocked and a warning banner will be displayed.
+                                                </p>
+                                                <hr>
+                                                <div class="form-group">
+                                                    <label class="font-weight-bold text-primary mb-3">
+                                                        <i class="fas fa-calendar-week mr-1"></i> 1. Select Active Days of the Week
+                                                    </label>
+                                                    <div class="d-flex flex-wrap" style="gap: 15px; padding-left: 5px;">
+                                                        <?php
+                                                        $days_map = [
+                                                            1 => 'Monday',
+                                                            2 => 'Tuesday',
+                                                            3 => 'Wednesday',
+                                                            4 => 'Thursday',
+                                                            5 => 'Friday',
+                                                            6 => 'Saturday',
+                                                            7 => 'Sunday'
+                                                        ];
+                                                        $selected_days = array_filter(array_map('intval', explode(',', $availability_settings['work_days'] ?? '1,2,3,4,5')));
+                                                        foreach ($days_map as $val => $name):
+                                                            $checked = in_array($val, $selected_days) ? 'checked' : '';
+                                                        ?>
+                                                            <div class="custom-control custom-checkbox mr-4 mb-2">
+                                                                <input type="checkbox" name="work_days[]" value="<?php echo $val; ?>" 
+                                                                       class="custom-control-input" id="day_<?php echo $val; ?>" <?php echo $checked; ?>>
+                                                                <label class="custom-control-label font-weight-bold" for="day_<?php echo $val; ?>" style="cursor: pointer; font-size: 1rem;">
+                                                                    <?php echo $name; ?>
+                                                                </label>
+                                                            </div>
+                                                        <?php endforeach; ?>
+                                                    </div>
+                                                </div>
+                                                <hr class="mt-4">
+                                                <div class="form-row mt-4">
+                                                    <div class="col-md-6 form-group">
+                                                        <label class="font-weight-bold text-success" for="work_start_time">
+                                                            <i class="fas fa-clock mr-1"></i> 2. Opening Time (Daily)
+                                                        </label>
+                                                        <input type="time" name="setting_work_start_time" id="work_start_time" 
+                                                               class="form-control form-control-lg" 
+                                                               value="<?php echo htmlspecialchars($availability_settings['work_start_time'] ?? '08:00'); ?>" required>
+                                                        <small class="form-text text-muted">Students cannot lodge complaints before this time.</small>
+                                                    </div>
+                                                    <div class="col-md-6 form-group">
+                                                        <label class="font-weight-bold text-danger" for="work_end_time">
+                                                            <i class="fas fa-clock mr-1"></i> 3. Closing Time (Daily)
+                                                        </label>
+                                                        <input type="time" name="setting_work_end_time" id="work_end_time" 
+                                                               class="form-control form-control-lg" 
+                                                               value="<?php echo htmlspecialchars($availability_settings['work_end_time'] ?? '16:00'); ?>" required>
+                                                        <small class="form-text text-muted">Students cannot lodge complaints after this time.</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <?php foreach($general_settings as $setting): ?>
                                         <div class="col-md-6 mb-4">
                                             <div class="card">
                                                 <div class="card-body">
