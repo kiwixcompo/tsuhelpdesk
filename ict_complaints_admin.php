@@ -1067,6 +1067,69 @@ if (typeof puter !== 'undefined') {
 }
 <?php endif; ?>
 
+function cleanContinuation(typedText, aiResponse) {
+    let cleaned = aiResponse.trim();
+    if (!cleaned) return '';
+    
+    const cleanWord = w => w.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "").toLowerCase();
+    
+    const typedWords = typedText.trim().split(/\s+/).filter(Boolean);
+    const aiWords = cleaned.split(/\s+/).filter(Boolean);
+    
+    // Find suffix-prefix overlap
+    let overlapCount = 0;
+    const maxOverlap = Math.min(typedWords.length, aiWords.length);
+    for (let i = 1; i <= maxOverlap; i++) {
+        const typedSuffix = typedWords.slice(-i).map(cleanWord).join(' ');
+        const aiPrefix = aiWords.slice(0, i).map(cleanWord).join(' ');
+        if (typedSuffix === aiPrefix && typedSuffix.length > 0) {
+            overlapCount = i;
+        }
+    }
+    
+    if (overlapCount > 0) {
+        cleaned = aiWords.slice(overlapCount).join(' ');
+    }
+    
+    // If the original AI response began with a repeat of the entire typedText (even with punctuation difference)
+    const typedLowerClean = typedText.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const aiLowerClean = aiResponse.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (aiLowerClean.startsWith(typedLowerClean) && typedLowerClean.length > 0) {
+        let typedIdx = 0;
+        let aiIdx = 0;
+        while (typedIdx < typedText.length && aiIdx < aiResponse.length) {
+            const tc = typedText[typedIdx].toLowerCase();
+            const ac = aiResponse[aiIdx].toLowerCase();
+            if (/[^a-z0-9]/.test(tc)) {
+                typedIdx++;
+                continue;
+            }
+            if (/[^a-z0-9]/.test(ac)) {
+                aiIdx++;
+                continue;
+            }
+            if (tc === ac) {
+                typedIdx++;
+                aiIdx++;
+            } else {
+                break;
+            }
+        }
+        if (typedIdx >= typedText.replace(/[^a-z0-9]/gi, '').length) {
+            const prospective = aiResponse.substring(aiIdx).trim();
+            if (prospective.length < cleaned.length) {
+                cleaned = prospective;
+            }
+        }
+    }
+    
+    // Ensure space prefix if needed
+    if (cleaned && !cleaned.startsWith(' ') && !typedText.endsWith(' ') && !/^[.,\/#!$%\^&\*;:{}=\-_`~()?]/.test(cleaned)) {
+        cleaned = ' ' + cleaned;
+    }
+    return cleaned;
+}
+
 function extractAIText(result) {
     console.log('extractAIText received:', result);
     if (!result) return '';
@@ -1218,6 +1281,11 @@ $(function() {
             clearTimeout(typingTimer);
             const typedVal = $(this).val();
             
+            const words = typedVal.trim().split(/\s+/).filter(Boolean);
+            if (words.length < 3 || typedVal.trim().length < 10) {
+                return;
+            }
+            
             typingTimer = setTimeout(function() {
                 triggerAICompletion(typedVal);
             }, typingDelay);
@@ -1226,8 +1294,10 @@ $(function() {
         $textarea.on('focus', function() {
             syncStyles();
             syncMirroredText();
-            if (!$textarea.val().trim()) {
-                triggerAICompletion('');
+            const typedVal = $textarea.val();
+            const words = typedVal.trim().split(/\s+/).filter(Boolean);
+            if (words.length >= 3 && typedVal.trim().length >= 10) {
+                triggerAICompletion(typedVal);
             }
         });
         
@@ -1275,16 +1345,26 @@ The support agent has started typing their response:
 "${typedText}"
 
 Your task:
-1. Continue and complete the response they started.
+1. Continue the response from the exact point where the agent left off typing.
 2. Return ONLY the continuation text (what comes immediately after the typed text).
-3. Do NOT repeat the typed text.
+3. Do NOT repeat any part of the typed text. The text you return will be appended directly to the end of the typed text to form a seamless sentence.
 4. Keep the continuation natural, polite, and professional. The English should be polished and paraphrased, not exactly matching the past reference.
 5. The continuation must be short (1 to 2 sentences max) and merge seamlessly.
-6. If the typed text is empty, output a full professional suggested response.
-7. Return ONLY the text to be appended. No explanations, no quotes, no markdown wrappers.`;
+6. Return ONLY the text to be appended. No explanations, no quotes, no markdown wrappers.`;
 
                 const result = await puter.ai.chat(prompt);
-                const rawText = extractAIText(result);
+                let rawText = extractAIText(result);
+                
+                rawText = cleanContinuation(typedText, rawText);
+                
+                if (rawText && $textarea.is(':focus') && $textarea.val() === typedText) {
+                    setGhostText(rawText);
+                }
+            } catch (err) {
+                console.error('Puter Autocomplete Error:', err);
+            }
+        }
+    }            const rawText = extractAIText(result);
                 
                 if (rawText && $textarea.is(':focus') && $textarea.val() === typedText) {
                     setGhostText(rawText);
