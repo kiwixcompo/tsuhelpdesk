@@ -80,6 +80,13 @@ foreach ($duplicates as $dup) {
     }
 }
 
+// Add unique constraint for departments if not exists
+$idx_check = mysqli_query($conn, "SHOW INDEX FROM student_departments WHERE Key_name = 'uq_dept_faculty'");
+if ($idx_check && mysqli_num_rows($idx_check) === 0) {
+    run("Add unique constraint on student_departments table",
+        "ALTER TABLE student_departments ADD UNIQUE KEY uq_dept_faculty (department_name, faculty_id)");
+}
+
 if ($deleted_total === 0 && empty($duplicates)) {
     $steps[] = ['ok', 'No duplicates found — database is clean'];
 }
@@ -116,6 +123,13 @@ if ($dup_prog) {
             }
         }
     }
+}
+
+// Add unique constraint for programmes if not exists
+$prog_idx_check = mysqli_query($conn, "SHOW INDEX FROM programmes WHERE Key_name = 'uq_prog_dept'");
+if ($prog_idx_check && mysqli_num_rows($prog_idx_check) === 0) {
+    run("Add unique constraint on programmes table",
+        "ALTER TABLE programmes ADD UNIQUE KEY uq_prog_dept (programme_name, department_id)");
 }
 
 // ── Output ────────────────────────────────────────────────

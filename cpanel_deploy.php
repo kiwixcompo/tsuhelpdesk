@@ -78,15 +78,6 @@ logLine("Dest   : " . DEST_PATH);
 logLine("Started: " . date('Y-m-d H:i:s'));
 logLine("---");
 
-// Preserve config.php — don't overwrite it on the live server
-$preserveConfig = false;
-$configBackup   = null;
-if (file_exists(DEST_PATH . '/config.php')) {
-    $configBackup   = file_get_contents(DEST_PATH . '/config.php');
-    $preserveConfig = true;
-    logLine("Preserving live config.php...");
-}
-
 // Copy everything
 logLine("Copying files...");
 copyDir(REPO_PATH, DEST_PATH);
@@ -95,12 +86,6 @@ copyDir(REPO_PATH, DEST_PATH);
 if (file_exists(REPO_PATH . '/.htaccess')) {
     copy(REPO_PATH . '/.htaccess', DEST_PATH . '/.htaccess');
     logLine("Copied .htaccess");
-}
-
-// Restore config.php
-if ($preserveConfig && $configBackup !== null) {
-    file_put_contents(DEST_PATH . '/config.php', $configBackup);
-    logLine("Restored live config.php");
 }
 
 // Ensure uploads/ and logs/ are writable
