@@ -44,6 +44,8 @@ if (!isset($_SESSION['app_settings']) || !is_array($_SESSION['app_settings'])) {
     mysqli_query($conn, "INSERT IGNORE INTO settings (setting_key, setting_value, setting_type, setting_label) VALUES ('work_days', '1,2,3,4,5', 'text', 'Complaint Submission Days')");
     mysqli_query($conn, "INSERT IGNORE INTO settings (setting_key, setting_value, setting_type, setting_label) VALUES ('work_start_time', '08:00', 'text', 'Complaint Submission Start Time')");
     mysqli_query($conn, "INSERT IGNORE INTO settings (setting_key, setting_value, setting_type, setting_label) VALUES ('work_end_time', '16:00', 'text', 'Complaint Submission End Time')");
+    // Self-healing: Ensure Faculty of Computing & Artificial Intelligence (FCA) programmes use TSU/FCA/ format
+    mysqli_query($conn, "UPDATE programmes SET reg_number_format = REPLACE(reg_number_format, 'TSU/FSC/', 'TSU/FCA/') WHERE department_id IN (SELECT department_id FROM student_departments WHERE faculty_id = (SELECT faculty_id FROM faculties WHERE faculty_code = 'FCA'))");
     $settings_sql = "SELECT setting_key, setting_value FROM settings";
     $settings_result = mysqli_query($conn, $settings_sql);
     if ($settings_result) {

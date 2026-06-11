@@ -269,6 +269,11 @@ foreach($departments_and_programmes as $dept_name => $prog_info) {
     }
 }
 
+executeUpdate($conn,
+    "UPDATE programmes SET reg_number_format = REPLACE(reg_number_format, 'TSU/FSC/', 'TSU/FCA/') WHERE department_id IN (SELECT department_id FROM student_departments WHERE faculty_id = (SELECT faculty_id FROM faculties WHERE faculty_code = 'FCA'))",
+    "Ensuring all FCA programmes have the correct TSU/FCA/ format"
+);
+
 // Update progress to 100%
 echo "<script>
     document.getElementById('progressBar').style.width = '100%';

@@ -222,6 +222,11 @@ executeUpdate($conn,
     "Ensuring all FSC Computer Science programmes have correct format"
 );
 
+executeUpdate($conn,
+    "UPDATE programmes SET reg_number_format = REPLACE(reg_number_format, 'TSU/FSC/', 'TSU/FCA/') WHERE department_id IN (SELECT department_id FROM student_departments WHERE faculty_id = (SELECT faculty_id FROM faculties WHERE faculty_code = 'FCA'))",
+    "Ensuring all FCA programmes have the correct TSU/FCA/ format"
+);
+
 // Step 7: Add Deputy Director ICT role (if not exists)
 echo "<h5>Adding Deputy Director ICT Role</h5>";
 
