@@ -27,29 +27,56 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                 $registration_number = trim($_POST["registration_number"]);
                 $is_active = isset($_POST["is_active"]) ? 1 : 0;
                 
-                // Validate email uniqueness
-                $check_email_sql = "SELECT student_id FROM students WHERE email = ? AND student_id != ?";
-                if($check_stmt = mysqli_prepare($conn, $check_email_sql)){
-                    mysqli_stmt_bind_param($check_stmt, "si", $email, $student_id);
-                    if(mysqli_stmt_execute($check_stmt)){
-                        $check_result = mysqli_stmt_get_result($check_stmt);
-                        if(mysqli_num_rows($check_result) > 0){
-                            $error_msg = "Email address is already in use by another student.";
-                        } else {
-                            // Update student
-                            $update_sql = "UPDATE students SET first_name = ?, middle_name = ?, last_name = ?, email = ?, registration_number = ?, is_active = ? WHERE student_id = ?";
-                            if($update_stmt = mysqli_prepare($conn, $update_sql)){
-                                mysqli_stmt_bind_param($update_stmt, "sssssii", $first_name, $middle_name, $last_name, $email, $registration_number, $is_active, $student_id);
-                                if(mysqli_stmt_execute($update_stmt)){
-                                    $success_msg = "Student information updated successfully.";
-                                } else {
-                                    $error_msg = "Failed to update student information.";
+                try {
+                    // Validate email uniqueness
+                    $check_email_sql = "SELECT student_id FROM students WHERE email = ? AND student_id != ?";
+                    if($check_stmt = mysqli_prepare($conn, $check_email_sql)){
+                        mysqli_stmt_bind_param($check_stmt, "si", $email, $student_id);
+                        if(mysqli_stmt_execute($check_stmt)){
+                            $check_result = mysqli_stmt_get_result($check_stmt);
+                            if(mysqli_num_rows($check_result) > 0){
+                                $error_msg = "Email address is already in use by another student.";
+                            } else {
+                                // Validate registration number uniqueness
+                                $check_reg_sql = "SELECT student_id FROM students WHERE registration_number = ? AND student_id != ?";
+                                if($check_reg_stmt = mysqli_prepare($conn, $check_reg_sql)){
+                                    mysqli_stmt_bind_param($check_reg_stmt, "si", $registration_number, $student_id);
+                                    if(mysqli_stmt_execute($check_reg_stmt)){
+                                        $check_reg_result = mysqli_stmt_get_result($check_reg_stmt);
+                                        if(mysqli_num_rows($check_reg_result) > 0){
+                                            $error_msg = "Registration number is already in use by another student.";
+                                        } else {
+                                            // Update student
+                                            $update_sql = "UPDATE students SET first_name = ?, middle_name = ?, last_name = ?, email = ?, registration_number = ?, is_active = ? WHERE student_id = ?";
+                                            if($update_stmt = mysqli_prepare($conn, $update_sql)){
+                                                mysqli_stmt_bind_param($update_stmt, "sssssii", $first_name, $middle_name, $last_name, $email, $registration_number, $is_active, $student_id);
+                                                if(mysqli_stmt_execute($update_stmt)){
+                                                    $success_msg = "Student information updated successfully.";
+                                                } else {
+                                                    $error_msg = "Failed to update student information.";
+                                                }
+                                                mysqli_stmt_close($update_stmt);
+                                            }
+                                        }
+                                    }
+                                    mysqli_stmt_close($check_reg_stmt);
                                 }
-                                mysqli_stmt_close($update_stmt);
                             }
                         }
+                        mysqli_stmt_close($check_stmt);
                     }
-                    mysqli_stmt_close($check_stmt);
+                } catch (mysqli_sql_exception $e) {
+                    if (strpos($e->getMessage(), 'Duplicate entry') !== false) {
+                        if (strpos($e->getMessage(), 'registration_number') !== false) {
+                            $error_msg = "Registration number is already in use by another student.";
+                        } else if (strpos($e->getMessage(), 'email') !== false) {
+                            $error_msg = "Email address is already in use by another student.";
+                        } else {
+                            $error_msg = "Duplicate entry error: A student with similar information already exists.";
+                        }
+                    } else {
+                        $error_msg = "Database error: " . $e->getMessage();
+                    }
                 }
                 break;
                 
