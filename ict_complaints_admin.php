@@ -518,6 +518,42 @@ if ($dept_res) {
 /* Let Bootstrap handle the backdrop normally but keep body scrollable */
 body.modal-open { overflow: auto !important; padding-right: 0 !important; }
 .modal-dialog { margin: 5vh auto; }
+
+/* Autocomplete Suggestions */
+.autocomplete-suggestions {
+    position: absolute;
+    z-index: 1050;
+    background: rgba(255, 255, 255, 0.98);
+    border: 1px solid rgba(30, 60, 114, 0.15);
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    max-height: 200px;
+    overflow-y: auto;
+    backdrop-filter: blur(5px);
+    margin-top: 2px;
+}
+.autocomplete-suggestion {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #f1f3f5;
+    font-size: 0.85rem;
+    color: #495057;
+    transition: background-color 0.15s, color 0.15s;
+    text-align: left;
+}
+.autocomplete-suggestion:last-child {
+    border-bottom: none;
+}
+.autocomplete-suggestion:hover, .autocomplete-suggestion.active {
+    background-color: #1e3c72;
+    color: #ffffff;
+}
+.autocomplete-suggestion small {
+    display: block;
+    color: inherit;
+    opacity: 0.75;
+    margin-top: 2px;
+}
 </style>
 </head>
 <body>
@@ -893,12 +929,7 @@ $val_map = [
                         </div>
                         <div class="form-group">
                             <div class="d-flex justify-content-between align-items-center mb-2">
-                                <div class="d-flex align-items-center" style="gap: 10px;">
-                                    <label class="font-weight-bold mb-0">Response to Student</label>
-                                    <select id="selPastResponse" class="form-control form-control-sm" style="display: none; max-width: 220px; border-radius: 20px; height: 28px; padding: 2px 8px; font-size: 0.8rem; border-color: #ced4da;">
-                                        <option value="">— Select a past response —</option>
-                                    </select>
-                                </div>
+                                <label class="font-weight-bold mb-0">Response to Student</label>
                                 <div class="d-flex align-items-center" style="gap: 8px;">
                                     <span id="puterStatusPill" class="badge badge-light border py-1 px-2" style="font-size: 0.72rem; cursor: pointer; display: none; border-radius: 20px; font-weight: 600;" title="Click to switch Puter accounts">
                                         <i class="fas fa-robot text-purple mr-1" style="color: #7F00FF;"></i> Puter: <span id="puterActiveUser" class="text-primary">Loading...</span>
@@ -1111,6 +1142,133 @@ function extractAIText(result) {
 }
 
 $(function() {
+    let currentComplaintHistory = [];
+
+    // Helper for autocomplete past response
+    function initResponseAutocomplete(textareaId, getHistoryFn) {
+        const $textarea = $(textareaId);
+        if ($textarea.length === 0) return;
+        
+        // Ensure parent has relative position so the suggestions float correctly
+        if ($textarea.parent().css('position') === 'static') {
+            $textarea.parent().css('position', 'relative');
+        }
+        
+        const $suggestions = $('<div class="autocomplete-suggestions" style="display: none;"></div>');
+        $textarea.after($suggestions);
+        
+        let activeIndex = -1;
+        
+        function showSuggestions(filterText) {
+            const history = getHistoryFn() || [];
+            if (history.length === 0) {
+                $suggestions.hide();
+                return;
+            }
+            
+            $suggestions.empty();
+            let matches = [];
+            const query = (filterText || '').toLowerCase().trim();
+            
+            history.forEach(item => {
+                const text = item.feedback || item.admin_response || '';
+                const context = item.complaint_text || item.description || '';
+                const meta = item.department_name || item.node_label || '';
+                
+                if (!text) return;
+                
+                if (!query || text.toLowerCase().includes(query) || context.toLowerCase().includes(query) || meta.toLowerCase().includes(query)) {
+                    if (!matches.some(m => m.text === text)) {
+                        matches.push({ text, context, meta });
+                    }
+                }
+            });
+            
+            if (matches.length === 0) {
+                $suggestions.hide();
+                return;
+            }
+            
+            matches.forEach((match, index) => {
+                let displayTitle = match.text;
+                if (displayTitle.length > 80) {
+                    displayTitle = displayTitle.substring(0, 77) + '...';
+                }
+                
+                let metaHtml = match.meta ? `[${match.meta}] ` : '';
+                let contextHtml = match.context ? `<small class="text-muted d-block" style="font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Context: ${match.context}</small>` : '';
+                
+                const $item = $(`
+                    <div class="autocomplete-suggestion" data-index="${index}">
+                        <strong>${metaHtml}${esc(displayTitle)}</strong>
+                        ${contextHtml}
+                    </div>
+                `);
+                
+                $item.data('full-text', match.text);
+                
+                $item.on('click', function() {
+                    $textarea.val($(this).data('full-text')).trigger('input');
+                    $suggestions.hide();
+                });
+                
+                $suggestions.append($item);
+            });
+            
+            $suggestions.css({
+                width: $textarea.outerWidth() + 'px'
+            }).show();
+            
+            activeIndex = -1;
+        }
+        
+        function esc(str) {
+            if (!str) return '';
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+        }
+        
+        $textarea.on('input focus', function() {
+            showSuggestions($(this).val());
+        });
+        
+        $(document).on('click', function(e) {
+            if (!$(e.target).closest($textarea).length && !$(e.target).closest($suggestions).length) {
+                $suggestions.hide();
+            }
+        });
+        
+        $textarea.on('keydown', function(e) {
+            const $items = $suggestions.find('.autocomplete-suggestion');
+            if (!$suggestions.is(':visible') || $items.length === 0) return;
+            
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                activeIndex = (activeIndex + 1) % $items.length;
+                $items.removeClass('active');
+                $items.eq(activeIndex).addClass('active');
+                const activeEl = $items.eq(activeIndex)[0];
+                activeEl.scrollIntoView({ block: 'nearest' });
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                activeIndex = (activeIndex - 1 + $items.length) % $items.length;
+                $items.removeClass('active');
+                $items.eq(activeIndex).addClass('active');
+                const activeEl = $items.eq(activeIndex)[0];
+                activeEl.scrollIntoView({ block: 'nearest' });
+            } else if (e.key === 'Enter') {
+                if (activeIndex >= 0) {
+                    e.preventDefault();
+                    $items.eq(activeIndex).click();
+                }
+            } else if (e.key === 'Escape') {
+                $suggestions.hide();
+            }
+        });
+    }
+
+    // Initialize autocomplete on feedback response
+    initResponseAutocomplete('#feedbackResponse', function() { return currentComplaintHistory; });
+
     // Initialize clipboard paste for complaint response feedback
     try {
         if (typeof initializeClipboardPaste === 'function') {
@@ -1238,29 +1396,13 @@ $(function() {
         // Check if there is historical feedback to enable AI responses
         $('#btnDraftWithAI').hide().removeData('history');
         $('#puterStatusPill').hide();
-        $('#selPastResponse').empty().append('<option value="">— Select a past response —</option>').hide();
+        currentComplaintHistory = [];
         if (d.category) {
             $.getJSON('api/get_historical_feedback.php', { category: d.category, complaint_id: d.id }, function(res) {
                 if (res.success && res.history && res.history.length > 0) {
                     $('#btnDraftWithAI').data('history', res.history).show();
                     if (window.updatePuterPill) window.updatePuterPill();
-                    
-                    res.history.forEach((h, index) => {
-                        let shortLabel = h.admin_response;
-                        if (shortLabel.length > 40) {
-                            shortLabel = shortLabel.substring(0, 37) + '...';
-                        }
-                        let categoryText = h.node_label ? `[${h.node_label}] ` : '';
-                        let optText = `${categoryText}Past Match #${index + 1}: ${shortLabel}`;
-                        let optTitle = `Complaint: ${h.description}`;
-                        $('#selPastResponse').append(
-                            $('<option></option>')
-                                .val(h.admin_response)
-                                .text(optText)
-                                .attr('title', optTitle)
-                        );
-                    });
-                    $('#selPastResponse').show();
+                    currentComplaintHistory = res.history;
                 }
             });
         }
