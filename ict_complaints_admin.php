@@ -1067,6 +1067,164 @@ if (typeof puter !== 'undefined') {
 }
 <?php endif; ?>
 
+let currentComplaintHistory = [];
+let currentComplaintContext = {};
+
+function esc(str) {
+    const d = document.createElement('div');
+    d.textContent = String(str || '');
+    return d.innerHTML;
+}
+
+$(document).on('click', '.btn-view-respond', function() {
+    const d = $(this).data();
+    currentComplaintContext = {
+        category: d.category || '',
+        description: d.desc || ''
+    };
+    const statusColors = {
+        'Pending':'warning','Under Review':'info','Resolved':'success',
+        'Rejected':'danger','Auto-Resolved':'secondary'
+    };
+    const bc = statusColors[d.status] || 'secondary';
+
+    let badgeHtml = `<span class="badge badge-${bc}">${esc(d.status)}</span>`;
+    if (d.studentReplied == 1 || d.studentReplied == '1') {
+        badgeHtml += ` <span class="badge badge-success ml-1 d-inline-block" style="background-color: #2ec4b6; border-color: #2ec4b6; color: white;"><i class="fas fa-reply mr-1"></i>Student Responded</span>`;
+    } else if (d.status === 'Under Review' && d.response) {
+        badgeHtml += ` <span class="badge badge-success ml-1 d-inline-block" style="background-color: #2ec4b6; border-color: #2ec4b6; color: white;"><i class="fas fa-comment-dots mr-1"></i>Feedback Gotten</span>`;
+    }
+
+    let extraHtml = '';
+    try {
+        const ef = JSON.parse(d.extra || '{}');
+        const filtered = Object.entries(ef).filter(([k,v]) => v !== '' && v !== null && k !== 'ai_category' && k !== 'jamb_login_password');
+        if (filtered.length) {
+            extraHtml = '<h6 class="mt-3">Extra Information Provided</h6><table class="table table-sm table-bordered">';
+            filtered.forEach(([k,v]) => {
+                const label = k.replace(/_/g,' ').replace(/\b\w/g, l => l.toUpperCase());
+                extraHtml += `<tr><td class="font-weight-bold" style="width:40%">${esc(label)}</td><td>${esc(String(v))}</td></tr>`;
+            });
+            extraHtml += '</table>';
+        }
+    } catch(e) {}
+
+    const autoHtml = d.auto
+        ? `<div class="alert alert-info mt-3"><strong>Auto-Response Shown to Student:</strong><br>${esc(d.auto).replace(/\n/g,'<br>')}</div>`
+        : '';
+    const respHtml = d.response
+        ? `<div class="alert alert-success mt-3"><strong>Current ICT Response:</strong><br>${esc(d.response).replace(/\n/g,'<br>')}</div>`
+        : '';
+    const descHtml = d.desc
+        ? `<h6 class="mt-3">Additional Details</h6><p>${esc(d.desc).replace(/\n/g,'<br>')}</p>`
+        : '';
+    const attachmentHtml = d.attachment
+        ? `<h6 class="mt-3">Attachment</h6><a href="${esc(d.attachment)}" target="_blank" class="btn btn-sm btn-info"><i class="fas fa-file-download mr-1"></i> View Attached File</a>`
+        : '';
+
+    const body = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6 class="text-muted text-uppercase" style="font-size:.72rem;letter-spacing:.05em">Student</h6>
+                <p class="mb-1"><strong>${esc(d.name)}</strong></p>
+                <p class="mb-1 text-muted small">${esc(d.reg)}</p>
+                <p class="mb-1 text-muted small">${esc(d.email)}</p>
+                <p class="mb-1 text-muted small">${esc(d.dept || 'N/A')} &bull; ${esc(d.faculty || 'N/A')}</p>
+            </div>
+            <div class="col-md-6">
+                <h6 class="text-muted text-uppercase" style="font-size:.72rem;letter-spacing:.05em">Complaint</h6>
+                <p class="mb-1"><strong>${esc(d.category)}</strong></p>
+                <p class="mb-1">${esc(d.label)}</p>
+                <p class="mb-1">${badgeHtml}</p>
+                <p class="mb-1 text-muted small">${esc(d.date)}</p>
+            </div>
+        </div>
+        <hr>
+        <h6 class="text-muted text-uppercase" style="font-size:.72rem;letter-spacing:.05em">Decision Path</h6>
+        <p class="text-muted small">${esc(d.path)}</p>
+        ${descHtml}${attachmentHtml}${autoHtml}${respHtml}${extraHtml}
+        <div id="ictRepliesContainer" style="display: none;" class="mt-4"></div>`;
+
+    $('#viewModalTitle').html('<i class="fas fa-headset mr-2"></i>Complaint #' + d.id + ' — ' + esc(d.label));
+    $('#sharedViewBody').html(body);
+
+    // Fetch and display replies
+    const repliesContainer = $('#ictRepliesContainer');
+    repliesContainer.hide().empty();
+    $.getJSON('api/get_ict_replies.php', { complaint_id: d.id }, function(res) {
+        if (res.success && res.replies && res.replies.length > 0) {
+            let repliesHtml = `
+                <hr>
+                <h6 class="text-primary font-weight-bold mb-3"><i class="fas fa-comments mr-2"></i>Conversation History</h6>
+                <div style="max-height: 350px; overflow-y: auto; padding-right: 5px;">
+            `;
+            res.replies.forEach(reply => {
+                const isStudent = reply.sender_type === 'student';
+                const icon = isStudent ? 'fa-user-graduate' : 'fa-user-shield';
+                const color = isStudent ? 'success' : 'primary';
+                const senderTitle = isStudent ? 'Student' : 'Staff';
+                
+                repliesHtml += `
+                    <div class="mb-3 p-3 bg-light rounded shadow-sm border-left border-${color}" style="border-left-width:3px!important">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="font-weight-bold text-${color}" style="font-size: 0.9rem;">
+                                <i class="fas ${icon} mr-1"></i> ${esc(reply.sender_name)} (${senderTitle})
+                            </span>
+                            <small class="text-muted" style="font-size: 0.75rem;">${esc(reply.created_at)}</small>
+                        </div>
+                        <p class="mb-0 text-dark small" style="white-space: pre-line; line-height: 1.45;">${esc(reply.reply_text)}</p>
+                    </div>
+                `;
+            });
+            repliesHtml += '</div>';
+            repliesContainer.html(repliesHtml).show();
+        }
+    });
+
+    // Pre-fill the response form
+    $('#feedbackComplaintId').val(d.id);
+    $('#feedbackStatus').val(d.status);
+    $('#feedbackResponse').val(d.response || '');
+    $('#feedbackForwardTo').val(d.forwarded || '');
+    $('#forwardSearch').val('');
+    $('#feedbackForwardTo option').show();
+    $('#feedbackImages').val('');
+    $('#feedbackImgPreview').empty();
+
+    // Check if there is historical feedback to enable AI responses
+    $('#btnDraftWithAI').hide().removeData('history');
+    $('#puterStatusPill').hide();
+    currentComplaintHistory = [];
+    if (d.category) {
+        $.getJSON('api/get_historical_feedback.php', { category: d.category, complaint_id: d.id }, function(res) {
+            if (res.success && res.history && res.history.length > 0) {
+                $('#btnDraftWithAI').data('history', res.history).show();
+                if (window.updatePuterPill) window.updatePuterPill();
+                currentComplaintHistory = res.history;
+            }
+        });
+    }
+
+    // Show/hide respond section based on status
+    const resolved = ['Resolved','Rejected','Auto-Resolved'];
+    $('#respondSection').toggle(!resolved.includes(d.status));
+
+    $('#sharedViewModal').modal('show');
+
+    // Init clipboard paste after modal opens
+    $('#sharedViewModal').one('shown.bs.modal', function() {
+        const ta = document.getElementById('feedbackResponse');
+        const fi = document.getElementById('feedbackImages');
+        try {
+            if (ta && fi && typeof initializeClipboardPaste === 'function') {
+                initializeClipboardPaste(ta, fi);
+            }
+        } catch (e) {
+            console.error("Clipboard paste handler modal initialization failed:", e);
+        }
+    });
+});
+
 function cleanContinuation(typedText, aiResponse) {
     let cleaned = aiResponse.trim();
     if (!cleaned) return '';
@@ -1207,8 +1365,6 @@ function extractAIText(result) {
 }
 
 $(function() {
-    let currentComplaintHistory = [];
-    let currentComplaintContext = {};
 
     // Helper for AI inline ghost-text autocomplete completions
     function initResponseAutocomplete(textareaId, getHistoryFn, getContextFn) {
@@ -1378,158 +1534,7 @@ Your task:
         console.error("Clipboard paste handler ready initialization failed:", e);
     }
 
-    // Auto-dismiss alerts
-    $('.alert').delay(4000).fadeOut();
 
-    // ── View & Respond button (combined) ─────────────────
-    $(document).on('click', '.btn-view-respond', function() {
-        const d = $(this).data();
-        currentComplaintContext = {
-            category: d.category || '',
-            description: d.desc || ''
-        };
-        const statusColors = {
-            'Pending':'warning','Under Review':'info','Resolved':'success',
-            'Rejected':'danger','Auto-Resolved':'secondary'
-        };
-        const bc = statusColors[d.status] || 'secondary';
-
-        let badgeHtml = `<span class="badge badge-${bc}">${esc(d.status)}</span>`;
-        if (d.studentReplied == 1 || d.studentReplied == '1') {
-            badgeHtml += ` <span class="badge badge-success ml-1 d-inline-block" style="background-color: #2ec4b6; border-color: #2ec4b6; color: white;"><i class="fas fa-reply mr-1"></i>Student Responded</span>`;
-        } else if (d.status === 'Under Review' && d.response) {
-            badgeHtml += ` <span class="badge badge-success ml-1 d-inline-block" style="background-color: #2ec4b6; border-color: #2ec4b6; color: white;"><i class="fas fa-comment-dots mr-1"></i>Feedback Gotten</span>`;
-        }
-
-        let extraHtml = '';
-        try {
-            const ef = JSON.parse(d.extra || '{}');
-            const filtered = Object.entries(ef).filter(([k,v]) => v !== '' && v !== null && k !== 'ai_category' && k !== 'jamb_login_password');
-            if (filtered.length) {
-                extraHtml = '<h6 class="mt-3">Extra Information Provided</h6><table class="table table-sm table-bordered">';
-                filtered.forEach(([k,v]) => {
-                    const label = k.replace(/_/g,' ').replace(/\b\w/g, l => l.toUpperCase());
-                    extraHtml += `<tr><td class="font-weight-bold" style="width:40%">${esc(label)}</td><td>${esc(String(v))}</td></tr>`;
-                });
-                extraHtml += '</table>';
-            }
-        } catch(e) {}
-
-        const autoHtml = d.auto
-            ? `<div class="alert alert-info mt-3"><strong>Auto-Response Shown to Student:</strong><br>${esc(d.auto).replace(/\n/g,'<br>')}</div>`
-            : '';
-        const respHtml = d.response
-            ? `<div class="alert alert-success mt-3"><strong>Current ICT Response:</strong><br>${esc(d.response).replace(/\n/g,'<br>')}</div>`
-            : '';
-        const descHtml = d.desc
-            ? `<h6 class="mt-3">Additional Details</h6><p>${esc(d.desc).replace(/\n/g,'<br>')}</p>`
-            : '';
-        const attachmentHtml = d.attachment
-            ? `<h6 class="mt-3">Attachment</h6><a href="${esc(d.attachment)}" target="_blank" class="btn btn-sm btn-info"><i class="fas fa-file-download mr-1"></i> View Attached File</a>`
-            : '';
-
-        const body = `
-            <div class="row">
-                <div class="col-md-6">
-                    <h6 class="text-muted text-uppercase" style="font-size:.72rem;letter-spacing:.05em">Student</h6>
-                    <p class="mb-1"><strong>${esc(d.name)}</strong></p>
-                    <p class="mb-1 text-muted small">${esc(d.reg)}</p>
-                    <p class="mb-1 text-muted small">${esc(d.email)}</p>
-                    <p class="mb-1 text-muted small">${esc(d.dept || 'N/A')} &bull; ${esc(d.faculty || 'N/A')}</p>
-                </div>
-                <div class="col-md-6">
-                    <h6 class="text-muted text-uppercase" style="font-size:.72rem;letter-spacing:.05em">Complaint</h6>
-                    <p class="mb-1"><strong>${esc(d.category)}</strong></p>
-                    <p class="mb-1">${esc(d.label)}</p>
-                    <p class="mb-1">${badgeHtml}</p>
-                    <p class="mb-1 text-muted small">${esc(d.date)}</p>
-                </div>
-            </div>
-            <hr>
-            <h6 class="text-muted text-uppercase" style="font-size:.72rem;letter-spacing:.05em">Decision Path</h6>
-            <p class="text-muted small">${esc(d.path)}</p>
-            ${descHtml}${attachmentHtml}${autoHtml}${respHtml}${extraHtml}
-            <div id="ictRepliesContainer" style="display: none;" class="mt-4"></div>`;
-
-        $('#viewModalTitle').html('<i class="fas fa-headset mr-2"></i>Complaint #' + d.id + ' — ' + esc(d.label));
-        $('#sharedViewBody').html(body);
-
-        // Fetch and display replies
-        const repliesContainer = $('#ictRepliesContainer');
-        repliesContainer.hide().empty();
-        $.getJSON('api/get_ict_replies.php', { complaint_id: d.id }, function(res) {
-            if (res.success && res.replies && res.replies.length > 0) {
-                let repliesHtml = `
-                    <hr>
-                    <h6 class="text-primary font-weight-bold mb-3"><i class="fas fa-comments mr-2"></i>Conversation History</h6>
-                    <div style="max-height: 350px; overflow-y: auto; padding-right: 5px;">
-                `;
-                res.replies.forEach(reply => {
-                    const isStudent = reply.sender_type === 'student';
-                    const icon = isStudent ? 'fa-user-graduate' : 'fa-user-shield';
-                    const color = isStudent ? 'success' : 'primary';
-                    const senderTitle = isStudent ? 'Student' : 'Staff';
-                    
-                    repliesHtml += `
-                        <div class="mb-3 p-3 bg-light rounded shadow-sm border-left border-${color}" style="border-left-width:3px!important">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <span class="font-weight-bold text-${color}" style="font-size: 0.9rem;">
-                                    <i class="fas ${icon} mr-1"></i> ${esc(reply.sender_name)} (${senderTitle})
-                                </span>
-                                <small class="text-muted" style="font-size: 0.75rem;">${esc(reply.created_at)}</small>
-                            </div>
-                            <p class="mb-0 text-dark small" style="white-space: pre-line; line-height: 1.45;">${esc(reply.reply_text)}</p>
-                        </div>
-                    `;
-                });
-                repliesHtml += '</div>';
-                repliesContainer.html(repliesHtml).show();
-            }
-        });
-
-        // Pre-fill the response form
-        $('#feedbackComplaintId').val(d.id);
-        $('#feedbackStatus').val(d.status);
-        $('#feedbackResponse').val(d.response || '');
-        $('#feedbackForwardTo').val(d.forwarded || '');
-        $('#forwardSearch').val('');
-        $('#feedbackForwardTo option').show();
-        $('#feedbackImages').val('');
-        $('#feedbackImgPreview').empty();
-
-        // Check if there is historical feedback to enable AI responses
-        $('#btnDraftWithAI').hide().removeData('history');
-        $('#puterStatusPill').hide();
-        currentComplaintHistory = [];
-        if (d.category) {
-            $.getJSON('api/get_historical_feedback.php', { category: d.category, complaint_id: d.id }, function(res) {
-                if (res.success && res.history && res.history.length > 0) {
-                    $('#btnDraftWithAI').data('history', res.history).show();
-                    if (window.updatePuterPill) window.updatePuterPill();
-                    currentComplaintHistory = res.history;
-                }
-            });
-        }
-
-        // Show/hide respond section based on status
-        const resolved = ['Resolved','Rejected','Auto-Resolved'];
-        $('#respondSection').toggle(!resolved.includes(d.status));
-
-        $('#sharedViewModal').modal('show');
-
-        // Init clipboard paste after modal opens
-        $('#sharedViewModal').one('shown.bs.modal', function() {
-            const ta = document.getElementById('feedbackResponse');
-            const fi = document.getElementById('feedbackImages');
-            try {
-                if (ta && fi && typeof initializeClipboardPaste === 'function') {
-                    initializeClipboardPaste(ta, fi);
-                }
-            } catch (e) {
-                console.error("Clipboard paste handler modal initialization failed:", e);
-            }
-        });
-    });
 
     // ── Puter AI response generator click handler ────────────────────────
     $(document).on('click', '#btnDraftWithAI', async function() {
@@ -1829,11 +1834,7 @@ Return ONLY the professionally rephrased response text that the admin should sen
         });
     }
 
-    function esc(str) {
-        const d = document.createElement('div');
-        d.textContent = String(str || '');
-        return d.innerHTML;
-    }
+
 });
 
 function showImageModal(src) {

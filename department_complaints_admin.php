@@ -826,6 +826,71 @@ if (typeof puter !== 'undefined') {
 }
 <?php endif; ?>
 
+let currentComplaintHistory = [];
+let currentComplaintContext = {};
+
+$(document).on('click', '.btn-view-respond', function() {
+    const id = $(this).data('id');
+    const dept = $(this).data('dept');
+    const deptId = $(this).data('dept-id');
+    const text = $(this).data('text');
+    const status = $(this).data('status');
+    const urgent = $(this).data('urgent');
+    const date = $(this).data('date');
+    const feedback = $(this).data('feedback');
+    const attachment = $(this).data('attachment');
+    const forwarded = $(this).data('forwarded');
+    
+    $('#modal_complaint_id').val(id);
+    $('#modal_dept_name').text(dept);
+    $('#modal_dept_id').text(deptId);
+    $('#modal_text').text(text);
+    $('#modal_status').val(status);
+    $('#modal_urgent').prop('checked', urgent == 1);
+    $('#modal_date').text(date);
+    $('#modal_feedback').val(feedback);
+    $('#modal_forwarded_to').val(forwarded || '');
+    
+    currentComplaintContext = {
+        category: dept || 'Department Complaint',
+        description: text || ''
+    };
+    
+    currentComplaintHistory = [];
+    // Load past feedback options
+    $.getJSON('api/get_historical_dept_feedback.php', { complaint_id: id }, function(res) {
+        if (res.success && res.history && res.history.length > 0) {
+            currentComplaintHistory = res.history;
+        }
+    });
+    
+    // Handle attachments
+    const attachGroup = $('#modal_attachments_group');
+    const attachContent = $('#modal_attachments');
+    attachContent.empty();
+    
+    if (attachment) {
+        const images = attachment.split(',').filter(Boolean);
+        if (images.length > 0) {
+            images.forEach(img => {
+                const imgPath = getImagePath(img);
+                attachContent.append(`
+                    <div class="mr-2 mb-2">
+                        <img src="${imgPath}" class="img-thumbnail" style="max-height:80px; cursor:pointer;" onclick="showImageModal('${imgPath}')">
+                    </div>
+                `);
+            });
+            attachGroup.show();
+        } else {
+            attachGroup.hide();
+        }
+    } else {
+        attachGroup.hide();
+    }
+    
+    $('#respondModal').modal('show');
+});
+
 function cleanContinuation(typedText, aiResponse) {
     let cleaned = aiResponse.trim();
     if (!cleaned) return '';
@@ -951,8 +1016,6 @@ function extractAIText(result) {
 }
 
 $(document).ready(function() {
-    let currentComplaintHistory = [];
-    let currentComplaintContext = {};
 
     // Helper for AI inline ghost-text autocomplete completions
     function initResponseAutocomplete(textareaId, getHistoryFn, getContextFn) {
@@ -1118,67 +1181,7 @@ Your task:
         initializeClipboardPaste(document.getElementById('modal_feedback'), document.querySelector('input[name="admin_feedback_images[]"]'));
     }
 
-    $('.btn-view-respond').on('click', function() {
-        const id = $(this).data('id');
-        const dept = $(this).data('dept');
-        const deptId = $(this).data('dept-id');
-        const text = $(this).data('text');
-        const status = $(this).data('status');
-        const urgent = $(this).data('urgent');
-        const date = $(this).data('date');
-        const feedback = $(this).data('feedback');
-        const attachment = $(this).data('attachment');
-        const forwarded = $(this).data('forwarded');
-        
-        $('#modal_complaint_id').val(id);
-        $('#modal_dept_name').text(dept);
-        $('#modal_dept_id').text(deptId);
-        $('#modal_text').text(text);
-        $('#modal_status').val(status);
-        $('#modal_urgent').prop('checked', urgent == 1);
-        $('#modal_date').text(date);
-        $('#modal_feedback').val(feedback);
-        $('#modal_forwarded_to').val(forwarded || '');
-        
-        currentComplaintContext = {
-            category: dept || 'Department Complaint',
-            description: text || ''
-        };
-        
-        currentComplaintHistory = [];
-        // Load past feedback options
-        $.getJSON('api/get_historical_dept_feedback.php', { complaint_id: id }, function(res) {
-            if (res.success && res.history && res.history.length > 0) {
-                currentComplaintHistory = res.history;
-            }
-        });
-        
-        // Handle attachments
-        const attachGroup = $('#modal_attachments_group');
-        const attachContent = $('#modal_attachments');
-        attachContent.empty();
-        
-        if (attachment) {
-            const images = attachment.split(',').filter(Boolean);
-            if (images.length > 0) {
-                images.forEach(img => {
-                    const imgPath = getImagePath(img);
-                    attachContent.append(`
-                        <div class="mr-2 mb-2">
-                            <img src="${imgPath}" class="img-thumbnail" style="max-height:80px; cursor:pointer;" onclick="showImageModal('${imgPath}')">
-                        </div>
-                    `);
-                });
-                attachGroup.show();
-            } else {
-                attachGroup.hide();
-            }
-        } else {
-            attachGroup.hide();
-        }
-        
-        $('#respondModal').modal('show');
-    });
+
 });
 
 function getImagePath(filename) {
