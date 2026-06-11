@@ -46,6 +46,56 @@ if (!isset($_SESSION['app_settings']) || !is_array($_SESSION['app_settings'])) {
     mysqli_query($conn, "INSERT IGNORE INTO settings (setting_key, setting_value, setting_type, setting_label) VALUES ('work_end_time', '16:00', 'text', 'Complaint Submission End Time')");
     // Self-healing: Ensure Faculty of Computing & Artificial Intelligence (FCA) programmes use TSU/FCA/ format
     mysqli_query($conn, "UPDATE programmes SET reg_number_format = REPLACE(reg_number_format, 'TSU/FSC/', 'TSU/FCA/') WHERE department_id IN (SELECT department_id FROM student_departments WHERE faculty_id = (SELECT faculty_id FROM faculties WHERE faculty_code = 'FCA'))");
+
+    // Self-healing: Fix duplicate departments and add unique key constraint
+    $constraint_check = mysqli_query($conn, "SHOW INDEX FROM student_departments WHERE Key_name = 'uq_dept_faculty'");
+    if ($constraint_check && mysqli_num_rows($constraint_check) === 0) {
+        $dup_result = mysqli_query($conn, "SELECT department_name, faculty_id, COUNT(*) as cnt FROM student_departments GROUP BY department_name, faculty_id HAVING cnt > 1");
+        if ($dup_result) {
+            while ($dup = mysqli_fetch_assoc($dup_result)) {
+                $name   = mysqli_real_escape_string($conn, $dup['department_name']);
+                $fac_id = (int)$dup['faculty_id'];
+                $ids_res = mysqli_query($conn, "SELECT department_id FROM student_departments WHERE department_name = '$name' AND faculty_id = $fac_id ORDER BY department_id ASC");
+                $ids = [];
+                while ($row = mysqli_fetch_assoc($ids_res)) {
+                    $ids[] = $row['department_id'];
+                }
+                $keep = array_shift($ids);
+                if (!empty($ids)) {
+                    $to_delete = implode(',', $ids);
+                    mysqli_query($conn, "UPDATE programmes SET department_id = $keep WHERE department_id IN ($to_delete)");
+                    mysqli_query($conn, "UPDATE students SET department_id = $keep WHERE department_id IN ($to_delete)");
+                    mysqli_query($conn, "DELETE FROM student_departments WHERE department_id IN ($to_delete)");
+                }
+            }
+        }
+        mysqli_query($conn, "ALTER TABLE student_departments ADD UNIQUE KEY uq_dept_faculty (department_name, faculty_id)");
+    }
+
+    // Self-healing: Fix duplicate programmes and add unique key constraint
+    $prog_constraint_check = mysqli_query($conn, "SHOW INDEX FROM programmes WHERE Key_name = 'uq_prog_dept'");
+    if ($prog_constraint_check && mysqli_num_rows($prog_constraint_check) === 0) {
+        $dup_prog = mysqli_query($conn, "SELECT programme_name, department_id, COUNT(*) as cnt FROM programmes GROUP BY programme_name, department_id HAVING cnt > 1");
+        if ($dup_prog) {
+            while ($row = mysqli_fetch_assoc($dup_prog)) {
+                $pname  = mysqli_real_escape_string($conn, $row['programme_name']);
+                $dep_id = (int)$row['department_id'];
+                $pids_res = mysqli_query($conn, "SELECT programme_id FROM programmes WHERE programme_name = '$pname' AND department_id = $dep_id ORDER BY programme_id ASC");
+                $pids = [];
+                while ($pr = mysqli_fetch_assoc($pids_res)) {
+                    $pids[] = $pr['programme_id'];
+                }
+                $keep_p = array_shift($pids);
+                if (!empty($pids)) {
+                    $del_p = implode(',', $pids);
+                    mysqli_query($conn, "UPDATE students SET programme_id = $keep_p WHERE programme_id IN ($del_p)");
+                    mysqli_query($conn, "DELETE FROM programmes WHERE programme_id IN ($del_p)");
+                }
+            }
+        }
+        mysqli_query($conn, "ALTER TABLE programmes ADD UNIQUE KEY uq_prog_dept (programme_name, department_id)");
+    }
+
     $settings_sql = "SELECT setting_key, setting_value FROM settings";
     $settings_result = mysqli_query($conn, $settings_sql);
     if ($settings_result) {
