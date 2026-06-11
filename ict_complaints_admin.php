@@ -1364,15 +1364,6 @@ Your task:
                 console.error('Puter Autocomplete Error:', err);
             }
         }
-    }            const rawText = extractAIText(result);
-                
-                if (rawText && $textarea.is(':focus') && $textarea.val() === typedText) {
-                    setGhostText(rawText);
-                }
-            } catch (err) {
-                console.error('Puter Autocomplete Error:', err);
-            }
-        }
     }
 
     // Initialize autocomplete on feedback response
