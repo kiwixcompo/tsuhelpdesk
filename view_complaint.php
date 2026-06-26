@@ -1836,7 +1836,20 @@ Your task:
                             localStorage.removeItem('puter-auth-token');
                             localStorage.removeItem('puter_auth_token');
                         } catch(e) {}
-                        window.location.reload();
+                        
+                        puter.auth.signIn().then(function() {
+                            window.location.reload();
+                        }).catch(function(err) {
+                            console.error("Puter signIn failed:", err);
+                            window.location.reload();
+                        });
+                    }).catch(function(err) {
+                        console.error("Puter signOut failed:", err);
+                        puter.auth.signIn().then(function() {
+                            window.location.reload();
+                        }).catch(function(signInErr) {
+                            window.location.reload();
+                        });
                     });
                 }
             });

@@ -30,6 +30,7 @@ mysqli_query($conn, "CREATE TABLE IF NOT EXISTS student_ict_replies (
     sender_type  ENUM('student','staff') NOT NULL DEFAULT 'student',
     sender_id    INT NOT NULL,
     reply_text   TEXT NOT NULL,
+    reply_images TEXT DEFAULT NULL,
     created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_complaint (complaint_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
@@ -1084,6 +1085,14 @@ function esc(str) {
     return d.innerHTML;
 }
 
+function parseResponseImagesJs(text) {
+    if (!text) return '';
+    let escaped = esc(text);
+    const pattern = /\[Attached Image: (uploads\/[a-zA-Z0-9_\/.-]+)\]/g;
+    escaped = escaped.replace(pattern, '<div class="mt-2"><img src="$1" class="img-thumbnail" style="max-height: 150px; cursor: pointer; border: 1px solid #dee2e6;" onclick="window.open(\'$1\',\'_blank\')"></div>');
+    return escaped.replace(/\n/g, '<br>');
+}
+
 $(document).on('click', '.btn-view-respond', function() {
     const d = $(this).data();
     currentComplaintContext = {
@@ -1121,7 +1130,7 @@ $(document).on('click', '.btn-view-respond', function() {
         ? `<div class="alert alert-info mt-3"><strong>Auto-Response Shown to Student:</strong><br>${esc(d.auto).replace(/\n/g,'<br>')}</div>`
         : '';
     const respHtml = d.response
-        ? `<div class="alert alert-success mt-3"><strong>Current ICT Response:</strong><br>${esc(d.response).replace(/\n/g,'<br>')}</div>`
+        ? `<div class="alert alert-success mt-3"><strong>Current ICT Response:</strong><br>${parseResponseImagesJs(d.response)}</div>`
         : '';
     const descHtml = d.desc
         ? `<h6 class="mt-3">Additional Details</h6><p>${esc(d.desc).replace(/\n/g,'<br>')}</p>`
@@ -1172,15 +1181,33 @@ $(document).on('click', '.btn-view-respond', function() {
                 const color = isStudent ? 'success' : 'primary';
                 const senderTitle = isStudent ? 'Student' : 'Staff';
                 
+                let imagesHtml = '';
+                if (reply.reply_images) {
+                    const images = reply.reply_images.split(',').filter(Boolean);
+                    if (images.length > 0) {
+                        imagesHtml += '<div class="mt-2 d-flex flex-wrap" style="gap: 8px;">';
+                        images.forEach(img => {
+                            const imgUrl = 'public_image.php?img=' + encodeURIComponent(img.trim());
+                            imagesHtml += `
+                                <div style="cursor: pointer;" onclick="window.open('${imgUrl}', '_blank')">
+                                    <img src="${imgUrl}" class="img-thumbnail" style="max-height: 70px; max-width: 100px; object-fit: cover;">
+                                </div>
+                            `;
+                        });
+                        imagesHtml += '</div>';
+                    }
+                }
+
                 repliesHtml += `
                     <div class="mb-3 p-3 bg-light rounded shadow-sm border-left border-${color}" style="border-left-width:3px!important">
                         <div class="d-flex justify-content-between align-items-center mb-1">
-                            <span class="font-weight-bold text-${color}" style="font-size: 0.9rem;">
-                                <i class="fas ${icon} mr-1"></i> ${esc(reply.sender_name)} (${senderTitle})
-                            </span>
-                            <small class="text-muted" style="font-size: 0.75rem;">${esc(reply.created_at)}</small>
+                             <span class="font-weight-bold text-${color}" style="font-size: 0.9rem;">
+                                 <i class="fas ${icon} mr-1"></i> ${esc(reply.sender_name)} (${senderTitle})
+                             </span>
+                             <small class="text-muted" style="font-size: 0.75rem;">${esc(reply.created_at)}</small>
                         </div>
                         <p class="mb-0 text-dark small" style="white-space: pre-line; line-height: 1.45;">${esc(reply.reply_text)}</p>
+                        ${imagesHtml}
                     </div>
                 `;
             });
@@ -1830,13 +1857,26 @@ Return ONLY the professionally rephrased response text that the admin should sen
 
         // Switch account button handler
         $('#puterStatusPill').on('click', function() {
-            if (confirm("Would you like to sign out of Puter AI? This will clear your session and let you connect a new account.")) {
+            if (confirm("Would you like to switch your Puter AI account? This will sign you out and let you connect a new account.")) {
                 puter.auth.signOut().then(function() {
                     try {
                         localStorage.removeItem('puter-auth-token');
                         localStorage.removeItem('puter_auth_token');
                     } catch(e) {}
-                    window.location.reload();
+                    
+                    puter.auth.signIn().then(function() {
+                        window.location.reload();
+                    }).catch(function(err) {
+                        console.error("Puter signIn failed:", err);
+                        window.location.reload();
+                    });
+                }).catch(function(err) {
+                    console.error("Puter signOut failed:", err);
+                    puter.auth.signIn().then(function() {
+                        window.location.reload();
+                    }).catch(function(signInErr) {
+                        window.location.reload();
+                    });
                 });
             }
         });

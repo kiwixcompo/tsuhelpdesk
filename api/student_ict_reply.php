@@ -46,18 +46,63 @@ mysqli_query($conn, "CREATE TABLE IF NOT EXISTS student_ict_replies (
     sender_type  ENUM('student','staff') NOT NULL DEFAULT 'student',
     sender_id    INT NOT NULL,
     reply_text   TEXT NOT NULL,
+    reply_images TEXT DEFAULT NULL,
     created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_complaint (complaint_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
+// Process reply image uploads
+$reply_image_paths = array();
+if(isset($_FILES["reply_images"]) && !empty($_FILES["reply_images"]["name"][0])){
+    $allowed = array("jpg" => "image/jpg", "jpeg" => "image/jpeg", "gif" => "image/gif", "png" => "image/png");
+    $target_dir = "../uploads/";
+    
+    if (!file_exists($target_dir)) {
+        mkdir($target_dir, 0755, true);
+    }
+    
+    $files = $_FILES['reply_images'];
+    // Normalize to array format if it's not already
+    if (!is_array($files['name'])) {
+        $files = array_map(fn($v) => [$v], $files);
+    }
+    
+    $count = is_array($files['name']) ? count($files['name']) : 1;
+    for ($i = 0; $i < $count; $i++) {
+        $name  = is_array($files['name'])  ? $files['name'][$i]  : $files['name'];
+        $tmp   = is_array($files['tmp_name']) ? $files['tmp_name'][$i] : $files['tmp_name'];
+        $error = is_array($files['error']) ? $files['error'][$i] : $files['error'];
+        $size  = is_array($files['size'])  ? $files['size'][$i]  : $files['size'];
+        $type  = is_array($files['type'])  ? $files['type'][$i]  : $files['type'];
+
+        if ($error !== UPLOAD_ERR_OK || $size === 0) continue;
+
+        $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+        if (!array_key_exists($ext, $allowed)) continue;
+        if ($size > 5 * 1024 * 1024) continue; // 5MB max
+
+        if (in_array($type, $allowed)) {
+            $new_filename = "reply_" . uniqid() . "." . $ext;
+            $target_file = $target_dir . $new_filename;
+            
+            if (move_uploaded_file($tmp, $target_file)) {
+                chmod($target_file, 0644);
+                $reply_image_paths[] = $new_filename;
+            }
+        }
+    }
+}
+
+$reply_images_str = !empty($reply_image_paths) ? implode(",", $reply_image_paths) : null;
+
 $ins = mysqli_prepare($conn,
-    "INSERT INTO student_ict_replies (complaint_id, sender_type, sender_id, reply_text, created_at)
-     VALUES (?, 'student', ?, ?, NOW())");
+    "INSERT INTO student_ict_replies (complaint_id, sender_type, sender_id, reply_text, reply_images, created_at)
+     VALUES (?, 'student', ?, ?, ?, NOW())");
 if (!$ins) {
     echo json_encode(['success' => false, 'message' => 'DB prepare error']);
     exit;
 }
-mysqli_stmt_bind_param($ins, 'iis', $complaint_id, $student_id, $reply);
+mysqli_stmt_bind_param($ins, 'iiss', $complaint_id, $student_id, $reply, $reply_images_str);
 $ok = mysqli_stmt_execute($ins);
 mysqli_stmt_close($ins);
 

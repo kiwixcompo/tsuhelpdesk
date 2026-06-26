@@ -150,7 +150,7 @@ function parse_response_images($text) {
     if (empty($text)) return '';
     $text = htmlspecialchars($text);
     // Parse [Attached Image: uploads/filename.png]
-    $pattern = '/\[Attached Image: (uploads\/[a-zA-Z0-9_.-]+)\]/';
+    $pattern = '/\[Attached Image: (uploads\/[a-zA-Z0-9_\/.-]+)\]/';
     $replacement = '<div class="mt-2"><img src="$1" class="img-thumbnail" style="max-height: 150px; cursor: pointer; border: 1px solid #dee2e6;" onclick="if(window.showImageModal){window.showImageModal(\'$1\');}else{window.open(\'$1\',\'_blank\');}"></div>';
     $text = preg_replace($pattern, $replacement, $text);
     return nl2br($text);

@@ -284,6 +284,29 @@ if(tableExists($conn, 'complaint_replies')) {
     }
 }
 
+// Add reply_images to student_ict_replies table
+echo "<h3>Student ICT Replies Table Updates</h3>";
+$sql = "CREATE TABLE IF NOT EXISTS student_ict_replies (
+    reply_id     INT AUTO_INCREMENT PRIMARY KEY,
+    complaint_id INT NOT NULL,
+    sender_type  ENUM('student','staff') NOT NULL DEFAULT 'student',
+    sender_id    INT NOT NULL,
+    reply_text   TEXT NOT NULL,
+    reply_images TEXT DEFAULT NULL,
+    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_complaint (complaint_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+if (executeSql($conn, $sql, "Ensured student_ict_replies table exists")) {
+    if(!columnExists($conn, 'student_ict_replies', 'reply_images')) {
+        $sql = "ALTER TABLE student_ict_replies ADD COLUMN reply_images TEXT AFTER reply_text";
+        if(executeSql($conn, $sql, "Added reply_images column to student_ict_replies table")) {
+            $columns_added++;
+        }
+    } else {
+        echo "<div class='info'>ℹ reply_images column already exists in student_ict_replies table</div>";
+    }
+}
+
 // Update suggestions table if it exists
 echo "<h3>Suggestions Table Updates</h3>";
 if(tableExists($conn, 'suggestions')) {

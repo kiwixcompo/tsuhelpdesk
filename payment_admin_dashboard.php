@@ -1018,7 +1018,8 @@ function getImagePath($path) {
                 } catch(e) {}
                 return extraHtml;
             })()}
-            ${respHtml}`;
+            ${respHtml}
+            <div id="vrfRepliesContainer" style="display:none;" class="mt-4"></div>`;
         $('#vrfModalTitle').html('<i class="fas fa-credit-card mr-2"></i>ICT Complaint #' + d.id + ' — ' + esc(d.label));
         $('#vrfDetailsBody').html(body);
         $('#vrfComplaintId').val(d.id);
@@ -1227,6 +1228,69 @@ function getImagePath($path) {
                 alert('Request failed.');
                 btn.prop('disabled', false).html('<i class="fas fa-paper-plane mr-1"></i>Send Response');
             }
+        });
+    });
+
+        function loadIctRepliesPay(complaintId) {
+            const container = $('#vrfRepliesContainer');
+            if (container.length === 0) return;
+            container.hide().empty();
+            $.getJSON('api/get_ict_replies.php', { complaint_id: complaintId }, function(res) {
+                if (res.success && res.replies && res.replies.length > 0) {
+                    let repliesHtml = `
+                        <hr>
+                        <h6 class="text-primary font-weight-bold mb-3"><i class="fas fa-comments mr-2"></i>Conversation History</h6>
+                        <div style="max-height: 250px; overflow-y: auto; padding-right: 5px;">
+                    `;
+                    res.replies.forEach(reply => {
+                        const isStudent = reply.sender_type === 'student';
+                        const icon = isStudent ? 'fa-user-graduate' : 'fa-user-shield';
+                        const color = isStudent ? 'success' : 'primary';
+                        const senderTitle = isStudent ? 'Student' : 'Staff';
+                        
+                        let imagesHtml = '';
+                        if (reply.reply_images) {
+                            const images = reply.reply_images.split(',').filter(Boolean);
+                            if (images.length > 0) {
+                                imagesHtml += '<div class="mt-2 d-flex flex-wrap" style="gap: 8px;">';
+                                images.forEach(img => {
+                                    const imgUrl = 'public_image.php?img=' + encodeURIComponent(img.trim());
+                                    imagesHtml += `
+                                        <div style="cursor: pointer;" onclick="window.open('${imgUrl}', '_blank')">
+                                            <img src="${imgUrl}" class="img-thumbnail" style="max-height: 60px; max-width: 90px; object-fit: cover;">
+                                        </div>
+                                    `;
+                                });
+                                imagesHtml += '</div>';
+                            }
+                        }
+                        
+                        repliesHtml += `
+                            <div class="mb-2 p-2 bg-light rounded shadow-sm border-left border-${color}" style="border-left-width:3px!important; font-size:0.85rem;">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="font-weight-bold text-${color}">
+                                        <i class="fas ${icon} mr-1"></i> ${esc(reply.sender_name)} (${senderTitle})
+                                    </span>
+                                    <small class="text-muted" style="font-size: 0.7rem;">${reply.created_at}</small>
+                                </div>
+                                <p class="mb-0 text-dark" style="white-space: pre-line; line-height: 1.4;">${reply.reply_text}</p>
+                                ${imagesHtml}
+                            </div>
+                        `;
+                    });
+                    repliesHtml += '</div>';
+                    container.html(repliesHtml).show();
+                }
+            });
+        }
+
+        // Load replies when forwarded view modal is shown
+        $(document).on('shown.bs.modal', '#viewRespondFwdModal', function() {
+            const cid = $('#vrfComplaintId').val();
+            if (cid) {
+                loadIctRepliesPay(cid);
+            }
+        });
         });
     });
     </script>

@@ -409,7 +409,9 @@ function getImagePath($image) {
                         <hr><p><strong>Attachment:</strong> <a href="<?php echo htmlspecialchars($fi_row['attachment_path']); ?>" target="_blank" class="btn btn-sm btn-info"><i class="fas fa-file-download mr-1"></i>View File</a></p>
                     <?php endif; ?>
                     <?php if ($fi_row['admin_response']): ?>
-                        <hr><div class="alert alert-success"><strong>ICT Response:</strong><br><?php echo nl2br(htmlspecialchars($fi_row['admin_response'])); ?></div>
+                        <hr><div class="alert alert-success"><strong>ICT Response:</strong><br><?php echo parse_response_images($fi_row['admin_response']); ?></div>
+                        <!-- Conversation History -->
+                        <div class="ict-replies-container mt-4" style="display:none;" data-complaint-id="<?php echo $fi_row['complaint_id']; ?>"></div>
                     <?php endif; ?>
                 </div>
                 <div class="modal-footer">
@@ -1014,6 +1016,65 @@ if (!empty($found_ids)):
             error: function() {
                 alert('Request failed. Please try again.');
                 btn.prop('disabled', false).html('<i class="fas fa-paper-plane mr-1"></i>Send Response');
+            }
+        });
+        function loadIctReplies(container) {
+            const cid = container.data('complaint-id');
+            container.hide().empty();
+            $.getJSON('api/get_ict_replies.php', { complaint_id: cid }, function(res) {
+                if (res.success && res.replies && res.replies.length > 0) {
+                    let repliesHtml = `
+                        <hr>
+                        <h6 class="text-primary font-weight-bold mb-3"><i class="fas fa-comments mr-2"></i>Conversation History</h6>
+                        <div style="max-height: 250px; overflow-y: auto; padding-right: 5px;">
+                    `;
+                    res.replies.forEach(reply => {
+                        const isStudent = reply.sender_type === 'student';
+                        const icon = isStudent ? 'fa-user-graduate' : 'fa-user-shield';
+                        const color = isStudent ? 'success' : 'primary';
+                        const senderTitle = isStudent ? 'Student' : 'Staff';
+                        
+                        let imagesHtml = '';
+                        if (reply.reply_images) {
+                            const images = reply.reply_images.split(',').filter(Boolean);
+                            if (images.length > 0) {
+                                imagesHtml += '<div class="mt-2 d-flex flex-wrap" style="gap: 8px;">';
+                                images.forEach(img => {
+                                    const imgUrl = 'public_image.php?img=' + encodeURIComponent(img.trim());
+                                    imagesHtml += `
+                                        <div style="cursor: pointer;" onclick="window.open('${imgUrl}', '_blank')">
+                                            <img src="${imgUrl}" class="img-thumbnail" style="max-height: 60px; max-width: 90px; object-fit: cover;">
+                                        </div>
+                                    `;
+                                });
+                                imagesHtml += '</div>';
+                            }
+                        }
+                        
+                        repliesHtml += `
+                            <div class="mb-2 p-2 bg-light rounded shadow-sm border-left border-${color}" style="border-left-width:3px!important; font-size:0.85rem;">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="font-weight-bold text-${color}">
+                                        <i class="fas ${icon} mr-1"></i> ${esc(reply.sender_name)} (${senderTitle})
+                                    </span>
+                                    <small class="text-muted" style="font-size: 0.7rem;">${reply.created_at}</small>
+                                </div>
+                                <p class="mb-0 text-dark" style="white-space: pre-line; line-height: 1.4;">${reply.reply_text}</p>
+                                ${imagesHtml}
+                            </div>
+                        `;
+                    });
+                    repliesHtml += '</div>';
+                    container.html(repliesHtml).show();
+                }
+            });
+        }
+
+        // Load replies when modal is shown
+        $(document).on('shown.bs.modal', '.modal', function() {
+            const container = $(this).find('.ict-replies-container');
+            if (container.length > 0) {
+                loadIctReplies(container);
             }
         });
     });

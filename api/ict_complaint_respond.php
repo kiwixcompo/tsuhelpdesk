@@ -73,6 +73,13 @@ if (!empty($_FILES['response_images'])) {
     }
 }
 
+// Append attached images to the response
+if (!empty($image_paths)) {
+    foreach ($image_paths as $path) {
+        $response .= "\n[Attached Image: " . $path . "]";
+    }
+}
+
 // Build update query
 $valid_statuses = ['Pending', 'Under Review', 'Resolved', 'Rejected', 'Auto-Resolved'];
 if (!in_array($status, $valid_statuses)) $status = '';

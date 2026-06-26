@@ -883,7 +883,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
     function parseResponseImagesJS(text) {
         if (!text) return '';
         let escaped = esc(text);
-        const pattern = /\[Attached Image: (uploads\/[a-zA-Z0-9_.-]+)\]/g;
+        const pattern = /\[Attached Image: (uploads\/[a-zA-Z0-9_\/.-]+)\]/g;
         escaped = escaped.replace(pattern, '<div class="mt-2"><img src="$1" class="img-thumbnail" style="max-height: 150px; cursor: pointer; border: 1px solid #dee2e6;" onclick="showImageModal(\'$1\')"></div>');
         return escaped.replace(/\n/g, '<br>');
     }
@@ -989,7 +989,8 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
                     <p class="text-dark small mb-0 font-weight-bold">${esc(d.path).split(' > ').join(' <i class="fas fa-chevron-right text-muted mx-1"></i> ')}</p>
                 </div>
                 
-                ${descHtml}${attachmentHtml}${autoHtml}${ictRespHtml}${extraHtml}`;
+                ${descHtml}${attachmentHtml}${autoHtml}${ictRespHtml}${extraHtml}
+                <div id="fwRepliesContainer" style="display:none;" class="mt-4"></div>`;
 
             $('#fwViewBody').html(body);
             $('#forwardedViewModal').modal('show');
@@ -1057,6 +1058,66 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["reply_forwarded"])) {
                 msg.text('✗ Request failed. Try again.').removeClass('text-success').addClass('text-danger').show();
                 btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i> Save Preferences');
             });
+        });
+
+        function loadIctRepliesDept(complaintId) {
+            const container = $('#fwRepliesContainer');
+            if (container.length === 0) return;
+            container.hide().empty();
+            $.getJSON('api/get_ict_replies.php', { complaint_id: complaintId }, function(res) {
+                if (res.success && res.replies && res.replies.length > 0) {
+                    let repliesHtml = `
+                        <hr>
+                        <h6 class="text-primary font-weight-bold mb-3"><i class="fas fa-comments mr-2"></i>Conversation History</h6>
+                        <div style="max-height: 250px; overflow-y: auto; padding-right: 5px;">
+                    `;
+                    res.replies.forEach(reply => {
+                        const isStudent = reply.sender_type === 'student';
+                        const icon = isStudent ? 'fa-user-graduate' : 'fa-user-shield';
+                        const color = isStudent ? 'success' : 'primary';
+                        const senderTitle = isStudent ? 'Student' : 'Staff';
+                        
+                        let imagesHtml = '';
+                        if (reply.reply_images) {
+                            const images = reply.reply_images.split(',').filter(Boolean);
+                            if (images.length > 0) {
+                                imagesHtml += '<div class="mt-2 d-flex flex-wrap" style="gap: 8px;">';
+                                images.forEach(img => {
+                                    const imgUrl = 'public_image.php?img=' + encodeURIComponent(img.trim());
+                                    imagesHtml += `
+                                        <div style="cursor: pointer;" onclick="window.open('${imgUrl}', '_blank')">
+                                            <img src="${imgUrl}" class="img-thumbnail" style="max-height: 60px; max-width: 90px; object-fit: cover;">
+                                        </div>
+                                    `;
+                                });
+                                imagesHtml += '</div>';
+                            }
+                        }
+                        
+                        repliesHtml += `
+                            <div class="mb-2 p-2 bg-light rounded shadow-sm border-left border-${color}" style="border-left-width:3px!important; font-size:0.85rem;">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="font-weight-bold text-${color}">
+                                        <i class="fas ${icon} mr-1"></i> ${esc(reply.sender_name)} (${senderTitle})
+                                    </span>
+                                    <small class="text-muted" style="font-size: 0.7rem;">${reply.created_at}</small>
+                                </div>
+                                <p class="mb-0 text-dark" style="white-space: pre-line; line-height: 1.4;">${reply.reply_text}</p>
+                                ${imagesHtml}
+                            </div>
+                        `;
+                    });
+                    repliesHtml += '</div>';
+                    container.html(repliesHtml).show();
+                }
+            });
+        }
+
+        // Load replies when forwarded view modal is shown
+        $(document).on('shown.bs.modal', '#forwardedViewModal', function() {
+            if (_currentFwData && _currentFwData.id) {
+                loadIctRepliesDept(_currentFwData.id);
+            }
         });
     });
     </script>

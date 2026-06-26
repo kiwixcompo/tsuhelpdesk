@@ -800,15 +800,24 @@ if (mysqli_num_rows($notif_table_check) > 0) {
     <?php echo parse_response_images($ic['admin_response']); ?>
 </div>
 <small class="text-muted">Responded by TSU ICT Help Desk</small>
+
+<!-- Conversation History -->
+<div class="ict-replies-container mt-4" style="display:none;" data-complaint-id="<?php echo $ic['complaint_id']; ?>"></div>
+
 <?php if (!in_array($ic['status'], ['Resolved', 'Auto-Resolved', 'Rejected'])): ?>
 <hr>
 <div class="mt-3">
     <p class="font-weight-bold text-primary"><i class="fas fa-comment-dots mr-1"></i>Reply to this response:</p>
-    <form class="student-reply-form" data-complaint-id="<?php echo $ic['complaint_id']; ?>">
+    <form class="student-reply-form" data-complaint-id="<?php echo $ic['complaint_id']; ?>" enctype="multipart/form-data">
         <div class="form-group">
             <textarea class="form-control reply-text" rows="3" placeholder="Type your reply here..." required></textarea>
         </div>
-        <button type="submit" class="btn btn-primary btn-sm">
+        <div class="form-group mt-2">
+            <label class="small font-weight-bold"><i class="fas fa-paperclip mr-1"></i>Attach Images / Proof (optional):</label>
+            <input type="file" name="reply_images[]" class="reply-images-input form-control-file" accept="image/*" multiple>
+            <small class="text-muted" style="font-size:0.75rem;">JPG, JPEG, PNG, GIF — max 5MB each</small>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm mt-2">
             <i class="fas fa-paper-plane mr-1"></i> Send Reply
         </button>
         <span class="reply-status ml-2 small"></span>
@@ -905,7 +914,15 @@ if (mysqli_num_rows($notif_table_check) > 0) {
                                             <?php endforeach; ?>
                                         </table>
                                         <?php endif; ?>
-                                        <?php if ($ic['admin_response']): ?><hr><div class="alert alert-success"><strong><i class="fas fa-check-circle mr-1"></i>Response from ICT:</strong><br><?php echo parse_response_images($ic['admin_response']); ?></div><?php endif; ?>
+                                        <?php if ($ic['admin_response']): ?>
+                                            <hr>
+                                            <div class="alert alert-success">
+                                                <strong><i class="fas fa-check-circle mr-1"></i>Response from ICT:</strong><br>
+                                                <?php echo parse_response_images($ic['admin_response']); ?>
+                                            </div>
+                                            <!-- Conversation History -->
+                                            <div class="ict-replies-container mt-4" style="display:none;" data-complaint-id="<?php echo $ic['complaint_id']; ?>"></div>
+                                        <?php endif; ?>
                                     </div>
                                     <div class="modal-footer">
                                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
@@ -1302,6 +1319,66 @@ if (mysqli_num_rows($notif_table_check) > 0) {
             });
         });
 
+        function loadIctReplies(container) {
+            const cid = container.data('complaint-id');
+            container.hide().empty();
+            $.getJSON('api/get_ict_replies.php', { complaint_id: cid }, function(res) {
+                if (res.success && res.replies && res.replies.length > 0) {
+                    let repliesHtml = `
+                        <hr>
+                        <h6 class="text-primary font-weight-bold mb-3"><i class="fas fa-comments mr-2"></i>Conversation History</h6>
+                        <div style="max-height: 250px; overflow-y: auto; padding-right: 5px;">
+                    `;
+                    res.replies.forEach(reply => {
+                        const isStudent = reply.sender_type === 'student';
+                        const icon = isStudent ? 'fa-user-graduate' : 'fa-user-shield';
+                        const color = isStudent ? 'success' : 'primary';
+                        const senderTitle = isStudent ? 'You' : 'Staff';
+                        
+                        let imagesHtml = '';
+                        if (reply.reply_images) {
+                            const images = reply.reply_images.split(',').filter(Boolean);
+                            if (images.length > 0) {
+                                imagesHtml += '<div class="mt-2 d-flex flex-wrap" style="gap: 8px;">';
+                                images.forEach(img => {
+                                    const imgUrl = 'public_image.php?img=' + encodeURIComponent(img.trim());
+                                    imagesHtml += `
+                                        <div style="cursor: pointer;" onclick="window.open('${imgUrl}', '_blank')">
+                                            <img src="${imgUrl}" class="img-thumbnail" style="max-height: 60px; max-width: 90px; object-fit: cover;">
+                                        </div>
+                                    `;
+                                });
+                                imagesHtml += '</div>';
+                            }
+                        }
+                        
+                        repliesHtml += `
+                            <div class="mb-2 p-2 bg-light rounded shadow-sm border-left border-${color}" style="border-left-width:3px!important; font-size:0.85rem;">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="font-weight-bold text-${color}">
+                                        <i class="fas ${icon} mr-1"></i> ${senderTitle}
+                                    </span>
+                                    <small class="text-muted" style="font-size: 0.7rem;">${reply.created_at}</small>
+                                </div>
+                                <p class="mb-0 text-dark" style="white-space: pre-line; line-height: 1.4;">${reply.reply_text}</p>
+                                ${imagesHtml}
+                            </div>
+                        `;
+                    });
+                    repliesHtml += '</div>';
+                    container.html(repliesHtml).show();
+                }
+            });
+        }
+
+        // Load replies when modal is shown
+        $(document).on('shown.bs.modal', '.modal', function() {
+            const container = $(this).find('.ict-replies-container');
+            if (container.length > 0) {
+                loadIctReplies(container);
+            }
+        });
+
         // Student reply to ICT complaint
         $(document).on('submit', '.student-reply-form', function(e) {
             e.preventDefault();
@@ -1311,19 +1388,39 @@ if (mysqli_num_rows($notif_table_check) > 0) {
             var btn  = form.find('button[type=submit]');
             var status = form.find('.reply-status');
             if (!text) return;
+
+            var formData = new FormData(this);
+            formData.append('complaint_id', cid);
+            formData.append('reply', text);
+
             btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Sending...');
-            $.post('api/student_ict_reply.php', { complaint_id: cid, reply: text }, function(res) {
-                if (res.success) {
-                    status.css('color','green').text('Reply sent!');
-                    form.find('.reply-text').val('');
-                } else {
-                    status.css('color','red').text(res.message || 'Failed to send reply.');
+            
+            $.ajax({
+                url: 'api/student_ict_reply.php',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                dataType: 'json',
+                success: function(res) {
+                    if (res.success) {
+                        status.css('color','green').text('Reply sent!');
+                        form.find('.reply-text').val('');
+                        form.find('.reply-images-input').val('');
+                        const container = form.closest('.modal-body').find('.ict-replies-container');
+                        if (container.length > 0) {
+                            loadIctReplies(container);
+                        }
+                    } else {
+                        status.css('color','red').text(res.message || 'Failed to send reply.');
+                    }
+                    btn.prop('disabled', false).html('<i class="fas fa-paper-plane mr-1"></i> Send Reply');
+                    setTimeout(function(){ status.text(''); }, 4000);
+                },
+                error: function() {
+                    status.css('color','red').text('Network error.');
+                    btn.prop('disabled', false).html('<i class="fas fa-paper-plane mr-1"></i> Send Reply');
                 }
-                btn.prop('disabled', false).html('<i class="fas fa-paper-plane mr-1"></i> Send Reply');
-                setTimeout(function(){ status.text(''); }, 4000);
-            }, 'json').fail(function() {
-                status.css('color','red').text('Network error.');
-                btn.prop('disabled', false).html('<i class="fas fa-paper-plane mr-1"></i> Send Reply');
             });
         });
     });
